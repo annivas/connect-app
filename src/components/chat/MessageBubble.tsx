@@ -1,0 +1,84 @@
+import React from 'react';
+import { View, Text, Pressable, ActionSheetIOS, Platform, Alert } from 'react-native';
+import { format, isToday, isYesterday } from 'date-fns';
+import * as Clipboard from 'expo-clipboard';
+import * as Haptics from 'expo-haptics';
+import { Message } from '../../types';
+import { CURRENT_USER_ID } from '../../mocks/users';
+
+interface Props {
+  message: Message;
+  showDateDivider?: boolean;
+}
+
+function DateDivider({ date }: { date: Date }) {
+  let label: string;
+  if (isToday(date)) label = 'Today';
+  else if (isYesterday(date)) label = 'Yesterday';
+  else label = format(date, 'MMMM d, yyyy');
+
+  return (
+    <View className="flex-row items-center my-4 px-4">
+      <View className="flex-1 h-px bg-border-subtle" />
+      <Text className="text-text-tertiary text-xs mx-3 font-medium">
+        {label}
+      </Text>
+      <View className="flex-1 h-px bg-border-subtle" />
+    </View>
+  );
+}
+
+export function MessageBubble({ message, showDateDivider }: Props) {
+  const isMine = message.senderId === CURRENT_USER_ID;
+
+  const handleLongPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    const options = ['Copy Text', 'Cancel'];
+    const cancelIndex = 1;
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options, cancelButtonIndex: cancelIndex },
+        (idx) => {
+          if (idx === 0) Clipboard.setStringAsync(message.content);
+        }
+      );
+    } else {
+      Alert.alert('Message', undefined, [
+        { text: 'Copy Text', onPress: () => Clipboard.setStringAsync(message.content) },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+    }
+  };
+
+  return (
+    <>
+      {showDateDivider && <DateDivider date={message.timestamp} />}
+      <Pressable
+        onLongPress={handleLongPress}
+        delayLongPress={400}
+        className={`mb-2 ${isMine ? 'items-end' : 'items-start'}`}
+      >
+        <View
+          className={`max-w-[78%] px-4 py-2.5 rounded-2xl ${
+            isMine
+              ? 'bg-accent-primary rounded-br-md'
+              : 'bg-surface rounded-bl-md'
+          }`}
+        >
+          <Text
+            className={`text-[15px] leading-[21px] ${
+              isMine ? 'text-white' : 'text-text-primary'
+            }`}
+          >
+            {message.content}
+          </Text>
+        </View>
+        <Text className="text-text-tertiary text-[10px] mt-1 mx-2">
+          {format(message.timestamp, 'HH:mm')}
+        </Text>
+      </Pressable>
+    </>
+  );
+}
