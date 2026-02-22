@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, Pressable, ActionSheetIOS, Platform, Alert, Dimensions } from 'react-native';
+import { View, Text, Pressable, ActionSheetIOS, Platform, Alert } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { format, isToday, isYesterday } from 'date-fns';
@@ -197,9 +197,15 @@ export function MessageBubble({
     onReply?.(message);
   }, [message, onReply]);
 
+  const openReactionPicker = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setShowReactionPicker(true);
+  }, []);
+
+  // Pan gesture for swipe-to-reply — activates on deliberate horizontal movement
   const panGesture = Gesture.Pan()
-    .activeOffsetX(15)
-    .failOffsetY([-10, 10])
+    .activeOffsetX([15, 15])
+    .failOffsetY([-15, 15])
     .onUpdate((e) => {
       // Only allow right swipe (positive translateX)
       const clamped = Math.min(Math.max(e.translationX, 0), MAX_SWIPE);
@@ -220,6 +226,17 @@ export function MessageBubble({
       hasTriggered.value = false;
     });
 
+  // Long-press gesture for reaction picker — managed at the gesture-handler level
+  const longPressGesture = Gesture.LongPress()
+    .minDuration(300)
+    .onStart(() => {
+      runOnJS(openReactionPicker)();
+    });
+
+  // Race: whichever gesture activates first wins. Pan (horizontal swipe) and
+  // LongPress (hold in place) naturally compete — the user either drags or holds.
+  const composedGesture = Gesture.Race(panGesture, longPressGesture);
+
   const swipeStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
   }));
@@ -229,7 +246,7 @@ export function MessageBubble({
     transform: [{ scale: 0.5 + replyIconOpacity.value * 0.5 }],
   }));
 
-  // ─── Long-press: show inline reactions first, "More" for other actions ───
+  // ─── "More" actions (Copy, Reply, Edit, Delete via ActionSheet) ───
 
   const confirmDelete = () => {
     Alert.alert('Delete Message', 'Are you sure you want to delete this message?', [
@@ -240,12 +257,6 @@ export function MessageBubble({
         onPress: () => onDelete?.(message.id),
       },
     ]);
-  };
-
-  const handleLongPress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // Show reaction picker inline immediately
-    setShowReactionPicker(true);
   };
 
   const showMoreActions = () => {
@@ -338,7 +349,8 @@ export function MessageBubble({
           </View>
         </Animated.View>
 
-        <GestureDetector gesture={panGesture}>
+        {/* Composed gesture: Pan (swipe-to-reply) races with LongPress (reaction picker) */}
+        <GestureDetector gesture={composedGesture}>
           <Animated.View style={swipeStyle}>
             {/* Reaction picker — positioned above the bubble */}
             {showReactionPicker && (
@@ -354,11 +366,8 @@ export function MessageBubble({
               </View>
             )}
 
-            <Pressable
-              onLongPress={handleLongPress}
-              delayLongPress={300}
-              className={`flex-row ${isMine ? 'justify-end' : 'justify-start'}`}
-            >
+            {/* Message row — no Pressable wrapper, gestures handled above */}
+            <View className={`flex-row ${isMine ? 'justify-end' : 'justify-start'}`}>
               {/* Avatar column (received messages only) */}
               {!isMine && (
                 <View style={{ width: AVATAR_SIZE, marginRight: 8 }}>
@@ -463,7 +472,7 @@ export function MessageBubble({
                   </View>
                 )}
               </View>
-            </Pressable>
+            </View>
           </Animated.View>
         </GestureDetector>
 
