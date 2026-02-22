@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Message, Conversation, Note, Reminder, LedgerEntry } from '../types';
+import { Message, Conversation, Note, Reminder, LedgerEntry, SharedObject } from '../types';
 import { messagesRepository } from '../services';
 import { CreateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../services/types';
 import { supabase } from '../lib/supabase';
@@ -45,6 +45,10 @@ interface MessagesState {
   toggleReminderComplete: (conversationId: string, reminderId: string) => void;
   createLedgerEntry: (conversationId: string, input: CreateLedgerEntryInput) => Promise<LedgerEntry>;
   settleLedgerEntry: (conversationId: string, entryId: string) => void;
+  addSharedObject: (
+    conversationId: string,
+    data: { type: 'link'; title: string; description?: string; url: string },
+  ) => void;
 }
 
 export const useMessagesStore = create<MessagesState>((set, get) => ({
@@ -440,5 +444,37 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
         }),
       }));
     });
+  },
+
+  addSharedObject: (conversationId, data) => {
+    const { useUserStore } = require('./useUserStore');
+    const currentUserId = useUserStore.getState().currentUser?.id ?? 'unknown';
+
+    const newObject: SharedObject = {
+      id: `shared-${Date.now()}`,
+      type: data.type,
+      title: data.title,
+      description: data.description,
+      url: data.url,
+      sharedBy: currentUserId,
+      sharedAt: new Date(),
+      metadata: { url: data.url },
+    };
+
+    set((state) => ({
+      conversations: state.conversations.map((c) =>
+        c.id === conversationId
+          ? {
+              ...c,
+              metadata: c.metadata
+                ? {
+                    ...c.metadata,
+                    sharedObjects: [newObject, ...(c.metadata.sharedObjects ?? [])],
+                  }
+                : c.metadata,
+            }
+          : c,
+      ),
+    }));
   },
 }));

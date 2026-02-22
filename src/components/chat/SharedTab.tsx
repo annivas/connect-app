@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import * as Haptics from 'expo-haptics';
 import { useShallow } from 'zustand/react/shallow';
 import { EmptyState } from '../ui/EmptyState';
+import { ShareLinkModal } from './ShareLinkModal';
 import { useMessagesStore } from '../../stores/useMessagesStore';
 import type { SharedObject, SharedObjectType } from '../../types';
 
@@ -128,6 +129,7 @@ interface SharedTabProps {
 
 export function SharedTab({ conversationId, sharedObjects: directObjects }: SharedTabProps) {
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
   const conversation = useMessagesStore(
     useShallow((s) => (conversationId ? s.getConversationById(conversationId) : undefined))
@@ -140,53 +142,73 @@ export function SharedTab({ conversationId, sharedObjects: directObjects }: Shar
     return sharedObjects.filter((obj) => obj.type === activeFilter);
   }, [sharedObjects, activeFilter]);
 
-  if (sharedObjects.length === 0) {
-    return (
-      <View className="flex-1 bg-background-primary">
+  const handleFABPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setIsModalVisible(true);
+  };
+
+  return (
+    <View className="flex-1 bg-background-primary">
+      {sharedObjects.length === 0 ? (
         <EmptyState
           icon="folder-open-outline"
           title="No shared items"
           description="Photos, links, places, and songs you share will appear here"
         />
-      </View>
-    );
-  }
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(item) => item.id}
+          ListHeaderComponent={
+            <View className="px-4 pt-4 pb-3">
+              <FlatList
+                data={FILTERS}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(f) => f.key}
+                renderItem={({ item: f }) => (
+                  <FilterChip
+                    label={f.label}
+                    icon={f.icon}
+                    active={activeFilter === f.key}
+                    onPress={() => setActiveFilter(f.key)}
+                  />
+                )}
+              />
+            </View>
+          }
+          renderItem={({ item }) => <SharedItemCard item={item} />}
+          ListEmptyComponent={
+            <View className="px-4 py-12 items-center">
+              <Ionicons name="search-outline" size={28} color="#6B6B76" />
+              <Text className="text-text-tertiary text-sm mt-2">
+                No {activeFilter === 'all' ? 'items' : activeFilter + 's'} found
+              </Text>
+            </View>
+          }
+          contentContainerStyle={{ paddingBottom: 100 }}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
 
-  return (
-    <View className="flex-1 bg-background-primary">
-      <FlatList
-        data={filtered}
-        keyExtractor={(item) => item.id}
-        ListHeaderComponent={
-          <View className="px-4 pt-4 pb-3">
-            <FlatList
-              data={FILTERS}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyExtractor={(f) => f.key}
-              renderItem={({ item: f }) => (
-                <FilterChip
-                  label={f.label}
-                  icon={f.icon}
-                  active={activeFilter === f.key}
-                  onPress={() => setActiveFilter(f.key)}
-                />
-              )}
-            />
-          </View>
-        }
-        renderItem={({ item }) => <SharedItemCard item={item} />}
-        ListEmptyComponent={
-          <View className="px-4 py-12 items-center">
-            <Ionicons name="search-outline" size={28} color="#6B6B76" />
-            <Text className="text-text-tertiary text-sm mt-2">
-              No {activeFilter === 'all' ? 'items' : activeFilter + 's'} found
-            </Text>
-          </View>
-        }
-        contentContainerStyle={{ paddingBottom: 100 }}
-        showsVerticalScrollIndicator={false}
-      />
+      {/* FAB — Share Link */}
+      {conversationId && (
+        <Pressable
+          onPress={handleFABPress}
+          className="absolute bottom-4 right-4 w-14 h-14 bg-accent-primary rounded-full items-center justify-center shadow-lg active:scale-95"
+        >
+          <Ionicons name="add" size={28} color="#FFFFFF" />
+        </Pressable>
+      )}
+
+      {/* Share Link Modal */}
+      {conversationId && (
+        <ShareLinkModal
+          visible={isModalVisible}
+          conversationId={conversationId}
+          onClose={() => setIsModalVisible(false)}
+        />
+      )}
     </View>
   );
 }
