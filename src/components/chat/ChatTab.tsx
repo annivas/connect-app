@@ -14,6 +14,8 @@ interface Props {
   conversationId: string;
 }
 
+const EMPTY_TYPING: string[] = [];
+
 export function ChatTab({ conversationId }: Props) {
   const listRef = useRef<FlatList>(null);
   const messages = useMessagesStore(
@@ -26,7 +28,7 @@ export function ChatTab({ conversationId }: Props) {
     (s) => s.loadingMessages.has(conversationId)
   );
   const replyingTo = useMessagesStore((s) => s.replyingTo[conversationId] ?? null);
-  const typingUserIds = useMessagesStore((s) => s.typingUsers[conversationId] ?? []);
+  const typingUserIds = useMessagesStore((s) => s.typingUsers[conversationId] ?? EMPTY_TYPING);
 
   // Load messages when entering the conversation
   useEffect(() => {
