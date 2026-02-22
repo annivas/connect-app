@@ -19,6 +19,12 @@ interface MessagesState {
   hasMoreMessages: Record<string, boolean>;
   loadingMessages: Set<string>;
 
+  // Reply state (per conversation)
+  replyingTo: Record<string, Message | null>;
+
+  // Typing indicators (per conversation → user IDs currently typing)
+  typingUsers: Record<string, string[]>;
+
   // Realtime
   _channel: RealtimeChannel | null;
 
@@ -33,8 +39,13 @@ interface MessagesState {
   loadMessages: (conversationId: string) => Promise<void>;
   loadMoreMessages: (conversationId: string) => Promise<void>;
 
-  sendMessage: (conversationId: string, content: string, senderId: string) => void;
+  sendMessage: (conversationId: string, content: string, senderId: string, options?: { type?: import('../types').MessageType; metadata?: Record<string, unknown> }) => void;
   retryMessage: (messageId: string) => void;
+  createConversation: (participantIds: string[]) => Promise<string>;
+  deleteMessage: (conversationId: string, messageId: string) => void;
+  toggleReaction: (conversationId: string, messageId: string, emoji: string) => void;
+  setReplyTo: (conversationId: string, message: Message | null) => void;
+  editMessage: (conversationId: string, messageId: string, newContent: string) => void;
   markAsRead: (conversationId: string) => void;
   togglePin: (conversationId: string) => void;
   toggleMute: (conversationId: string) => void;
@@ -58,6 +69,8 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
   error: null,
   hasMoreMessages: {},
   loadingMessages: new Set(),
+  replyingTo: {},
+  typingUsers: {},
   _channel: null,
 
   init: async () => {
@@ -150,6 +163,74 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
           }
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: 'context_type=eq.conversation',
+        },
+        (payload) => {
+          const updatedRow = payload.new as Record<string, unknown>;
+          const updatedMessage = adaptMessage(updatedRow as any);
+          const state = get();
+
+          // Check if the local version already matches (optimistic dedup)
+          const localMsg = state.messages.find((m) => m.id === updatedMessage.id);
+          if (
+            localMsg &&
+            localMsg.content === updatedMessage.content &&
+            JSON.stringify(localMsg.reactions) === JSON.stringify(updatedMessage.reactions)
+          ) {
+            return; // Already up to date (likely our own optimistic update)
+          }
+
+          set((s) => ({
+            messages: s.messages.map((m) =>
+              m.id === updatedMessage.id ? updatedMessage : m,
+            ),
+          }));
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'messages',
+          filter: 'context_type=eq.conversation',
+        },
+        (payload) => {
+          const deletedId = (payload.old as Record<string, unknown>).id as string;
+          const state = get();
+
+          // Skip if already removed locally (optimistic dedup)
+          if (!state.messages.some((m) => m.id === deletedId)) return;
+
+          const deletedMsg = state.messages.find((m) => m.id === deletedId);
+          const conversationId = deletedMsg?.conversationId;
+          const remaining = state.messages.filter((m) => m.id !== deletedId);
+
+          if (conversationId) {
+            const convMessages = remaining.filter((m) => m.conversationId === conversationId);
+            const newLastMessage = convMessages.length > 0
+              ? convMessages.reduce((a, b) => (a.timestamp > b.timestamp ? a : b))
+              : undefined;
+
+            set({
+              messages: remaining,
+              conversations: state.conversations.map((c) =>
+                c.id === conversationId
+                  ? { ...c, lastMessage: newLastMessage, updatedAt: new Date() }
+                  : c,
+              ),
+            });
+          } else {
+            set({ messages: remaining });
+          }
+        }
+      )
       .subscribe();
 
     set({ _channel: channel });
@@ -225,30 +306,52 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     }
   },
 
-  sendMessage: (conversationId, content, senderId) => {
+  sendMessage: (conversationId, content, senderId, options) => {
     const messageId = `msg-${Date.now()}`;
+    const state = get();
+
+    // Attach reply data if replying to a message
+    const replyingMsg = state.replyingTo[conversationId];
+    let metadata = options?.metadata;
+    let replyTo: Message['replyTo'] | undefined;
+    if (replyingMsg) {
+      const { useUserStore } = require('./useUserStore');
+      const senderUser = useUserStore.getState().getUserById(replyingMsg.senderId);
+      replyTo = {
+        messageId: replyingMsg.id,
+        content: replyingMsg.content,
+        senderName: senderUser?.name ?? 'Unknown',
+      };
+      metadata = { ...metadata, replyTo };
+    }
+
     const newMessage: Message = {
       id: messageId,
       conversationId,
       senderId,
       content,
       timestamp: new Date(),
-      type: 'text',
+      type: options?.type ?? 'text',
+      metadata,
+      replyTo,
       isRead: true,
       sendStatus: 'sending',
     };
 
-    set((state) => ({
-      messages: [...state.messages, newMessage],
-      conversations: state.conversations.map((c) =>
+    set((s) => ({
+      messages: [...s.messages, newMessage],
+      conversations: s.conversations.map((c) =>
         c.id === conversationId
           ? { ...c, lastMessage: newMessage, updatedAt: new Date() }
           : c,
       ),
+      // Clear reply state after sending
+      replyingTo: { ...s.replyingTo, [conversationId]: null },
     }));
 
+    const sendOptions = metadata ? { ...options, metadata } : options;
     messagesRepository
-      .sendMessage(conversationId, content, senderId)
+      .sendMessage(conversationId, content, senderId, sendOptions)
       .then((savedMessage) => {
         // Replace optimistic message with the saved one
         set((state) => ({
@@ -321,6 +424,117 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
       ),
     }));
     messagesRepository.toggleMute(conversationId).catch(() => {});
+  },
+
+  createConversation: async (participantIds) => {
+    const conv = await messagesRepository.createConversation(participantIds);
+    set((state) => ({
+      conversations: [conv, ...state.conversations],
+    }));
+    return conv.id;
+  },
+
+  deleteMessage: (conversationId, messageId) => {
+    const state = get();
+    const deletedMsg = state.messages.find((m) => m.id === messageId);
+    if (!deletedMsg) return;
+
+    // Optimistic removal
+    const remaining = state.messages.filter((m) => m.id !== messageId);
+    const convMessages = remaining.filter((m) => m.conversationId === conversationId);
+    const newLastMessage = convMessages.length > 0
+      ? convMessages.reduce((a, b) => (a.timestamp > b.timestamp ? a : b))
+      : undefined;
+
+    set({
+      messages: remaining,
+      conversations: state.conversations.map((c) =>
+        c.id === conversationId
+          ? { ...c, lastMessage: newLastMessage, updatedAt: new Date() }
+          : c,
+      ),
+    });
+
+    messagesRepository.deleteMessage(messageId).catch(() => {
+      // Revert on failure
+      set((s) => ({
+        messages: [...s.messages, deletedMsg].sort(
+          (a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
+        ),
+        conversations: s.conversations.map((c) =>
+          c.id === conversationId
+            ? { ...c, lastMessage: deletedMsg, updatedAt: new Date() }
+            : c,
+        ),
+      }));
+    });
+  },
+
+  toggleReaction: (conversationId, messageId, emoji) => {
+    const { useUserStore } = require('./useUserStore');
+    const userId = useUserStore.getState().currentUser?.id;
+    if (!userId) return;
+
+    // Optimistic update
+    set((state) => ({
+      messages: state.messages.map((m) => {
+        if (m.id !== messageId) return m;
+        const reactions = [...(m.reactions ?? [])];
+        const idx = reactions.findIndex((r) => r.emoji === emoji && r.userId === userId);
+        if (idx >= 0) {
+          reactions.splice(idx, 1);
+        } else {
+          reactions.push({ emoji, userId, timestamp: new Date() });
+        }
+        return { ...m, reactions };
+      }),
+    }));
+
+    messagesRepository.toggleReaction(messageId, emoji).catch(() => {
+      // Revert on failure by toggling back
+      set((state) => ({
+        messages: state.messages.map((m) => {
+          if (m.id !== messageId) return m;
+          const reactions = [...(m.reactions ?? [])];
+          const idx = reactions.findIndex((r) => r.emoji === emoji && r.userId === userId);
+          if (idx >= 0) {
+            reactions.splice(idx, 1);
+          } else {
+            reactions.push({ emoji, userId, timestamp: new Date() });
+          }
+          return { ...m, reactions };
+        }),
+      }));
+    });
+  },
+
+  setReplyTo: (conversationId, message) => {
+    set((state) => ({
+      replyingTo: { ...state.replyingTo, [conversationId]: message },
+    }));
+  },
+
+  editMessage: (conversationId, messageId, newContent) => {
+    const original = get().messages.find((m) => m.id === messageId);
+    if (!original) return;
+
+    // Optimistic update
+    set((state) => ({
+      messages: state.messages.map((m) =>
+        m.id === messageId
+          ? { ...m, content: newContent, isEdited: true }
+          : m,
+      ),
+    }));
+
+    messagesRepository.editMessage(messageId, newContent).catch(() => {
+      // Revert on failure
+      set((state) => ({
+        messages: state.messages.map((m) =>
+          m.id === messageId ? original : m,
+        ),
+      }));
+    });
   },
 
   // ─── Write Operations ──────────────────────────

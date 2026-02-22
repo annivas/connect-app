@@ -11,6 +11,7 @@ import { SharedTab } from '../../../src/components/chat/SharedTab';
 import { NotesTab } from '../../../src/components/chat/NotesTab';
 import { RemindersTab } from '../../../src/components/chat/RemindersTab';
 import { LedgerTab } from '../../../src/components/chat/LedgerTab';
+import { UserProfileSheet } from '../../../src/components/chat/UserProfileSheet';
 import { useMessagesStore } from '../../../src/stores/useMessagesStore';
 import { useUserStore } from '../../../src/stores/useUserStore';
 
@@ -29,6 +30,7 @@ export default function ConversationDetailScreen() {
   const router = useRouter();
   const layout = useWindowDimensions();
   const [tabIndex, setTabIndex] = useState(0);
+  const [showProfile, setShowProfile] = useState(false);
 
   const conversation = useMessagesStore(useShallow((s) => s.getConversationById(id!)));
   const getUserById = useUserStore((s) => s.getUserById);
@@ -100,7 +102,7 @@ export default function ConversationDetailScreen() {
       <View className="flex-row items-center px-2 pb-2 border-b border-border-subtle">
         <IconButton icon="chevron-back" onPress={() => router.back()} />
 
-        <Pressable className="flex-1 flex-row items-center ml-1">
+        <Pressable onPress={() => setShowProfile(true)} className="flex-1 flex-row items-center ml-1">
           <Avatar
             uri={otherUser.avatar}
             size="md"
@@ -153,6 +155,12 @@ export default function ConversationDetailScreen() {
             tabStyle={{ width: 'auto', minWidth: 80 }}
           />
         )}
+      />
+
+      <UserProfileSheet
+        user={otherUser}
+        visible={showProfile}
+        onClose={() => setShowProfile(false)}
       />
     </SafeAreaView>
   );

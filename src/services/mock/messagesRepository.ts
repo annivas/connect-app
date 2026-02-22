@@ -1,4 +1,4 @@
-import { Message, Conversation, Note, Reminder, LedgerEntry } from '../../types';
+import { Message, MessageType, Conversation, Note, Reminder, LedgerEntry, Reaction } from '../../types';
 import { MOCK_CONVERSATIONS } from '../../mocks/conversations';
 import { MOCK_MESSAGES } from '../../mocks/messages';
 import { IMessagesRepository, PaginationParams, CreateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../types';
@@ -25,14 +25,20 @@ export const mockMessagesRepository: IMessagesRepository = {
     return filtered.slice(-limit);
   },
 
-  async sendMessage(conversationId: string, content: string, senderId: string) {
+  async sendMessage(
+    conversationId: string,
+    content: string,
+    senderId: string,
+    options?: { type?: MessageType; metadata?: Record<string, unknown> },
+  ) {
     const newMessage: Message = {
       id: `msg-${Date.now()}`,
       conversationId,
       senderId,
       content,
       timestamp: new Date(),
-      type: 'text',
+      type: options?.type ?? 'text',
+      metadata: options?.metadata,
       isRead: true,
     };
     messages = [...messages, newMessage];
@@ -42,6 +48,51 @@ export const mockMessagesRepository: IMessagesRepository = {
         : c,
     );
     return newMessage;
+  },
+
+  async createConversation(participantIds: string[]) {
+    const newConv: Conversation = {
+      id: `conv-${Date.now()}`,
+      type: 'individual',
+      participants: participantIds,
+      unreadCount: 0,
+      isPinned: false,
+      isMuted: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      metadata: { sharedObjects: [], notes: [], reminders: [], ledgerBalance: 0, ledgerEntries: [] },
+    };
+    conversations = [newConv, ...conversations];
+    return newConv;
+  },
+
+  async deleteMessage(messageId: string) {
+    messages = messages.filter((m) => m.id !== messageId);
+  },
+
+  async toggleReaction(messageId: string, emoji: string) {
+    const currentUserId = 'current-user';
+    messages = messages.map((m) => {
+      if (m.id !== messageId) return m;
+      const reactions = [...(m.reactions ?? [])];
+      const idx = reactions.findIndex((r) => r.emoji === emoji && r.userId === currentUserId);
+      if (idx >= 0) {
+        reactions.splice(idx, 1);
+      } else {
+        reactions.push({ emoji, userId: currentUserId, timestamp: new Date() });
+      }
+      return { ...m, reactions };
+    });
+  },
+
+  async editMessage(messageId: string, newContent: string) {
+    let edited: Message | undefined;
+    messages = messages.map((m) => {
+      if (m.id !== messageId) return m;
+      edited = { ...m, content: newContent, metadata: { ...m.metadata, edited: true } };
+      return edited;
+    });
+    return edited!;
   },
 
   async markAsRead(conversationId: string) {
