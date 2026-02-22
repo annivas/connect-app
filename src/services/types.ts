@@ -1,4 +1,4 @@
-import { Conversation, Message, Group, User, Collection, Note, Reminder, LedgerEntry, RSVPStatus } from '../types';
+import { Conversation, Message, MessageType, Group, User, Collection, Note, Reminder, LedgerEntry, RSVPStatus } from '../types';
 
 // ─── Pagination ─────────────────────────────
 export interface PaginationParams {
@@ -40,7 +40,16 @@ export type CreateGroupInput = {
 export interface IMessagesRepository {
   getConversations(): Promise<Conversation[]>;
   getMessages(conversationId: string, pagination?: PaginationParams): Promise<Message[]>;
-  sendMessage(conversationId: string, content: string, senderId: string): Promise<Message>;
+  sendMessage(
+    conversationId: string,
+    content: string,
+    senderId: string,
+    options?: { type?: MessageType; metadata?: Record<string, unknown> },
+  ): Promise<Message>;
+  createConversation(participantIds: string[]): Promise<Conversation>;
+  deleteMessage(messageId: string): Promise<void>;
+  toggleReaction(messageId: string, emoji: string): Promise<void>;
+  editMessage(messageId: string, newContent: string): Promise<Message>;
   markAsRead(conversationId: string): Promise<void>;
   togglePin(conversationId: string): Promise<void>;
   toggleMute(conversationId: string): Promise<void>;

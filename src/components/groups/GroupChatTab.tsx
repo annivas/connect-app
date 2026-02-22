@@ -143,10 +143,15 @@ export function GroupChatTab({ groupId }: Props) {
     }
   }, [groupId, hasMore, isLoadingMore]);
 
+  // The bottom tab bar uses position: 'absolute', so it overlays content.
+  // We need padding at the bottom so the MessageInput is visible above the tab bar.
+  const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 88 : 70;
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       className="flex-1 bg-background-primary"
+      style={{ paddingBottom: TAB_BAR_HEIGHT }}
       keyboardVerticalOffset={140}
     >
       <FlatList

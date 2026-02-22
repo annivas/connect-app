@@ -19,6 +19,12 @@ export interface Reaction {
   timestamp: Date;
 }
 
+export interface MessageReplyTo {
+  messageId: string;
+  content: string;
+  senderName: string;
+}
+
 export interface Message {
   id: string;
   conversationId: string;
@@ -28,6 +34,8 @@ export interface Message {
   type: MessageType;
   metadata?: Record<string, unknown>;
   reactions?: Reaction[];
+  replyTo?: MessageReplyTo;
+  isEdited?: boolean;
   isRead: boolean;
   sendStatus?: 'sending' | 'sent' | 'failed';
 }

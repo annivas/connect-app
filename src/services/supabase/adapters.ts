@@ -57,6 +57,13 @@ export function adaptMessage(row: Tables<'messages'>): Message {
       )
     : [];
 
+  const meta = (row.metadata as Record<string, unknown>) ?? undefined;
+
+  // Extract replyTo from metadata if present
+  const replyToData = meta?.replyTo as
+    | { messageId: string; content: string; senderName: string }
+    | undefined;
+
   return {
     id: row.id,
     conversationId: row.context_id,
@@ -64,8 +71,10 @@ export function adaptMessage(row: Tables<'messages'>): Message {
     content: row.content,
     timestamp: new Date(row.created_at),
     type: row.type as MessageType,
-    metadata: (row.metadata as Record<string, unknown>) ?? undefined,
+    metadata: meta,
     reactions: reactions.length > 0 ? reactions : undefined,
+    replyTo: replyToData ?? undefined,
+    isEdited: meta?.edited === true,
     isRead: row.is_read,
   };
 }

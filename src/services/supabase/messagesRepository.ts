@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase';
-import { Conversation, Message, Note, Reminder, LedgerEntry } from '../../types';
+import { Conversation, Message, MessageType, Note, Reminder, LedgerEntry } from '../../types';
 import { IMessagesRepository, PaginationParams, CreateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../types';
 import {
   adaptMessage,
@@ -173,7 +173,12 @@ export const supabaseMessagesRepository: IMessagesRepository = {
     return data.reverse().map(adaptMessage);
   },
 
-  async sendMessage(conversationId: string, content: string, senderId: string): Promise<Message> {
+  async sendMessage(
+    conversationId: string,
+    content: string,
+    senderId: string,
+    options?: { type?: MessageType; metadata?: Record<string, unknown> },
+  ): Promise<Message> {
     const { data, error } = await supabase
       .from('messages')
       .insert({
@@ -181,7 +186,8 @@ export const supabaseMessagesRepository: IMessagesRepository = {
         context_id: conversationId,
         sender_id: senderId,
         content,
-        type: 'text',
+        type: options?.type ?? 'text',
+        metadata: (options?.metadata as any) ?? null,
         is_read: true,
       })
       .select()
@@ -195,6 +201,100 @@ export const supabaseMessagesRepository: IMessagesRepository = {
       .update({ updated_at: new Date().toISOString() })
       .eq('id', conversationId);
 
+    return adaptMessage(data);
+  },
+
+  async createConversation(participantIds: string[]): Promise<Conversation> {
+    const userId = getCurrentUserId();
+
+    // Create conversation
+    const { data: conv, error: convError } = await supabase
+      .from('conversations')
+      .insert({ type: 'individual' })
+      .select()
+      .single();
+
+    if (convError) throw new Error(`Failed to create conversation: ${convError.message}`);
+
+    // Add participants
+    const participantRows = participantIds.map((uid) => ({
+      conversation_id: conv.id,
+      user_id: uid,
+      is_pinned: false,
+      is_muted: false,
+      unread_count: 0,
+    }));
+
+    const { error: partError } = await supabase
+      .from('conversation_participants')
+      .insert(participantRows);
+
+    if (partError) throw new Error(`Failed to add participants: ${partError.message}`);
+
+    return adaptConversation({
+      conversation: conv,
+      participantIds,
+      isPinned: false,
+      isMuted: false,
+      unreadCount: 0,
+      lastMessage: undefined,
+      sharedObjects: [],
+      notes: [],
+      reminders: [],
+      ledgerEntries: [],
+    });
+  },
+
+  async deleteMessage(messageId: string): Promise<void> {
+    const { error } = await supabase
+      .from('messages')
+      .delete()
+      .eq('id', messageId);
+
+    if (error) throw new Error(`Failed to delete message: ${error.message}`);
+  },
+
+  async toggleReaction(messageId: string, emoji: string): Promise<void> {
+    const userId = getCurrentUserId();
+
+    // Read current reactions
+    const { data, error: readError } = await supabase
+      .from('messages')
+      .select('reactions')
+      .eq('id', messageId)
+      .single();
+
+    if (readError) throw new Error(`Failed to read reactions: ${readError.message}`);
+
+    const reactions = (data.reactions as Array<{ emoji: string; userId: string; timestamp: string }>) ?? [];
+    const idx = reactions.findIndex((r) => r.emoji === emoji && r.userId === userId);
+
+    if (idx >= 0) {
+      reactions.splice(idx, 1);
+    } else {
+      reactions.push({ emoji, userId, timestamp: new Date().toISOString() });
+    }
+
+    const { error } = await supabase
+      .from('messages')
+      .update({ reactions })
+      .eq('id', messageId);
+
+    if (error) throw new Error(`Failed to toggle reaction: ${error.message}`);
+  },
+
+  async editMessage(messageId: string, newContent: string): Promise<Message> {
+    const { data, error } = await supabase
+      .from('messages')
+      .update({
+        content: newContent,
+        metadata: { edited: true },
+      })
+      .eq('id', messageId)
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to edit message: ${error.message}`);
     return adaptMessage(data);
   },
 

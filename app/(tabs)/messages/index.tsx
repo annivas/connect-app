@@ -1,15 +1,21 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { View, Text, FlatList, RefreshControl } from 'react-native';
+import { View, Text, FlatList, Pressable, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { SearchBar } from '../../../src/components/ui/SearchBar';
 import { EmptyState } from '../../../src/components/ui/EmptyState';
 import { ConversationListItem } from '../../../src/components/chat/ConversationListItem';
+import { NewConversationModal } from '../../../src/components/chat/NewConversationModal';
 import { useMessagesStore } from '../../../src/stores/useMessagesStore';
 import { useUserStore } from '../../../src/stores/useUserStore';
 
 export default function MessagesScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [showNewConversation, setShowNewConversation] = useState(false);
+  const router = useRouter();
   const conversations = useMessagesStore((s) => s.conversations);
   const getUserById = useUserStore((s) => s.getUserById);
 
@@ -70,6 +76,23 @@ export default function MessagesScreen() {
             description={searchQuery ? 'No matches for your search' : 'Start a conversation to get going'}
           />
         }
+      />
+
+      {/* New Conversation FAB */}
+      <Pressable
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          setShowNewConversation(true);
+        }}
+        className="absolute bottom-4 right-4 w-14 h-14 bg-accent-primary rounded-full items-center justify-center shadow-lg"
+      >
+        <Ionicons name="add" size={28} color="#FFFFFF" />
+      </Pressable>
+
+      <NewConversationModal
+        visible={showNewConversation}
+        onClose={() => setShowNewConversation(false)}
+        onConversationReady={(id) => router.push(`/(tabs)/messages/${id}` as any)}
       />
     </SafeAreaView>
   );
