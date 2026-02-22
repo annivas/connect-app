@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { User } from '../types';
 import { userRepository } from '../services';
+import { useAuthStore } from './useAuthStore';
+import { config } from '../config/env';
 import { CURRENT_USER_ID } from '../mocks/users';
 
 interface UserState {
@@ -23,9 +25,17 @@ export const useUserStore = create<UserState>((set, get) => ({
   init: async () => {
     set({ isLoading: true, error: null });
     try {
+      // Use auth session user ID when available, fall back to mock ID
+      const userId = config.useMocks
+        ? CURRENT_USER_ID
+        : useAuthStore.getState().session?.user?.id;
+
+      if (!userId) {
+        throw new Error('No authenticated user');
+      }
+
       const [currentUser, users] = await Promise.all([
-        // In Phase 2, this will use the auth session user ID
-        userRepository.getCurrentUser(CURRENT_USER_ID),
+        userRepository.getCurrentUser(userId),
         userRepository.getUsers(),
       ]);
       set({ currentUser, users, isLoading: false });

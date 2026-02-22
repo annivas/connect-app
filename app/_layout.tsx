@@ -7,8 +7,18 @@ import { LoadingScreen } from '../src/components/ui/LoadingScreen';
 import '../global.css';
 
 export default function RootLayout() {
-  const { isReady, error } = useAppInit();
+  const { isReady, isAuthenticated, isAuthInitialized, error } = useAppInit();
 
+  // Phase 1: Auth check in progress — show splash
+  if (!isAuthInitialized) {
+    return (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <LoadingScreen />
+      </GestureHandlerRootView>
+    );
+  }
+
+  // Error during data store initialization
   if (error) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
@@ -22,7 +32,6 @@ export default function RootLayout() {
           <Pressable
             onPress={() => {
               // Reload the app by re-running initialization
-              // In production, this would be a proper restart mechanism
             }}
             className="bg-accent-primary px-6 py-3 rounded-xl"
           >
@@ -33,14 +42,28 @@ export default function RootLayout() {
     );
   }
 
-  if (!isReady) {
+  // Phase 2a: Not authenticated — show auth screens
+  if (!isAuthenticated) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <LoadingScreen />
+        <StatusBar style="light" />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(auth)" />
+        </Stack>
       </GestureHandlerRootView>
     );
   }
 
+  // Phase 2b: Authenticated but stores still loading
+  if (!isReady) {
+    return (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <LoadingScreen message="Loading your data..." />
+      </GestureHandlerRootView>
+    );
+  }
+
+  // Phase 3: Fully initialized — show main app
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="light" />
