@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, ActionSheetIOS, Platform, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { format, isToday, isYesterday } from 'date-fns';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
@@ -9,6 +10,7 @@ import { useUserStore } from '../../stores/useUserStore';
 interface Props {
   message: Message;
   showDateDivider?: boolean;
+  onRetry?: (messageId: string) => void;
 }
 
 function DateDivider({ date }: { date: Date }) {
@@ -28,9 +30,42 @@ function DateDivider({ date }: { date: Date }) {
   );
 }
 
-export function MessageBubble({ message, showDateDivider }: Props) {
+function SendStatusIndicator({
+  status,
+  onRetry,
+}: {
+  status: Message['sendStatus'];
+  onRetry?: () => void;
+}) {
+  if (!status || status === 'sent') return null;
+
+  if (status === 'sending') {
+    return (
+      <View className="flex-row items-center mt-0.5 mx-2">
+        <Ionicons name="time-outline" size={12} color="#6B6B76" />
+      </View>
+    );
+  }
+
+  // status === 'failed'
+  return (
+    <Pressable
+      onPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        onRetry?.();
+      }}
+      className="flex-row items-center mt-0.5 mx-2"
+    >
+      <Ionicons name="alert-circle" size={14} color="#EF4444" />
+      <Text className="text-status-error text-[11px] ml-1">Tap to retry</Text>
+    </Pressable>
+  );
+}
+
+export function MessageBubble({ message, showDateDivider, onRetry }: Props) {
   const currentUserId = useUserStore((s) => s.currentUser?.id);
   const isMine = message.senderId === currentUserId;
+  const isFailed = message.sendStatus === 'failed';
 
   const handleLongPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -64,7 +99,7 @@ export function MessageBubble({ message, showDateDivider }: Props) {
         <View
           className={`max-w-[78%] px-4 py-2.5 rounded-2xl ${
             isMine
-              ? 'bg-accent-primary rounded-br-md'
+              ? `${isFailed ? 'bg-accent-primary/60' : 'bg-accent-primary'} rounded-br-md`
               : 'bg-surface rounded-bl-md'
           }`}
         >
@@ -76,9 +111,17 @@ export function MessageBubble({ message, showDateDivider }: Props) {
             {message.content}
           </Text>
         </View>
-        <Text className="text-text-tertiary text-[10px] mt-1 mx-2">
-          {format(message.timestamp, 'HH:mm')}
-        </Text>
+        <View className="flex-row items-center">
+          <Text className="text-text-tertiary text-[10px] mt-1 mx-2">
+            {format(message.timestamp, 'HH:mm')}
+          </Text>
+          {isMine && (
+            <SendStatusIndicator
+              status={message.sendStatus}
+              onRetry={() => onRetry?.(message.id)}
+            />
+          )}
+        </View>
       </Pressable>
     </>
   );

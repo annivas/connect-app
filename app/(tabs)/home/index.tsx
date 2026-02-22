@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, ScrollView, Pressable, Alert, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { SectionHeader } from '../../../src/components/ui/SectionHeader';
@@ -8,6 +8,7 @@ import { CollectionCard } from '../../../src/components/home/CollectionCard';
 import { useHomeStore } from '../../../src/stores/useHomeStore';
 import { useUserStore } from '../../../src/stores/useUserStore';
 import { useMessagesStore } from '../../../src/stores/useMessagesStore';
+import { useGroupsStore } from '../../../src/stores/useGroupsStore';
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -47,9 +48,23 @@ function QuickAction({
 }
 
 export default function HomeScreen() {
+  const [refreshing, setRefreshing] = useState(false);
   const currentUser = useUserStore((s) => s.currentUser);
   const collections = useHomeStore((s) => s.collections);
   const conversations = useMessagesStore((s) => s.conversations);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        useMessagesStore.getState().init(),
+        useGroupsStore.getState().init(),
+        useHomeStore.getState().init(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
   // Aggregate data across conversations
   const allReminders = conversations.flatMap(
@@ -69,6 +84,9 @@ export default function HomeScreen() {
       <ScrollView
         contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6366F1" />
+        }
       >
         {/* Header */}
         <View className="px-4 pt-2 pb-4">

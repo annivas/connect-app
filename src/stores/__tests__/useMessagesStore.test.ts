@@ -12,7 +12,7 @@ beforeEach(() => {
 
 describe('useMessagesStore', () => {
   describe('init', () => {
-    it('should load conversations and messages', async () => {
+    it('should load conversations (messages load lazily)', async () => {
       const { init } = useMessagesStore.getState();
 
       await init();
@@ -21,7 +21,20 @@ describe('useMessagesStore', () => {
       expect(state.isLoading).toBe(false);
       expect(state.error).toBeNull();
       expect(state.conversations.length).toBeGreaterThan(0);
-      expect(state.messages.length).toBeGreaterThan(0);
+      // Messages are now loaded lazily per-conversation, not during init()
+      expect(state.messages.length).toBe(0);
+    });
+
+    it('should load messages for a conversation via loadMessages', async () => {
+      await useMessagesStore.getState().init();
+
+      const { conversations } = useMessagesStore.getState();
+      const convId = conversations[0].id;
+
+      await useMessagesStore.getState().loadMessages(convId);
+
+      const messages = useMessagesStore.getState().getMessagesByConversationId(convId);
+      expect(messages.length).toBeGreaterThan(0);
     });
 
     it('should set isLoading to true during init', async () => {
@@ -59,6 +72,9 @@ describe('useMessagesStore', () => {
 
       const { conversations } = useMessagesStore.getState();
       const convId = conversations[0].id;
+
+      // Load messages first (lazy pagination)
+      await useMessagesStore.getState().loadMessages(convId);
       const messagesBefore = useMessagesStore.getState().messages.length;
 
       useMessagesStore.getState().sendMessage(convId, 'Hello!', 'test-user');

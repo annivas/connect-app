@@ -1,22 +1,65 @@
-import { Conversation, Message, Group, User, Collection } from '../types';
+import { Conversation, Message, Group, User, Collection, Note, Reminder, LedgerEntry, RSVPStatus } from '../types';
+
+// ─── Pagination ─────────────────────────────
+export interface PaginationParams {
+  limit?: number;
+  before?: string; // ISO timestamp cursor
+}
+
+// ─── Create DTOs ────────────────────────────
+export type CreateNoteInput = {
+  title: string;
+  content: string;
+  color: string;
+  isPrivate: boolean;
+};
+
+export type CreateReminderInput = {
+  title: string;
+  description?: string;
+  dueDate: string; // ISO timestamp
+  priority: 'low' | 'medium' | 'high';
+};
+
+export type CreateLedgerEntryInput = {
+  description: string;
+  amount: number;
+  paidBy: string;
+  splitBetween: string[];
+  category?: string;
+};
+
+export type CreateGroupInput = {
+  name: string;
+  description?: string;
+  type: 'general' | 'trip' | 'sports' | 'project';
+  memberIds: string[]; // excluding creator — creator auto-added as admin
+};
 
 // ─── Messages Repository ────────────────────
 export interface IMessagesRepository {
   getConversations(): Promise<Conversation[]>;
-  getMessages(conversationId: string): Promise<Message[]>;
+  getMessages(conversationId: string, pagination?: PaginationParams): Promise<Message[]>;
   sendMessage(conversationId: string, content: string, senderId: string): Promise<Message>;
   markAsRead(conversationId: string): Promise<void>;
   togglePin(conversationId: string): Promise<void>;
   toggleMute(conversationId: string): Promise<void>;
+  createNote(conversationId: string, input: CreateNoteInput): Promise<Note>;
+  createReminder(conversationId: string, input: CreateReminderInput): Promise<Reminder>;
+  toggleReminderComplete(reminderId: string): Promise<void>;
+  createLedgerEntry(conversationId: string, input: CreateLedgerEntryInput): Promise<LedgerEntry>;
+  settleLedgerEntry(entryId: string): Promise<void>;
 }
 
 // ─── Groups Repository ──────────────────────
 export interface IGroupsRepository {
   getGroups(): Promise<Group[]>;
-  getGroupMessages(groupId: string): Promise<Message[]>;
+  getGroupMessages(groupId: string, pagination?: PaginationParams): Promise<Message[]>;
   sendGroupMessage(groupId: string, content: string, senderId: string): Promise<Message>;
   togglePin(groupId: string): Promise<void>;
   toggleMute(groupId: string): Promise<void>;
+  createGroup(input: CreateGroupInput): Promise<Group>;
+  updateRSVP(eventId: string, status: RSVPStatus): Promise<void>;
 }
 
 // ─── User Repository ────────────────────────

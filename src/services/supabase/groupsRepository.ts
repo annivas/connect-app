@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase';
-import { Group, Message } from '../../types';
-import { IGroupsRepository } from '../types';
+import { Group, Message, RSVPStatus } from '../../types';
+import { IGroupsRepository, PaginationParams, CreateGroupInput } from '../types';
 import {
   adaptMessage,
   adaptSharedObject,
@@ -170,16 +170,26 @@ export const supabaseGroupsRepository: IGroupsRepository = {
     });
   },
 
-  async getGroupMessages(groupId: string): Promise<Message[]> {
-    const { data, error } = await supabase
+  async getGroupMessages(groupId: string, pagination?: PaginationParams): Promise<Message[]> {
+    let query = supabase
       .from('messages')
       .select('*')
       .eq('context_type', 'group')
       .eq('context_id', groupId)
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: false });
+
+    if (pagination?.before) {
+      query = query.lt('created_at', pagination.before);
+    }
+
+    const limit = pagination?.limit ?? 50;
+    query = query.limit(limit);
+
+    const { data, error } = await query;
 
     if (error) throw new Error(`Failed to fetch group messages: ${error.message}`);
-    return data.map(adaptMessage);
+    // Reverse to chronological order for display
+    return data.reverse().map(adaptMessage);
   },
 
   async sendGroupMessage(groupId: string, content: string, senderId: string): Promise<Message> {
@@ -247,5 +257,73 @@ export const supabaseGroupsRepository: IGroupsRepository = {
       .eq('user_id', userId);
 
     if (error) throw new Error(`Failed to toggle mute: ${error.message}`);
+  },
+
+  async createGroup(input: CreateGroupInput): Promise<Group> {
+    const userId = getCurrentUserId();
+
+    // Step 1: Insert the group row
+    const { data: groupRow, error: groupError } = await supabase
+      .from('groups')
+      .insert({
+        name: input.name,
+        description: input.description ?? null,
+        type: input.type,
+        created_by: userId,
+        avatar: '',
+        last_activity: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (groupError) throw new Error(`Failed to create group: ${groupError.message}`);
+
+    // Step 2: Insert group_members — creator as admin + other members
+    const memberRows = [
+      { group_id: groupRow.id, user_id: userId, is_admin: true, is_pinned: false, is_muted: false },
+      ...input.memberIds.map((memberId) => ({
+        group_id: groupRow.id,
+        user_id: memberId,
+        is_admin: false,
+        is_pinned: false,
+        is_muted: false,
+      })),
+    ];
+
+    const { error: membersError } = await supabase.from('group_members').insert(memberRows);
+
+    if (membersError) throw new Error(`Failed to add group members: ${membersError.message}`);
+
+    // Step 3: Return the fully assembled group
+    const allMemberIds = [userId, ...input.memberIds];
+    return adaptGroup({
+      group: groupRow,
+      memberIds: allMemberIds,
+      adminIds: [userId],
+      isPinned: false,
+      isMuted: false,
+      events: [],
+      trip: undefined,
+      sharedObjects: [],
+      notes: [],
+    });
+  },
+
+  async updateRSVP(eventId: string, status: RSVPStatus): Promise<void> {
+    const userId = getCurrentUserId();
+
+    const { error } = await supabase
+      .from('event_attendees')
+      .upsert(
+        {
+          event_id: eventId,
+          user_id: userId,
+          status,
+          responded_at: new Date().toISOString(),
+        },
+        { onConflict: 'event_id,user_id' }
+      );
+
+    if (error) throw new Error(`Failed to update RSVP: ${error.message}`);
   },
 };

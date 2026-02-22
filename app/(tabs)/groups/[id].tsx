@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, useWindowDimensions, ActionSheetIOS, Platform, Alert } from 'react-native';
+import { View, Text, Pressable, useWindowDimensions, ActionSheetIOS, Platform, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TabView, TabBar, SceneRendererProps } from 'react-native-tab-view';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
+import * as Haptics from 'expo-haptics';
 import { useShallow } from 'zustand/react/shallow';
 import { IconButton } from '../../../src/components/ui/IconButton';
 import { Avatar } from '../../../src/components/ui/Avatar';
@@ -14,15 +15,58 @@ import { GroupChatTab } from '../../../src/components/groups/GroupChatTab';
 import { SharedTab } from '../../../src/components/chat/SharedTab';
 import { useGroupsStore } from '../../../src/stores/useGroupsStore';
 import { useUserStore } from '../../../src/stores/useUserStore';
+import type { RSVPStatus } from '../../../src/types';
 
 type Route = { key: string; title: string };
 
 // ─── Sub-tab components ─────────────────────
 
+const RSVP_OPTIONS: { status: RSVPStatus; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { status: 'going', label: 'Going', icon: 'checkmark-circle-outline' },
+  { status: 'maybe', label: 'Maybe', icon: 'help-circle-outline' },
+  { status: 'declined', label: "Can't go", icon: 'close-circle-outline' },
+];
+
+function RSVPButton({
+  option,
+  isSelected,
+  onPress,
+}: {
+  option: (typeof RSVP_OPTIONS)[number];
+  isSelected: boolean;
+  onPress: () => void;
+}) {
+  const selectedStyles: Record<RSVPStatus, { bg: string; text: string; iconColor: string }> = {
+    going: { bg: 'bg-accent-primary', text: 'text-white', iconColor: '#FFFFFF' },
+    maybe: { bg: 'bg-status-warning/20', text: 'text-status-warning', iconColor: '#F59E0B' },
+    declined: { bg: 'bg-surface-elevated', text: 'text-status-error', iconColor: '#EF4444' },
+    pending: { bg: 'bg-surface-elevated', text: 'text-text-secondary', iconColor: '#A0A0AB' },
+  };
+
+  const style = isSelected
+    ? selectedStyles[option.status]
+    : { bg: 'bg-surface-elevated', text: 'text-text-secondary', iconColor: '#A0A0AB' };
+
+  return (
+    <Pressable
+      onPress={onPress}
+      className={`flex-1 flex-row items-center justify-center py-2 rounded-lg ${style.bg}`}
+    >
+      <Ionicons name={option.icon} size={16} color={style.iconColor} />
+      <Text className={`text-xs font-medium ml-1.5 ${style.text}`}>{option.label}</Text>
+    </Pressable>
+  );
+}
+
 function EventsTab({ groupId }: { groupId: string }) {
   const group = useGroupsStore(useShallow((s) => s.getGroupById(groupId)));
-  const getUserById = useUserStore((s) => s.getUserById);
+  const currentUserId = useUserStore((s) => s.currentUser?.id);
   const events = group?.events ?? [];
+
+  const handleRSVP = (eventId: string, status: RSVPStatus) => {
+    Haptics.selectionAsync();
+    useGroupsStore.getState().updateRSVP(groupId, eventId, status);
+  };
 
   if (events.length === 0) {
     return (
@@ -45,6 +89,9 @@ function EventsTab({ groupId }: { groupId: string }) {
         const maybeCount = event.attendees.filter(
           (a) => a.status === 'maybe'
         ).length;
+
+        const myStatus: RSVPStatus =
+          event.attendees.find((a) => a.userId === currentUserId)?.status ?? 'pending';
 
         return (
           <Card key={event.id} className="mb-3">
@@ -94,6 +141,18 @@ function EventsTab({ groupId }: { groupId: string }) {
                   </Text>
                 </View>
               )}
+            </View>
+
+            {/* RSVP Buttons */}
+            <View className="flex-row gap-2 mt-3">
+              {RSVP_OPTIONS.map((option) => (
+                <RSVPButton
+                  key={option.status}
+                  option={option}
+                  isSelected={myStatus === option.status}
+                  onPress={() => handleRSVP(event.id, option.status)}
+                />
+              ))}
             </View>
           </Card>
         );
