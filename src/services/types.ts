@@ -64,7 +64,15 @@ export interface IMessagesRepository {
 export interface IGroupsRepository {
   getGroups(): Promise<Group[]>;
   getGroupMessages(groupId: string, pagination?: PaginationParams): Promise<Message[]>;
-  sendGroupMessage(groupId: string, content: string, senderId: string): Promise<Message>;
+  sendGroupMessage(
+    groupId: string,
+    content: string,
+    senderId: string,
+    options?: { type?: MessageType; metadata?: Record<string, unknown> },
+  ): Promise<Message>;
+  deleteGroupMessage(messageId: string): Promise<void>;
+  toggleGroupReaction(messageId: string, emoji: string): Promise<void>;
+  editGroupMessage(messageId: string, newContent: string): Promise<Message>;
   togglePin(groupId: string): Promise<void>;
   toggleMute(groupId: string): Promise<void>;
   createGroup(input: CreateGroupInput): Promise<Group>;

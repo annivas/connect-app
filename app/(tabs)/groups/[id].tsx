@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useLayoutEffect } from 'react';
 import { View, Text, Pressable, useWindowDimensions, ActionSheetIOS, Platform, Alert } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TabView, TabBar, SceneRendererProps } from 'react-native-tab-view';
 import { Ionicons } from '@expo/vector-icons';
@@ -259,8 +259,27 @@ function TripTab({ groupId }: { groupId: string }) {
 export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const navigation = useNavigation();
   const layout = useWindowDimensions();
   const [tabIndex, setTabIndex] = useState(0);
+
+  // Hide the bottom tab bar when this screen is focused
+  const parentNavigation = navigation.getParent();
+  useLayoutEffect(() => {
+    parentNavigation?.setOptions({ tabBarStyle: { display: 'none' } });
+    return () => {
+      parentNavigation?.setOptions({
+        tabBarStyle: {
+          position: 'absolute',
+          backgroundColor: Platform.OS === 'ios' ? 'transparent' : '#FFF1E6',
+          borderTopWidth: 0,
+          elevation: 0,
+          height: Platform.OS === 'ios' ? 88 : 70,
+          paddingTop: 8,
+        },
+      });
+    };
+  }, [parentNavigation]);
 
   const group = useGroupsStore(useShallow((s) => s.getGroupById(id!)));
 

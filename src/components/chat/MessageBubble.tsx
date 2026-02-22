@@ -22,6 +22,7 @@ interface Props {
   showDateDivider?: boolean;
   isFirstInGroup?: boolean;
   isLastInGroup?: boolean;
+  showSenderName?: boolean;
   onRetry?: (messageId: string) => void;
   onDelete?: (messageId: string) => void;
   onReact?: (messageId: string, emoji: string) => void;
@@ -173,6 +174,7 @@ export function MessageBubble({
   showDateDivider,
   isFirstInGroup = true,
   isLastInGroup = true,
+  showSenderName = false,
   onRetry,
   onDelete,
   onReact,
@@ -390,6 +392,12 @@ export function MessageBubble({
 
               {/* Bubble content */}
               <View className={`max-w-[75%] ${isMine ? 'items-end' : 'items-start'}`}>
+                {/* Sender name for group messages */}
+                {showSenderName && isFirstInGroup && !isMine && sender && (
+                  <Text className="text-accent-primary text-[11px] font-semibold mb-0.5 ml-1">
+                    {sender.name}
+                  </Text>
+                )}
                 {message.type === 'image' ? (
                   <View
                     style={getBubbleRadius()}

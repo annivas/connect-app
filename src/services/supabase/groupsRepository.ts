@@ -192,7 +192,7 @@ export const supabaseGroupsRepository: IGroupsRepository = {
     return data.reverse().map(adaptMessage);
   },
 
-  async sendGroupMessage(groupId: string, content: string, senderId: string): Promise<Message> {
+  async sendGroupMessage(groupId: string, content: string, senderId: string, options?: { type?: import('../../types').MessageType; metadata?: Record<string, unknown> }): Promise<Message> {
     const { data, error } = await supabase
       .from('messages')
       .insert({
@@ -200,7 +200,8 @@ export const supabaseGroupsRepository: IGroupsRepository = {
         context_id: groupId,
         sender_id: senderId,
         content,
-        type: 'text',
+        type: options?.type ?? 'text',
+        metadata: options?.metadata ? JSON.stringify(options.metadata) : null,
         is_read: true,
       })
       .select()
@@ -214,6 +215,55 @@ export const supabaseGroupsRepository: IGroupsRepository = {
       .update({ last_activity: new Date().toISOString() })
       .eq('id', groupId);
 
+    return adaptMessage(data);
+  },
+
+  async deleteGroupMessage(messageId: string): Promise<void> {
+    const { error } = await supabase
+      .from('messages')
+      .delete()
+      .eq('id', messageId);
+
+    if (error) throw new Error(`Failed to delete group message: ${error.message}`);
+  },
+
+  async toggleGroupReaction(messageId: string, emoji: string): Promise<void> {
+    const userId = getCurrentUserId();
+
+    const { data, error: readError } = await supabase
+      .from('messages')
+      .select('reactions')
+      .eq('id', messageId)
+      .single();
+
+    if (readError) throw new Error(`Failed to read reactions: ${readError.message}`);
+
+    const reactions = (data.reactions as Array<{ emoji: string; userId: string; timestamp: string }>) ?? [];
+    const idx = reactions.findIndex((r) => r.emoji === emoji && r.userId === userId);
+
+    if (idx >= 0) {
+      reactions.splice(idx, 1);
+    } else {
+      reactions.push({ emoji, userId, timestamp: new Date().toISOString() });
+    }
+
+    const { error } = await supabase
+      .from('messages')
+      .update({ reactions })
+      .eq('id', messageId);
+
+    if (error) throw new Error(`Failed to toggle reaction: ${error.message}`);
+  },
+
+  async editGroupMessage(messageId: string, newContent: string): Promise<Message> {
+    const { data, error } = await supabase
+      .from('messages')
+      .update({ content: newContent, metadata: JSON.stringify({ edited: true }) })
+      .eq('id', messageId)
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to edit group message: ${error.message}`);
     return adaptMessage(data);
   },
 

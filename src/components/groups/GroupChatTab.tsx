@@ -1,140 +1,128 @@
-import React, { useRef, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, KeyboardAvoidingView, Platform, Pressable, ActivityIndicator } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { format, isSameDay, isToday, isYesterday } from 'date-fns';
-import { Image } from 'expo-image';
+import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
+import { FlatList, KeyboardAvoidingView, Platform, View, ActivityIndicator, Alert } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
-import * as Haptics from 'expo-haptics';
+import { isSameDay, differenceInMinutes } from 'date-fns';
+import * as ImagePicker from 'expo-image-picker';
+import { MessageBubble } from '../chat/MessageBubble';
 import { MessageInput } from '../chat/MessageInput';
+import { TypingIndicator } from '../chat/TypingIndicator';
 import { useGroupsStore } from '../../stores/useGroupsStore';
 import { useUserStore } from '../../stores/useUserStore';
 import type { Message } from '../../types';
 
-// ─── Day divider ─────────────────────────────
+/**
+ * Dynamically measure the Y position of the GroupChatTab container to get an
+ * accurate keyboardVerticalOffset. Same approach as ChatTab.
+ */
+function useKeyboardOffset() {
+  const containerRef = useRef<View>(null);
+  const [offset, setOffset] = useState(Platform.OS === 'ios' ? 0 : 0);
 
-function DateDivider({ date }: { date: Date }) {
-  let label: string;
-  if (isToday(date)) label = 'Today';
-  else if (isYesterday(date)) label = 'Yesterday';
-  else label = format(date, 'MMMM d, yyyy');
+  const onLayout = useCallback(() => {
+    if (Platform.OS !== 'ios') return;
+    containerRef.current?.measureInWindow((_x, y) => {
+      if (y > 0) setOffset(y);
+    });
+  }, []);
 
-  return (
-    <View className="flex-row items-center my-4 px-4">
-      <View className="flex-1 h-px bg-border-subtle" />
-      <Text className="text-text-tertiary text-xs mx-3 font-medium">
-        {label}
-      </Text>
-      <View className="flex-1 h-px bg-border-subtle" />
-    </View>
-  );
+  return { containerRef, offset, onLayout };
 }
-
-// ─── Group message bubble ────────────────────
-
-function GroupMessageBubble({
-  message,
-  showDateDivider,
-  onRetry,
-}: {
-  message: Message;
-  showDateDivider?: boolean;
-  onRetry?: (messageId: string) => void;
-}) {
-  const currentUserId = useUserStore((s) => s.currentUser?.id);
-  const isMine = message.senderId === currentUserId;
-  const isFailed = message.sendStatus === 'failed';
-  const getUserById = useUserStore((s) => s.getUserById);
-  const sender = getUserById(message.senderId);
-
-  return (
-    <>
-    {showDateDivider && <DateDivider date={message.timestamp} />}
-    <View className={`mb-3 ${isMine ? 'items-end' : 'items-start'}`}>
-      {!isMine && (
-        <View className="flex-row items-center mb-1 ml-1">
-          <Image
-            source={{ uri: sender?.avatar }}
-            style={{ width: 18, height: 18, borderRadius: 9 }}
-            transition={100}
-          />
-          <Text className="text-text-secondary text-xs font-semibold ml-1.5">
-            {sender?.name ?? 'Unknown'}
-          </Text>
-        </View>
-      )}
-      <View
-        className={`max-w-[78%] px-4 py-2.5 rounded-2xl ${
-          isMine
-            ? `${isFailed ? 'bg-accent-primary/60' : 'bg-accent-primary'} rounded-br-md`
-            : 'bg-surface rounded-bl-md'
-        }`}
-      >
-        <Text
-          className={`text-[15px] leading-[21px] ${
-            isMine ? 'text-white' : 'text-text-primary'
-          }`}
-        >
-          {message.content}
-        </Text>
-      </View>
-      <View className="flex-row items-center">
-        <Text className="text-text-tertiary text-[10px] mt-1 mx-2">
-          {format(message.timestamp, 'HH:mm')}
-        </Text>
-        {isMine && message.sendStatus === 'sending' && (
-          <View className="flex-row items-center mt-0.5">
-            <Ionicons name="time-outline" size={12} color="#A8937F" />
-          </View>
-        )}
-        {isMine && message.sendStatus === 'failed' && (
-          <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              onRetry?.(message.id);
-            }}
-            className="flex-row items-center mt-0.5"
-          >
-            <Ionicons name="alert-circle" size={14} color="#C94F4F" />
-            <Text className="text-status-error text-[11px] ml-1">Tap to retry</Text>
-          </Pressable>
-        )}
-      </View>
-    </View>
-    </>
-  );
-}
-
-// ─── Main component ──────────────────────────
 
 interface Props {
   groupId: string;
 }
 
+// Messages within this window from the same sender are grouped (no avatar/name repeated)
+const GROUP_THRESHOLD_MINUTES = 3;
+
 export function GroupChatTab({ groupId }: Props) {
   const listRef = useRef<FlatList>(null);
+  const insets = useSafeAreaInsets();
+  const { containerRef, offset: kbOffset, onLayout } = useKeyboardOffset();
+
   const messages = useGroupsStore(useShallow((s) => s.getGroupMessages(groupId)));
   const sendGroupMessage = useGroupsStore((s) => s.sendGroupMessage);
   const retryGroupMessage = useGroupsStore((s) => s.retryGroupMessage);
   const hasMore = useGroupsStore((s) => s.hasMoreMessages[groupId] ?? false);
   const isLoadingMore = useGroupsStore((s) => s.loadingMessages.has(groupId));
+  const replyingTo = useGroupsStore((s) => s.replyingTo[groupId] ?? null);
+
+  // Inverted FlatList needs newest-first order
+  const invertedMessages = useMemo(() => [...messages].reverse(), [messages]);
 
   // Load messages when entering the group chat
   useEffect(() => {
     useGroupsStore.getState().loadGroupMessages(groupId);
   }, [groupId]);
 
-  useEffect(() => {
-    if (messages.length > 0) {
-      setTimeout(() => {
-        listRef.current?.scrollToEnd({ animated: true });
-      }, 100);
-    }
-  }, [messages.length]);
-
   const handleSend = (content: string) => {
     const userId = useUserStore.getState().currentUser?.id;
     if (!userId) return;
     sendGroupMessage(groupId, content, userId);
+  };
+
+  const handleDelete = (messageId: string) => {
+    useGroupsStore.getState().deleteGroupMessage(groupId, messageId);
+  };
+
+  const handleReact = (messageId: string, emoji: string) => {
+    useGroupsStore.getState().toggleGroupReaction(groupId, messageId, emoji);
+  };
+
+  const handleReply = (message: Message) => {
+    useGroupsStore.getState().setReplyTo(groupId, message);
+  };
+
+  const handleCancelReply = () => {
+    useGroupsStore.getState().setReplyTo(groupId, null);
+  };
+
+  // ─── Edit flow ──────────────────────
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState<string | null>(null);
+
+  const handleEdit = (messageId: string, currentContent: string) => {
+    setEditingMessageId(messageId);
+    setEditingContent(currentContent);
+  };
+
+  const handleSaveEdit = (newContent: string) => {
+    if (editingMessageId) {
+      useGroupsStore.getState().editGroupMessage(groupId, editingMessageId, newContent);
+    }
+    setEditingMessageId(null);
+    setEditingContent(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMessageId(null);
+    setEditingContent(null);
+  };
+
+  const handlePickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Please allow access to your photo library to send images.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.8,
+      allowsEditing: false,
+    });
+
+    if (result.canceled || !result.assets?.[0]) return;
+
+    const asset = result.assets[0];
+    const userId = useUserStore.getState().currentUser?.id;
+    if (!userId) return;
+
+    sendGroupMessage(groupId, asset.uri, userId, {
+      type: 'image',
+      metadata: { width: asset.width, height: asset.height },
+    });
   };
 
   const handleLoadMore = useCallback(() => {
@@ -143,38 +131,65 @@ export function GroupChatTab({ groupId }: Props) {
     }
   }, [groupId, hasMore, isLoadingMore]);
 
-  // The bottom tab bar uses position: 'absolute', so it overlays content.
-  // We need padding at the bottom so the MessageInput is visible above the tab bar.
-  const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 88 : 70;
-
   return (
+    <View ref={containerRef} onLayout={onLayout} className="flex-1 bg-background-primary">
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-background-primary"
-      style={{ paddingBottom: TAB_BAR_HEIGHT }}
-      keyboardVerticalOffset={140}
+      className="flex-1"
+      keyboardVerticalOffset={kbOffset}
     >
       <FlatList
         ref={listRef}
-        data={messages}
+        data={invertedMessages}
         keyExtractor={(item) => item.id}
+        inverted
         renderItem={({ item, index }) => {
-          const prev = index > 0 ? messages[index - 1] : null;
-          const showDateDivider = !prev || !isSameDay(prev.timestamp, item.timestamp);
+          // In inverted list, index 0 = newest. We look at index+1 for the "next older" message.
+          // "previous" = the message that came BEFORE this one in time = invertedMessages[index + 1]
+          // "next" = the message that came AFTER this one in time = invertedMessages[index - 1]
+          const olderMsg = index < invertedMessages.length - 1 ? invertedMessages[index + 1] : null;
+          const newerMsg = index > 0 ? invertedMessages[index - 1] : null;
+
+          // Show date divider if this is the first message of the day
+          const showDateDivider = !olderMsg || !isSameDay(olderMsg.timestamp, item.timestamp);
+
+          // Group consecutive messages from same sender within threshold
+          const isFirstInGroup =
+            !olderMsg ||
+            olderMsg.senderId !== item.senderId ||
+            differenceInMinutes(item.timestamp, olderMsg.timestamp) > GROUP_THRESHOLD_MINUTES ||
+            showDateDivider;
+
+          const isLastInGroup =
+            !newerMsg ||
+            newerMsg.senderId !== item.senderId ||
+            differenceInMinutes(newerMsg.timestamp, item.timestamp) > GROUP_THRESHOLD_MINUTES;
+
           return (
-            <GroupMessageBubble
+            <MessageBubble
               message={item}
               showDateDivider={showDateDivider}
+              isFirstInGroup={isFirstInGroup}
+              isLastInGroup={isLastInGroup}
+              showSenderName
               onRetry={retryGroupMessage}
+              onDelete={handleDelete}
+              onReact={handleReact}
+              onReply={handleReply}
+              onEdit={handleEdit}
             />
           );
         }}
-        contentContainerStyle={{ padding: 16, paddingBottom: 8 }}
+        contentContainerStyle={{
+          paddingHorizontal: 12,
+          paddingTop: 8,
+          paddingBottom: 4,
+        }}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="interactive"
-        onStartReached={handleLoadMore}
-        onStartReachedThreshold={0.2}
-        ListHeaderComponent={
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.3}
+        ListFooterComponent={
           isLoadingMore ? (
             <View className="py-3 items-center">
               <ActivityIndicator color="#D4764E" />
@@ -182,7 +197,26 @@ export function GroupChatTab({ groupId }: Props) {
           ) : null
         }
       />
-      <MessageInput onSend={handleSend} />
+      <TypingIndicator typingUserIds={[]} />
+      <MessageInput
+        onSend={handleSend}
+        onPickImage={handlePickImage}
+        replyTo={
+          replyingTo
+            ? {
+                senderName: useUserStore.getState().getUserById(replyingTo.senderId)?.name ?? 'Unknown',
+                content: replyingTo.content,
+              }
+            : null
+        }
+        onCancelReply={handleCancelReply}
+        editingContent={editingContent}
+        onSaveEdit={handleSaveEdit}
+        onCancelEdit={handleCancelEdit}
+      />
+      {/* Safe area bottom padding so input sits above the home indicator */}
+      <View style={{ height: insets.bottom }} className="bg-background-secondary" />
     </KeyboardAvoidingView>
+    </View>
   );
 }

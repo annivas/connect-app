@@ -23,14 +23,15 @@ export const mockGroupsRepository: IGroupsRepository = {
     return filtered.slice(-limit);
   },
 
-  async sendGroupMessage(groupId: string, content: string, senderId: string) {
+  async sendGroupMessage(groupId: string, content: string, senderId: string, options?: { type?: import('../../types').MessageType; metadata?: Record<string, unknown> }) {
     const newMessage: Message = {
       id: `gmsg-${Date.now()}`,
       conversationId: groupId,
       senderId,
       content,
       timestamp: new Date(),
-      type: 'text',
+      type: options?.type ?? 'text',
+      metadata: options?.metadata,
       isRead: true,
     };
     groupMessages = [...groupMessages, newMessage];
@@ -38,6 +39,35 @@ export const mockGroupsRepository: IGroupsRepository = {
       g.id === groupId ? { ...g, lastActivity: new Date() } : g,
     );
     return newMessage;
+  },
+
+  async deleteGroupMessage(messageId: string) {
+    groupMessages = groupMessages.filter((m) => m.id !== messageId);
+  },
+
+  async toggleGroupReaction(messageId: string, emoji: string) {
+    groupMessages = groupMessages.map((m) => {
+      if (m.id !== messageId) return m;
+      const reactions = [...(m.reactions ?? [])];
+      const idx = reactions.findIndex((r) => r.emoji === emoji && r.userId === 'current-user');
+      if (idx >= 0) {
+        reactions.splice(idx, 1);
+      } else {
+        reactions.push({ emoji, userId: 'current-user', timestamp: new Date() });
+      }
+      return { ...m, reactions };
+    });
+  },
+
+  async editGroupMessage(messageId: string, newContent: string) {
+    let edited: Message | undefined;
+    groupMessages = groupMessages.map((m) => {
+      if (m.id !== messageId) return m;
+      edited = { ...m, content: newContent, isEdited: true, metadata: { ...m.metadata, edited: true } };
+      return edited;
+    });
+    if (!edited) throw new Error('Message not found');
+    return edited;
   },
 
   async togglePin(groupId: string) {
