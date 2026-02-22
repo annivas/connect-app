@@ -19,11 +19,11 @@ const typeIcons: Record<string, keyof typeof Ionicons.glyphMap> = {
 };
 
 const typeColors: Record<string, string> = {
-  places: '#10B981',
-  songs: '#8B5CF6',
-  photos: '#3B82F6',
-  links: '#F59E0B',
-  mixed: '#6366F1',
+  places: '#2D9F6F',
+  songs: '#C2956B',
+  photos: '#5B8EC9',
+  links: '#D4964E',
+  mixed: '#D4764E',
 };
 
 const itemIcons: Record<SharedObjectType, keyof typeof Ionicons.glyphMap> = {
@@ -36,12 +36,12 @@ const itemIcons: Record<SharedObjectType, keyof typeof Ionicons.glyphMap> = {
 };
 
 const itemColors: Record<SharedObjectType, string> = {
-  link: '#3B82F6',
-  place: '#10B981',
-  song: '#8B5CF6',
-  photo: '#F59E0B',
-  video: '#EF4444',
-  file: '#6B7280',
+  link: '#5B8EC9',
+  place: '#2D9F6F',
+  song: '#C2956B',
+  photo: '#D4964E',
+  video: '#C94F4F',
+  file: '#A8937F',
 };
 
 function CollectionItem({ item }: { item: SharedObject }) {
@@ -107,7 +107,7 @@ export default function CollectionDetailScreen() {
     );
   }
 
-  const color = typeColors[collection.type] || '#6366F1';
+  const color = typeColors[collection.type] || '#D4764E';
   const icon = typeIcons[collection.type] || 'albums';
 
   return (

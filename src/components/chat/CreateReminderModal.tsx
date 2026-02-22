@@ -13,9 +13,9 @@ interface Props {
 type Priority = 'low' | 'medium' | 'high';
 
 const PRIORITIES: { value: Priority; label: string; color: string }[] = [
-  { value: 'low', label: 'Low', color: '#6B6B76' },
-  { value: 'medium', label: 'Medium', color: '#F59E0B' },
-  { value: 'high', label: 'High', color: '#EF4444' },
+  { value: 'low', label: 'Low', color: '#A8937F' },
+  { value: 'medium', label: 'Medium', color: '#D4964E' },
+  { value: 'high', label: 'High', color: '#C94F4F' },
 ];
 
 export function CreateReminderModal({ visible, conversationId, onClose }: Props) {
@@ -87,7 +87,7 @@ export function CreateReminderModal({ visible, conversationId, onClose }: Props)
           <Text className="text-text-primary text-[17px] font-semibold">New Reminder</Text>
           <Pressable onPress={handleSave} disabled={!canSave} hitSlop={8}>
             {isSaving ? (
-              <ActivityIndicator size="small" color="#6366F1" />
+              <ActivityIndicator size="small" color="#D4764E" />
             ) : (
               <Text
                 className={`text-[16px] font-semibold ${
@@ -109,7 +109,7 @@ export function CreateReminderModal({ visible, conversationId, onClose }: Props)
             value={title}
             onChangeText={setTitle}
             placeholder="Reminder title"
-            placeholderTextColor="#6B6B76"
+            placeholderTextColor="#A8937F"
             className="bg-surface rounded-xl px-4 py-3 text-text-primary text-[15px] mb-5"
           />
 
@@ -121,7 +121,7 @@ export function CreateReminderModal({ visible, conversationId, onClose }: Props)
             value={description}
             onChangeText={setDescription}
             placeholder="Add details..."
-            placeholderTextColor="#6B6B76"
+            placeholderTextColor="#A8937F"
             className="bg-surface rounded-xl px-4 py-3 text-text-primary text-[15px] mb-5"
             multiline
             style={{ minHeight: 80 }}
@@ -140,7 +140,7 @@ export function CreateReminderModal({ visible, conversationId, onClose }: Props)
             }}
             onBlur={handleDateBlur}
             placeholder="YYYY-MM-DD HH:mm"
-            placeholderTextColor="#6B6B76"
+            placeholderTextColor="#A8937F"
             className={`bg-surface rounded-xl px-4 py-3 text-text-primary text-[15px] mb-1 ${
               dateError ? 'border border-status-error' : ''
             }`}

@@ -10,7 +10,7 @@ interface Props {
   onClose: () => void;
 }
 
-const NOTE_COLORS = ['#6366F1', '#8B5CF6', '#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
+const NOTE_COLORS = ['#D4764E', '#C2956B', '#5B8EC9', '#2D9F6F', '#D4964E', '#C94F4F'];
 
 export function CreateNoteModal({ visible, conversationId, onClose }: Props) {
   const [title, setTitle] = useState('');
@@ -69,7 +69,7 @@ export function CreateNoteModal({ visible, conversationId, onClose }: Props) {
           <Text className="text-text-primary text-[17px] font-semibold">New Note</Text>
           <Pressable onPress={handleSave} disabled={!canSave} hitSlop={8}>
             {isSaving ? (
-              <ActivityIndicator size="small" color="#6366F1" />
+              <ActivityIndicator size="small" color="#D4764E" />
             ) : (
               <Text
                 className={`text-[16px] font-semibold ${
@@ -91,7 +91,7 @@ export function CreateNoteModal({ visible, conversationId, onClose }: Props) {
             value={title}
             onChangeText={setTitle}
             placeholder="Note title"
-            placeholderTextColor="#6B6B76"
+            placeholderTextColor="#A8937F"
             className="bg-surface rounded-xl px-4 py-3 text-text-primary text-[15px] mb-5"
           />
 
@@ -103,7 +103,7 @@ export function CreateNoteModal({ visible, conversationId, onClose }: Props) {
             value={content}
             onChangeText={setContent}
             placeholder="Write your note..."
-            placeholderTextColor="#6B6B76"
+            placeholderTextColor="#A8937F"
             className="bg-surface rounded-xl px-4 py-3 text-text-primary text-[15px] mb-5"
             multiline
             style={{ minHeight: 120 }}
@@ -135,7 +135,7 @@ export function CreateNoteModal({ visible, conversationId, onClose }: Props) {
           {/* Private Toggle */}
           <View className="flex-row items-center justify-between bg-surface rounded-xl px-4 py-3">
             <View className="flex-row items-center">
-              <Ionicons name="lock-closed-outline" size={18} color="#A0A0AB" />
+              <Ionicons name="lock-closed-outline" size={18} color="#7A6355" />
               <Text className="text-text-primary text-[15px] ml-2">Private note</Text>
             </View>
             <Switch
@@ -144,7 +144,7 @@ export function CreateNoteModal({ visible, conversationId, onClose }: Props) {
                 Haptics.selectionAsync();
                 setIsPrivate(val);
               }}
-              trackColor={{ false: '#2D2D40', true: '#6366F1' }}
+              trackColor={{ false: '#E8D5C4', true: '#D4764E' }}
               thumbColor="#FFFFFF"
             />
           </View>

@@ -29,7 +29,7 @@ function InfoRow({
   return (
     <View className="flex-row items-center py-3.5 px-4">
       <View className="w-9 h-9 bg-surface-elevated rounded-full items-center justify-center mr-3">
-        <Ionicons name={icon} size={18} color="#A0A0AB" />
+        <Ionicons name={icon} size={18} color="#7A6355" />
       </View>
       <View className="flex-1">
         <Text className="text-text-tertiary text-xs">{label}</Text>
@@ -40,7 +40,7 @@ function InfoRow({
                 <Text className="text-text-primary text-[15px] flex-1">
                   {editValue || value}
                 </Text>
-                <Ionicons name="chevron-down" size={14} color="#6B6B76" />
+                <Ionicons name="chevron-down" size={14} color="#A8937F" />
               </View>
             </Pressable>
           ) : (
@@ -48,7 +48,7 @@ function InfoRow({
               value={editValue}
               onChangeText={onChangeText}
               className="text-text-primary text-[15px] mt-1 bg-surface-elevated rounded-lg px-3 py-1.5"
-              placeholderTextColor="#6B6B76"
+              placeholderTextColor="#A8937F"
             />
           )
         ) : (
@@ -174,7 +174,7 @@ export default function ProfileScreen() {
               value={editName}
               onChangeText={setEditName}
               className="text-text-primary text-2xl font-bold mt-4 text-center bg-surface-elevated rounded-xl px-6 py-2"
-              placeholderTextColor="#6B6B76"
+              placeholderTextColor="#A8937F"
               placeholder="Your name"
             />
           ) : (

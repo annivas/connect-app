@@ -218,7 +218,7 @@ export const MOCK_CONVERSATIONS: Conversation[] = [
           id: 'note-1',
           title: 'Project Ideas',
           content: 'Brainstorm session notes from last week',
-          color: '#6366F1',
+          color: '#D4764E',
           createdBy: CURRENT_USER_ID,
           createdAt: new Date('2026-02-18T10:00:00'),
           updatedAt: new Date('2026-02-18T10:00:00'),

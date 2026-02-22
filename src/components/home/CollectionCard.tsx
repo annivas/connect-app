@@ -14,11 +14,11 @@ const typeIcons: Record<string, keyof typeof Ionicons.glyphMap> = {
 };
 
 const typeColors: Record<string, string> = {
-  places: '#10B981',
-  songs: '#8B5CF6',
-  photos: '#3B82F6',
-  links: '#F59E0B',
-  mixed: '#6366F1',
+  places: '#2D9F6F',
+  songs: '#C2956B',
+  photos: '#5B8EC9',
+  links: '#D4964E',
+  mixed: '#D4764E',
 };
 
 interface Props {
@@ -27,7 +27,7 @@ interface Props {
 
 export function CollectionCard({ collection }: Props) {
   const router = useRouter();
-  const color = typeColors[collection.type] || '#6366F1';
+  const color = typeColors[collection.type] || '#D4764E';
   const icon = typeIcons[collection.type] || 'albums';
 
   const handlePress = () => {

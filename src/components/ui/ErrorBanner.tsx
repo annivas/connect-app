@@ -11,7 +11,7 @@ interface Props {
 export function ErrorBanner({ message, onRetry, onDismiss }: Props) {
   return (
     <View className="bg-status-error/10 border border-status-error/30 rounded-xl mx-4 my-2 p-3 flex-row items-center">
-      <Ionicons name="alert-circle" size={20} color="#EF4444" />
+      <Ionicons name="alert-circle" size={20} color="#C94F4F" />
       <Text className="text-text-primary text-sm flex-1 ml-2">{message}</Text>
       {onRetry && (
         <Pressable onPress={onRetry} className="ml-2 px-3 py-1 rounded-lg bg-status-error/20">
@@ -20,7 +20,7 @@ export function ErrorBanner({ message, onRetry, onDismiss }: Props) {
       )}
       {onDismiss && (
         <Pressable onPress={onDismiss} className="ml-2 p-1">
-          <Ionicons name="close" size={16} color="#A0A0AB" />
+          <Ionicons name="close" size={16} color="#7A6355" />
         </Pressable>
       )}
     </View>

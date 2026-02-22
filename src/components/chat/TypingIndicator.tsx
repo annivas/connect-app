@@ -36,7 +36,7 @@ function AnimatedDot({ delay }: { delay: number }) {
 
   return (
     <Animated.View
-      style={[{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#6B6B76', marginHorizontal: 1.5 }, animatedStyle]}
+      style={[{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#A8937F', marginHorizontal: 1.5 }, animatedStyle]}
     />
   );
 }

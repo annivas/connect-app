@@ -3,8 +3,8 @@ import { useSettingsStore } from '../useSettingsStore';
 // Reset store before each test
 beforeEach(() => {
   useSettingsStore.setState({
-    theme: 'dark',
-    accentColor: '#6366F1',
+    theme: 'light',
+    accentColor: '#D4764E',
     notifications: {
       push: true,
       sounds: true,
@@ -18,8 +18,8 @@ beforeEach(() => {
 
 describe('useSettingsStore', () => {
   describe('theme', () => {
-    it('should default to dark theme', () => {
-      expect(useSettingsStore.getState().theme).toBe('dark');
+    it('should default to light theme', () => {
+      expect(useSettingsStore.getState().theme).toBe('light');
     });
 
     it('should update theme', () => {
@@ -29,13 +29,13 @@ describe('useSettingsStore', () => {
   });
 
   describe('accentColor', () => {
-    it('should default to indigo', () => {
-      expect(useSettingsStore.getState().accentColor).toBe('#6366F1');
+    it('should default to terracotta', () => {
+      expect(useSettingsStore.getState().accentColor).toBe('#D4764E');
     });
 
     it('should update accent color', () => {
-      useSettingsStore.getState().setAccentColor('#EF4444');
-      expect(useSettingsStore.getState().accentColor).toBe('#EF4444');
+      useSettingsStore.getState().setAccentColor('#C94F4F');
+      expect(useSettingsStore.getState().accentColor).toBe('#C94F4F');
     });
   });
 

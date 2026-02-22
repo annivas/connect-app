@@ -60,7 +60,7 @@ export default function SignInScreen() {
           {/* Logo & Title */}
           <View className="items-center mb-10">
             <View className="w-16 h-16 bg-accent-primary/20 rounded-2xl items-center justify-center mb-4">
-              <Ionicons name="chatbubbles" size={32} color="#6366F1" />
+              <Ionicons name="chatbubbles" size={32} color="#D4764E" />
             </View>
             <Text className="text-text-primary text-2xl font-bold">Welcome back</Text>
             <Text className="text-text-tertiary text-sm mt-1">Sign in to your account</Text>

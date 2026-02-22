@@ -25,7 +25,7 @@ export default function AboutScreen() {
         {/* Logo & Version */}
         <View className="items-center pt-12 pb-8">
           <View className="w-20 h-20 rounded-3xl bg-accent-primary/20 items-center justify-center mb-4">
-            <Ionicons name="chatbubbles" size={40} color="#6366F1" />
+            <Ionicons name="chatbubbles" size={40} color="#D4764E" />
           </View>
           <Text className="text-text-primary text-2xl font-bold">
             Connect
@@ -54,33 +54,33 @@ export default function AboutScreen() {
             onPress={() => Linking.openURL('https://example.com/terms')}
             className="flex-row items-center py-3.5 px-4 active:bg-surface-hover"
           >
-            <Ionicons name="document-text-outline" size={18} color="#A0A0AB" />
+            <Ionicons name="document-text-outline" size={18} color="#7A6355" />
             <Text className="text-text-primary text-[15px] ml-3 flex-1">
               Terms of Service
             </Text>
-            <Ionicons name="open-outline" size={16} color="#6B6B76" />
+            <Ionicons name="open-outline" size={16} color="#A8937F" />
           </Pressable>
           <View className="h-px bg-border-subtle mx-4" />
           <Pressable
             onPress={() => Linking.openURL('https://example.com/privacy')}
             className="flex-row items-center py-3.5 px-4 active:bg-surface-hover"
           >
-            <Ionicons name="shield-checkmark-outline" size={18} color="#A0A0AB" />
+            <Ionicons name="shield-checkmark-outline" size={18} color="#7A6355" />
             <Text className="text-text-primary text-[15px] ml-3 flex-1">
               Privacy Policy
             </Text>
-            <Ionicons name="open-outline" size={16} color="#6B6B76" />
+            <Ionicons name="open-outline" size={16} color="#A8937F" />
           </Pressable>
           <View className="h-px bg-border-subtle mx-4" />
           <Pressable
             onPress={() => Linking.openURL('https://example.com/licenses')}
             className="flex-row items-center py-3.5 px-4 active:bg-surface-hover"
           >
-            <Ionicons name="code-slash-outline" size={18} color="#A0A0AB" />
+            <Ionicons name="code-slash-outline" size={18} color="#7A6355" />
             <Text className="text-text-primary text-[15px] ml-3 flex-1">
               Open Source Licenses
             </Text>
-            <Ionicons name="open-outline" size={16} color="#6B6B76" />
+            <Ionicons name="open-outline" size={16} color="#A8937F" />
           </Pressable>
         </View>
 

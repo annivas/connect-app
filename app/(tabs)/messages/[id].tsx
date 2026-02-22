@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useLayoutEffect } from 'react';
 import { View, Text, Pressable, useWindowDimensions, ActionSheetIOS, Platform, Alert } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TabView, TabBar, SceneRendererProps } from 'react-native-tab-view';
 import { useShallow } from 'zustand/react/shallow';
@@ -28,9 +28,28 @@ const routes: Route[] = [
 export default function ConversationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const navigation = useNavigation();
   const layout = useWindowDimensions();
   const [tabIndex, setTabIndex] = useState(0);
   const [showProfile, setShowProfile] = useState(false);
+
+  // Hide the bottom tab bar when this screen is focused
+  const parentNavigation = navigation.getParent();
+  useLayoutEffect(() => {
+    parentNavigation?.setOptions({ tabBarStyle: { display: 'none' } });
+    return () => {
+      parentNavigation?.setOptions({
+        tabBarStyle: {
+          position: 'absolute',
+          backgroundColor: Platform.OS === 'ios' ? 'transparent' : '#FFF1E6',
+          borderTopWidth: 0,
+          elevation: 0,
+          height: Platform.OS === 'ios' ? 88 : 70,
+          paddingTop: 8,
+        },
+      });
+    };
+  }, [parentNavigation]);
 
   const conversation = useMessagesStore(useShallow((s) => s.getConversationById(id!)));
   const getUserById = useUserStore((s) => s.getUserById);
@@ -138,19 +157,19 @@ export default function ConversationDetailScreen() {
           <TabBar
             {...props}
             indicatorStyle={{
-              backgroundColor: '#6366F1',
+              backgroundColor: '#D4764E',
               height: 3,
               borderRadius: 1.5,
             }}
             style={{
-              backgroundColor: '#0A0A0F',
+              backgroundColor: '#FFF8F0',
               elevation: 0,
               shadowOpacity: 0,
               borderBottomWidth: 1,
-              borderBottomColor: '#1F1F2E',
+              borderBottomColor: '#F0E2D4',
             }}
-            activeColor="#6366F1"
-            inactiveColor="#6B6B76"
+            activeColor="#D4764E"
+            inactiveColor="#A8937F"
             scrollEnabled
             tabStyle={{ width: 'auto', minWidth: 80 }}
           />

@@ -38,14 +38,14 @@ function RSVPButton({
 }) {
   const selectedStyles: Record<RSVPStatus, { bg: string; text: string; iconColor: string }> = {
     going: { bg: 'bg-accent-primary', text: 'text-white', iconColor: '#FFFFFF' },
-    maybe: { bg: 'bg-status-warning/20', text: 'text-status-warning', iconColor: '#F59E0B' },
-    declined: { bg: 'bg-surface-elevated', text: 'text-status-error', iconColor: '#EF4444' },
-    pending: { bg: 'bg-surface-elevated', text: 'text-text-secondary', iconColor: '#A0A0AB' },
+    maybe: { bg: 'bg-status-warning/20', text: 'text-status-warning', iconColor: '#D4964E' },
+    declined: { bg: 'bg-surface-elevated', text: 'text-status-error', iconColor: '#C94F4F' },
+    pending: { bg: 'bg-surface-elevated', text: 'text-text-secondary', iconColor: '#7A6355' },
   };
 
   const style = isSelected
     ? selectedStyles[option.status]
-    : { bg: 'bg-surface-elevated', text: 'text-text-secondary', iconColor: '#A0A0AB' };
+    : { bg: 'bg-surface-elevated', text: 'text-text-secondary', iconColor: '#7A6355' };
 
   return (
     <Pressable
@@ -114,7 +114,7 @@ function EventsTab({ groupId }: { groupId: string }) {
             </View>
 
             <View className="flex-row items-center mt-2">
-              <Ionicons name="time-outline" size={14} color="#6B6B76" />
+              <Ionicons name="time-outline" size={14} color="#A8937F" />
               <Text className="text-text-tertiary text-xs ml-1">
                 {format(event.startDate, 'HH:mm')}
                 {event.endDate && ` - ${format(event.endDate, 'HH:mm')}`}
@@ -123,7 +123,7 @@ function EventsTab({ groupId }: { groupId: string }) {
                 <Ionicons
                   name="checkmark-circle"
                   size={14}
-                  color="#10B981"
+                  color="#2D9F6F"
                 />
                 <Text className="text-text-tertiary text-xs ml-1">
                   {goingCount} going
@@ -134,7 +134,7 @@ function EventsTab({ groupId }: { groupId: string }) {
                   <Ionicons
                     name="help-circle"
                     size={14}
-                    color="#F59E0B"
+                    color="#D4964E"
                   />
                   <Text className="text-text-tertiary text-xs ml-1">
                     {maybeCount} maybe
@@ -217,7 +217,7 @@ function TripTab({ groupId }: { groupId: string }) {
                   <Ionicons
                     name={typeIcons[item.type] || 'ellipse'}
                     size={16}
-                    color="#A0A0AB"
+                    color="#7A6355"
                   />
                 </View>
                 {index < trip.itinerary.length - 1 && (
@@ -356,19 +356,19 @@ export default function GroupDetailScreen() {
           <TabBar
             {...props}
             indicatorStyle={{
-              backgroundColor: '#6366F1',
+              backgroundColor: '#D4764E',
               height: 3,
               borderRadius: 1.5,
             }}
             style={{
-              backgroundColor: '#0A0A0F',
+              backgroundColor: '#FFF8F0',
               elevation: 0,
               shadowOpacity: 0,
               borderBottomWidth: 1,
-              borderBottomColor: '#1F1F2E',
+              borderBottomColor: '#F0E2D4',
             }}
-            activeColor="#6366F1"
-            inactiveColor="#6B6B76"
+            activeColor="#D4764E"
+            inactiveColor="#A8937F"
           />
         )}
       />

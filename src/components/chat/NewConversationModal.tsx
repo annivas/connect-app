@@ -89,7 +89,7 @@ export function NewConversationModal({ visible, onClose, onConversationReady }: 
         <Text className="text-text-primary text-[15px] font-medium">{item.name}</Text>
         <Text className="text-text-tertiary text-xs">@{item.username}</Text>
       </View>
-      <Ionicons name="chatbubble-outline" size={20} color="#6B6B76" />
+      <Ionicons name="chatbubble-outline" size={20} color="#A8937F" />
     </Pressable>
   );
 
@@ -132,7 +132,7 @@ export function NewConversationModal({ visible, onClose, onConversationReady }: 
           keyboardDismissMode="on-drag"
           ListEmptyComponent={
             <View className="flex-1 items-center justify-center py-20">
-              <Ionicons name="search" size={48} color="#6B6B76" />
+              <Ionicons name="search" size={48} color="#A8937F" />
               <Text className="text-text-secondary mt-3 text-[15px]">
                 {search ? 'No users found' : 'Search for someone to message'}
               </Text>

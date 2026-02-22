@@ -15,9 +15,9 @@ interface Props {
 }
 
 const priorityColors = {
-  low: '#6B6B76',
-  medium: '#F59E0B',
-  high: '#EF4444',
+  low: '#A8937F',
+  medium: '#D4964E',
+  high: '#C94F4F',
 };
 
 export function RemindersTab({ conversationId }: Props) {
@@ -79,7 +79,7 @@ export function RemindersTab({ conversationId }: Props) {
                   }}
                 >
                   {item.isCompleted && (
-                    <Ionicons name="checkmark" size={12} color="#10B981" />
+                    <Ionicons name="checkmark" size={12} color="#2D9F6F" />
                   )}
                 </View>
               </Pressable>
@@ -117,7 +117,7 @@ function FAB({ onPress }: { onPress: () => void }) {
       onPress={onPress}
       className="absolute bottom-4 right-4 w-14 h-14 rounded-full bg-accent-primary items-center justify-center"
       style={{
-        shadowColor: '#6366F1',
+        shadowColor: '#D4764E',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,

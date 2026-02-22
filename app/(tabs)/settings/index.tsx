@@ -29,7 +29,7 @@ function SettingItem({
       className="flex-row items-center py-3.5 px-4 active:bg-surface-hover"
     >
       <View className="w-9 h-9 bg-surface-elevated rounded-full items-center justify-center mr-3">
-        <Ionicons name={icon} size={18} color={disabled ? '#6B6B76' : '#A0A0AB'} />
+        <Ionicons name={icon} size={18} color={disabled ? '#A8937F' : '#7A6355'} />
       </View>
       <View className="flex-1">
         <Text className={`text-[15px] ${disabled ? 'text-text-tertiary' : 'text-text-primary'}`}>
@@ -39,7 +39,7 @@ function SettingItem({
           <Text className="text-text-tertiary text-xs mt-0.5">{subtitle}</Text>
         )}
       </View>
-      {!disabled && <Ionicons name="chevron-forward" size={18} color="#6B6B76" />}
+      {!disabled && <Ionicons name="chevron-forward" size={18} color="#A8937F" />}
     </Pressable>
   );
 }
@@ -105,7 +105,7 @@ export default function SettingsScreen() {
                 </Text>
               )}
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#6B6B76" />
+            <Ionicons name="chevron-forward" size={20} color="#A8937F" />
           </Pressable>
         </Card>
 

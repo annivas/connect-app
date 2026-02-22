@@ -15,19 +15,19 @@ export function SearchBar({
 }: SearchBarProps) {
   return (
     <View className="flex-row items-center bg-surface rounded-xl px-4 h-11">
-      <Ionicons name="search" size={18} color="#6B6B76" />
+      <Ionicons name="search" size={18} color="#A8937F" />
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="#6B6B76"
+        placeholderTextColor="#A8937F"
         className="flex-1 ml-2 text-text-primary text-[15px]"
         autoCapitalize="none"
         autoCorrect={false}
       />
       {value.length > 0 && (
         <Pressable onPress={() => onChangeText('')} hitSlop={8}>
-          <Ionicons name="close-circle" size={18} color="#6B6B76" />
+          <Ionicons name="close-circle" size={18} color="#A8937F" />
         </Pressable>
       )}
     </View>

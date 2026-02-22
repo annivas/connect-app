@@ -89,7 +89,7 @@ export default function SignUpScreen() {
           {/* Header */}
           <View className="items-center mb-8">
             <View className="w-16 h-16 bg-accent-primary/20 rounded-2xl items-center justify-center mb-4">
-              <Ionicons name="person-add" size={28} color="#6366F1" />
+              <Ionicons name="person-add" size={28} color="#D4764E" />
             </View>
             <Text className="text-text-primary text-2xl font-bold">Create account</Text>
             <Text className="text-text-tertiary text-sm mt-1">

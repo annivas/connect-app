@@ -1,35 +1,35 @@
 export const colors = {
   background: {
-    primary: '#0A0A0F',
-    secondary: '#12121A',
-    tertiary: '#1C1C28',
+    primary: '#FFF8F0',     // Warm cream (main background)
+    secondary: '#FFF1E6',   // Slightly deeper cream (input areas, footers)
+    tertiary: '#FFE8D6',    // Peachy cream (cards, grouped sections)
   },
   surface: {
-    default: '#1C1C28',
-    elevated: '#252536',
-    hover: '#2D2D40',
+    default: '#FFE8D6',     // Card backgrounds
+    elevated: '#FFFFFF',    // Floating surfaces (modals, popovers, inputs)
+    hover: '#FFD6BA',       // Pressed/hover state
   },
   accent: {
-    primary: '#6366F1',
-    secondary: '#8B5CF6',
-    tertiary: '#3B82F6',
+    primary: '#D4764E',     // Warm terracotta (primary buttons, active tabs, own bubbles)
+    secondary: '#C2956B',   // Warm gold-brown (secondary actions, edit mode)
+    tertiary: '#8B6F5A',    // Muted brown (tertiary elements)
   },
   text: {
-    primary: '#F5F5F7',
-    secondary: '#A0A0AB',
-    tertiary: '#6B6B76',
-    inverse: '#0A0A0F',
+    primary: '#2D1F14',     // Dark warm brown (headings, body text)
+    secondary: '#7A6355',   // Medium warm brown (secondary text, icons)
+    tertiary: '#A8937F',    // Light warm brown (timestamps, placeholders)
+    inverse: '#FFFFFF',     // White text on accent backgrounds
   },
   border: {
-    default: '#2D2D40',
-    subtle: '#1F1F2E',
-    emphasis: '#3D3D52',
+    default: '#E8D5C4',     // Warm beige border
+    subtle: '#F0E2D4',      // Very subtle warm divider
+    emphasis: '#D4BFA8',    // Stronger warm border
   },
   status: {
-    success: '#10B981',
-    warning: '#F59E0B',
-    error: '#EF4444',
-    info: '#3B82F6',
+    success: '#2D9F6F',     // Warm emerald
+    warning: '#D4964E',     // Warm amber (close to accent)
+    error: '#C94F4F',       // Warm red
+    info: '#5B8EC9',        // Muted blue
   },
 } as const;
 

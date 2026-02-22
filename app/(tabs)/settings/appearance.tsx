@@ -33,12 +33,12 @@ function AccentColor({
 }
 
 const ACCENT_COLORS = [
-  '#6366F1', // Indigo (current)
-  '#8B5CF6', // Purple
-  '#3B82F6', // Blue
-  '#10B981', // Emerald
-  '#F59E0B', // Amber
-  '#EF4444', // Red
+  '#D4764E', // Indigo (current)
+  '#C2956B', // Purple
+  '#5B8EC9', // Blue
+  '#2D9F6F', // Emerald
+  '#D4964E', // Amber
+  '#C94F4F', // Red
 ];
 
 export default function AppearanceScreen() {
@@ -66,7 +66,7 @@ export default function AppearanceScreen() {
         </Text>
         <View className="mx-4 bg-surface rounded-2xl p-4 flex-row items-center mb-2">
           <View className="w-10 h-10 bg-accent-primary/20 rounded-full items-center justify-center mr-3">
-            <Ionicons name="moon" size={22} color="#6366F1" />
+            <Ionicons name="moon" size={22} color="#D4764E" />
           </View>
           <View>
             <Text className="text-text-primary font-semibold text-[15px]">
