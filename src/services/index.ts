@@ -9,34 +9,25 @@ import { mockMessagesRepository } from './mock/messagesRepository';
 import { mockGroupsRepository } from './mock/groupsRepository';
 import { mockUserRepository } from './mock/userRepository';
 import { mockCollectionsRepository } from './mock/collectionsRepository';
+import { supabaseMessagesRepository } from './supabase/messagesRepository';
+import { supabaseGroupsRepository } from './supabase/groupsRepository';
+import { supabaseUserRepository } from './supabase/userRepository';
+import { supabaseCollectionsRepository } from './supabase/collectionsRepository';
 
 function createMessagesRepository(): IMessagesRepository {
-  if (config.useMocks) {
-    return mockMessagesRepository;
-  }
-  // Supabase implementation will be added in Phase 3
-  return mockMessagesRepository;
+  return config.useMocks ? mockMessagesRepository : supabaseMessagesRepository;
 }
 
 function createGroupsRepository(): IGroupsRepository {
-  if (config.useMocks) {
-    return mockGroupsRepository;
-  }
-  return mockGroupsRepository;
+  return config.useMocks ? mockGroupsRepository : supabaseGroupsRepository;
 }
 
 function createUserRepository(): IUserRepository {
-  if (config.useMocks) {
-    return mockUserRepository;
-  }
-  return mockUserRepository;
+  return config.useMocks ? mockUserRepository : supabaseUserRepository;
 }
 
 function createCollectionsRepository(): ICollectionsRepository {
-  if (config.useMocks) {
-    return mockCollectionsRepository;
-  }
-  return mockCollectionsRepository;
+  return config.useMocks ? mockCollectionsRepository : supabaseCollectionsRepository;
 }
 
 export const messagesRepository = createMessagesRepository();

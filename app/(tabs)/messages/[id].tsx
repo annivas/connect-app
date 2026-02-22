@@ -63,7 +63,7 @@ export default function ConversationDetailScreen() {
   };
 
   const otherUserId = conversation?.participants.find(
-    (uid) => uid !== 'current-user'
+    (uid) => uid !== useUserStore.getState().currentUser?.id
   );
   const otherUser = otherUserId ? getUserById(otherUserId) : null;
 

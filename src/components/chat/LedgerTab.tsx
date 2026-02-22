@@ -22,7 +22,7 @@ export function LedgerTab({ conversationId }: Props) {
   const balance = conversation?.metadata?.ledgerBalance ?? 0;
 
   const otherUserId = conversation?.participants.find(
-    (id) => id !== 'current-user'
+    (id) => id !== useUserStore.getState().currentUser?.id
   );
   const otherUser = otherUserId ? getUserById(otherUserId) : null;
 

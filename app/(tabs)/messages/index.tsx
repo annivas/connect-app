@@ -19,7 +19,7 @@ export default function MessagesScreen() {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter((c) => {
-        const other = c.participants.find((id) => id !== 'current-user');
+        const other = c.participants.find((id) => id !== useUserStore.getState().currentUser?.id);
         const user = other ? getUserById(other) : null;
         return user?.name.toLowerCase().includes(q);
       });

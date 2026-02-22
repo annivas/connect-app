@@ -27,7 +27,7 @@ export function ConversationListItem({ conversation }: Props) {
   const swipeableRef = useRef<Swipeable>(null);
 
   const otherUserId = conversation.participants.find(
-    (id) => id !== 'current-user'
+    (id) => id !== useUserStore.getState().currentUser?.id
   );
   const otherUser = otherUserId ? getUserById(otherUserId) : null;
 
