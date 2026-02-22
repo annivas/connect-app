@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { Collection } from '../../types';
 
 const typeIcons: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -24,11 +26,17 @@ interface Props {
 }
 
 export function CollectionCard({ collection }: Props) {
+  const router = useRouter();
   const color = typeColors[collection.type] || '#6366F1';
   const icon = typeIcons[collection.type] || 'albums';
 
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push(`/(tabs)/home/${collection.id}` as any);
+  };
+
   return (
-    <Pressable className="w-40 active:opacity-80">
+    <Pressable onPress={handlePress} className="w-40 active:opacity-80">
       <View className="bg-surface rounded-2xl p-4 h-32 justify-between">
         <View
           className="w-12 h-12 rounded-xl items-center justify-center"

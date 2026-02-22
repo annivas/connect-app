@@ -1,13 +1,16 @@
-import React from 'react';
-import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, ScrollView, Pressable, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { SectionHeader } from '../../../src/components/ui/SectionHeader';
 import { Card } from '../../../src/components/ui/Card';
 import { CollectionCard } from '../../../src/components/home/CollectionCard';
 import { useHomeStore } from '../../../src/stores/useHomeStore';
 import { useUserStore } from '../../../src/stores/useUserStore';
 import { useMessagesStore } from '../../../src/stores/useMessagesStore';
+import { useGroupsStore } from '../../../src/stores/useGroupsStore';
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -22,14 +25,22 @@ function QuickAction({
   label,
   count,
   color,
+  onPress,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   count?: number;
   color: string;
+  onPress: () => void;
 }) {
   return (
-    <Pressable className="flex-1 active:opacity-80">
+    <Pressable
+      onPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        onPress();
+      }}
+      className="flex-1 active:opacity-80"
+    >
       <View className="bg-surface rounded-2xl p-4 items-center">
         <View
           className="w-11 h-11 rounded-full items-center justify-center mb-2"
@@ -47,9 +58,24 @@ function QuickAction({
 }
 
 export default function HomeScreen() {
+  const router = useRouter();
+  const [refreshing, setRefreshing] = useState(false);
   const currentUser = useUserStore((s) => s.currentUser);
   const collections = useHomeStore((s) => s.collections);
   const conversations = useMessagesStore((s) => s.conversations);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        useMessagesStore.getState().init(),
+        useGroupsStore.getState().init(),
+        useHomeStore.getState().init(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
   // Aggregate data across conversations
   const allReminders = conversations.flatMap(
@@ -64,11 +90,16 @@ export default function HomeScreen() {
 
   const allNotes = conversations.flatMap((c) => c.metadata?.notes ?? []);
 
+  const navigateToMessages = () => router.push('/(tabs)/messages/');
+
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-background-primary">
       <ScrollView
         contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6366F1" />
+        }
       >
         {/* Header */}
         <View className="px-4 pt-2 pb-4">
@@ -87,24 +118,27 @@ export default function HomeScreen() {
             label="Reminders"
             count={pendingReminders.length}
             color="#F59E0B"
+            onPress={navigateToMessages}
           />
           <QuickAction
             icon="wallet-outline"
             label="Expenses"
             count={unsettled.length}
             color="#10B981"
+            onPress={navigateToMessages}
           />
           <QuickAction
             icon="document-text-outline"
             label="Notes"
             count={allNotes.length}
             color="#3B82F6"
+            onPress={navigateToMessages}
           />
         </View>
 
         {/* Collections */}
         <View className="px-4 mb-6">
-          <SectionHeader title="Collections" onSeeAll={() => Alert.alert('Coming Soon', 'Full list view is coming in a future update!')} />
+          <SectionHeader title="Collections" />
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -118,7 +152,7 @@ export default function HomeScreen() {
 
         {/* Recent Notes */}
         <View className="px-4 mb-6">
-          <SectionHeader title="Recent Notes" onSeeAll={() => Alert.alert('Coming Soon', 'Full list view is coming in a future update!')} />
+          <SectionHeader title="Recent Notes" />
           {allNotes.length > 0 ? (
             allNotes.slice(0, 3).map((note) => (
               <Card key={note.id} className="mb-2">
@@ -155,7 +189,7 @@ export default function HomeScreen() {
 
         {/* Upcoming Reminders */}
         <View className="px-4 mb-6">
-          <SectionHeader title="Upcoming" onSeeAll={() => Alert.alert('Coming Soon', 'Full list view is coming in a future update!')} />
+          <SectionHeader title="Upcoming" />
           {pendingReminders.length > 0 ? (
             pendingReminders.map((rem) => (
               <Card key={rem.id} className="mb-2">
@@ -179,7 +213,7 @@ export default function HomeScreen() {
 
         {/* Unsettled Expenses */}
         <View className="px-4 mb-6">
-          <SectionHeader title="Pending Expenses" onSeeAll={() => Alert.alert('Coming Soon', 'Full list view is coming in a future update!')} />
+          <SectionHeader title="Pending Expenses" />
           {unsettled.length > 0 ? (
             unsettled.slice(0, 3).map((entry) => (
               <Card key={entry.id} className="mb-2">

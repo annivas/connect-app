@@ -1,9 +1,12 @@
-import React from 'react';
-import { View, Text, FlatList } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, FlatList, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { useShallow } from 'zustand/react/shallow';
+import * as Haptics from 'expo-haptics';
 import { Card } from '../ui/Card';
 import { EmptyState } from '../ui/EmptyState';
+import { CreateExpenseModal } from './CreateExpenseModal';
 import { LedgerEntry } from '../../types';
 import { useMessagesStore } from '../../stores/useMessagesStore';
 import { useUserStore } from '../../stores/useUserStore';
@@ -13,6 +16,7 @@ interface Props {
 }
 
 export function LedgerTab({ conversationId }: Props) {
+  const [isModalVisible, setIsModalVisible] = useState(false);
   const conversation = useMessagesStore(
     useShallow((s) => s.getConversationById(conversationId))
   );
@@ -26,6 +30,16 @@ export function LedgerTab({ conversationId }: Props) {
   );
   const otherUser = otherUserId ? getUserById(otherUserId) : null;
 
+  const handleSettle = (entryId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    useMessagesStore.getState().settleLedgerEntry(conversationId, entryId);
+  };
+
+  const handleFABPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setIsModalVisible(true);
+  };
+
   if (entries.length === 0) {
     return (
       <View className="flex-1 bg-background-primary">
@@ -33,6 +47,12 @@ export function LedgerTab({ conversationId }: Props) {
           icon="wallet-outline"
           title="No expenses"
           description="Split costs and track shared expenses here"
+        />
+        <FAB onPress={handleFABPress} />
+        <CreateExpenseModal
+          visible={isModalVisible}
+          conversationId={conversationId}
+          onClose={() => setIsModalVisible(false)}
         />
       </View>
     );
@@ -86,18 +106,52 @@ export function LedgerTab({ conversationId }: Props) {
                   Paid by {paidBy?.name} &middot;{' '}
                   {format(item.date, 'MMM d')}
                 </Text>
-                {!item.isSettled && (
-                  <View className="px-2 py-0.5 bg-status-warning/20 rounded-md">
-                    <Text className="text-status-warning text-[10px] font-semibold">
-                      Unsettled
+                {item.isSettled ? (
+                  <View className="px-2 py-0.5 bg-status-success/20 rounded-md">
+                    <Text className="text-status-success text-[10px] font-semibold">
+                      Settled
                     </Text>
                   </View>
+                ) : (
+                  <Pressable
+                    onPress={() => handleSettle(item.id)}
+                    hitSlop={4}
+                    className="px-2.5 py-1 bg-status-warning/20 rounded-md"
+                  >
+                    <Text className="text-status-warning text-[10px] font-semibold">
+                      Settle
+                    </Text>
+                  </Pressable>
                 )}
               </View>
             </Card>
           );
         }}
       />
+      <FAB onPress={handleFABPress} />
+      <CreateExpenseModal
+        visible={isModalVisible}
+        conversationId={conversationId}
+        onClose={() => setIsModalVisible(false)}
+      />
     </View>
+  );
+}
+
+function FAB({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      className="absolute bottom-4 right-4 w-14 h-14 rounded-full bg-accent-primary items-center justify-center"
+      style={{
+        shadowColor: '#6366F1',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+      }}
+    >
+      <Ionicons name="add" size={28} color="#FFFFFF" />
+    </Pressable>
   );
 }

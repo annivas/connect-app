@@ -1,7 +1,7 @@
-import { Message, Group } from '../../types';
+import { Message, Group, RSVPStatus } from '../../types';
 import { MOCK_GROUPS } from '../../mocks/groups';
 import { MOCK_GROUP_MESSAGES } from '../../mocks/messages';
-import { IGroupsRepository } from '../types';
+import { IGroupsRepository, PaginationParams, CreateGroupInput } from '../types';
 
 let groups = [...MOCK_GROUPS];
 let groupMessages = [...MOCK_GROUP_MESSAGES];
@@ -11,8 +11,16 @@ export const mockGroupsRepository: IGroupsRepository = {
     return groups;
   },
 
-  async getGroupMessages(groupId: string) {
-    return groupMessages.filter((m) => m.conversationId === groupId);
+  async getGroupMessages(groupId: string, pagination?: PaginationParams) {
+    let filtered = groupMessages.filter((m) => m.conversationId === groupId);
+
+    if (pagination?.before) {
+      const cursorDate = new Date(pagination.before);
+      filtered = filtered.filter((m) => m.timestamp < cursorDate);
+    }
+
+    const limit = pagination?.limit ?? 50;
+    return filtered.slice(-limit);
   },
 
   async sendGroupMessage(groupId: string, content: string, senderId: string) {
@@ -42,5 +50,42 @@ export const mockGroupsRepository: IGroupsRepository = {
     groups = groups.map((g) =>
       g.id === groupId ? { ...g, isMuted: !g.isMuted } : g,
     );
+  },
+
+  async createGroup(input: CreateGroupInput): Promise<Group> {
+    const newGroup: Group = {
+      id: `group-${Date.now()}`,
+      name: input.name,
+      description: input.description,
+      avatar: '',
+      members: ['current-user', ...input.memberIds],
+      admins: ['current-user'],
+      createdBy: 'current-user',
+      createdAt: new Date(),
+      type: input.type,
+      lastActivity: new Date(),
+      isPinned: false,
+      isMuted: false,
+      metadata: { sharedObjects: [], notes: [] },
+    };
+    groups = [newGroup, ...groups];
+    return newGroup;
+  },
+
+  async updateRSVP(eventId: string, status: RSVPStatus): Promise<void> {
+    groups = groups.map((g) => ({
+      ...g,
+      events: g.events?.map((e) =>
+        e.id === eventId
+          ? {
+              ...e,
+              attendees: [
+                ...e.attendees.filter((a) => a.userId !== 'current-user'),
+                { userId: 'current-user', status, respondedAt: new Date() },
+              ],
+            }
+          : e,
+      ),
+    }));
   },
 };

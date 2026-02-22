@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase';
-import { Conversation, Message } from '../../types';
-import { IMessagesRepository } from '../types';
+import { Conversation, Message, Note, Reminder, LedgerEntry } from '../../types';
+import { IMessagesRepository, PaginationParams, CreateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../types';
 import {
   adaptMessage,
   adaptSharedObject,
@@ -151,16 +151,26 @@ export const supabaseMessagesRepository: IMessagesRepository = {
     });
   },
 
-  async getMessages(conversationId: string): Promise<Message[]> {
-    const { data, error } = await supabase
+  async getMessages(conversationId: string, pagination?: PaginationParams): Promise<Message[]> {
+    let query = supabase
       .from('messages')
       .select('*')
       .eq('context_type', 'conversation')
       .eq('context_id', conversationId)
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: false });
+
+    if (pagination?.before) {
+      query = query.lt('created_at', pagination.before);
+    }
+
+    const limit = pagination?.limit ?? 50;
+    query = query.limit(limit);
+
+    const { data, error } = await query;
 
     if (error) throw new Error(`Failed to fetch messages: ${error.message}`);
-    return data.map(adaptMessage);
+    // Reverse to chronological order for display
+    return data.reverse().map(adaptMessage);
   },
 
   async sendMessage(conversationId: string, content: string, senderId: string): Promise<Message> {
@@ -241,5 +251,93 @@ export const supabaseMessagesRepository: IMessagesRepository = {
       .eq('user_id', userId);
 
     if (error) throw new Error(`Failed to toggle mute: ${error.message}`);
+  },
+
+  async createNote(conversationId: string, input: CreateNoteInput): Promise<Note> {
+    const userId = getCurrentUserId();
+
+    const { data, error } = await supabase
+      .from('notes')
+      .insert({
+        conversation_id: conversationId,
+        title: input.title,
+        content: input.content,
+        color: input.color,
+        is_private: input.isPrivate,
+        created_by: userId,
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to create note: ${error.message}`);
+    return adaptNote(data);
+  },
+
+  async createReminder(conversationId: string, input: CreateReminderInput): Promise<Reminder> {
+    const userId = getCurrentUserId();
+
+    const { data, error } = await supabase
+      .from('reminders')
+      .insert({
+        conversation_id: conversationId,
+        title: input.title,
+        description: input.description ?? null,
+        due_date: input.dueDate,
+        priority: input.priority,
+        created_by: userId,
+        is_completed: false,
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to create reminder: ${error.message}`);
+    return adaptReminder(data);
+  },
+
+  async toggleReminderComplete(reminderId: string): Promise<void> {
+    // Read current value
+    const { data, error: readError } = await supabase
+      .from('reminders')
+      .select('is_completed')
+      .eq('id', reminderId)
+      .single();
+
+    if (readError) throw new Error(`Failed to read reminder state: ${readError.message}`);
+
+    // Toggle
+    const { error } = await supabase
+      .from('reminders')
+      .update({ is_completed: !data.is_completed })
+      .eq('id', reminderId);
+
+    if (error) throw new Error(`Failed to toggle reminder: ${error.message}`);
+  },
+
+  async createLedgerEntry(conversationId: string, input: CreateLedgerEntryInput): Promise<LedgerEntry> {
+    const { data, error } = await supabase
+      .from('ledger_entries')
+      .insert({
+        conversation_id: conversationId,
+        description: input.description,
+        amount: input.amount,
+        paid_by: input.paidBy,
+        split_between: input.splitBetween,
+        category: input.category ?? null,
+        is_settled: false,
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to create ledger entry: ${error.message}`);
+    return adaptLedgerEntry(data);
+  },
+
+  async settleLedgerEntry(entryId: string): Promise<void> {
+    const { error } = await supabase
+      .from('ledger_entries')
+      .update({ is_settled: true })
+      .eq('id', entryId);
+
+    if (error) throw new Error(`Failed to settle ledger entry: ${error.message}`);
   },
 };

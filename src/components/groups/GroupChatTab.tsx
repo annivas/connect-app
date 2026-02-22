@@ -1,8 +1,10 @@
-import React, { useRef, useEffect } from 'react';
-import { View, Text, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useRef, useEffect, useCallback } from 'react';
+import { View, Text, FlatList, KeyboardAvoidingView, Platform, Pressable, ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { format, isSameDay, isToday, isYesterday } from 'date-fns';
 import { Image } from 'expo-image';
 import { useShallow } from 'zustand/react/shallow';
+import * as Haptics from 'expo-haptics';
 import { MessageInput } from '../chat/MessageInput';
 import { useGroupsStore } from '../../stores/useGroupsStore';
 import { useUserStore } from '../../stores/useUserStore';
@@ -29,9 +31,18 @@ function DateDivider({ date }: { date: Date }) {
 
 // ─── Group message bubble ────────────────────
 
-function GroupMessageBubble({ message, showDateDivider }: { message: Message; showDateDivider?: boolean }) {
+function GroupMessageBubble({
+  message,
+  showDateDivider,
+  onRetry,
+}: {
+  message: Message;
+  showDateDivider?: boolean;
+  onRetry?: (messageId: string) => void;
+}) {
   const currentUserId = useUserStore((s) => s.currentUser?.id);
   const isMine = message.senderId === currentUserId;
+  const isFailed = message.sendStatus === 'failed';
   const getUserById = useUserStore((s) => s.getUserById);
   const sender = getUserById(message.senderId);
 
@@ -54,7 +65,7 @@ function GroupMessageBubble({ message, showDateDivider }: { message: Message; sh
       <View
         className={`max-w-[78%] px-4 py-2.5 rounded-2xl ${
           isMine
-            ? 'bg-accent-primary rounded-br-md'
+            ? `${isFailed ? 'bg-accent-primary/60' : 'bg-accent-primary'} rounded-br-md`
             : 'bg-surface rounded-bl-md'
         }`}
       >
@@ -66,9 +77,28 @@ function GroupMessageBubble({ message, showDateDivider }: { message: Message; sh
           {message.content}
         </Text>
       </View>
-      <Text className="text-text-tertiary text-[10px] mt-1 mx-2">
-        {format(message.timestamp, 'HH:mm')}
-      </Text>
+      <View className="flex-row items-center">
+        <Text className="text-text-tertiary text-[10px] mt-1 mx-2">
+          {format(message.timestamp, 'HH:mm')}
+        </Text>
+        {isMine && message.sendStatus === 'sending' && (
+          <View className="flex-row items-center mt-0.5">
+            <Ionicons name="time-outline" size={12} color="#6B6B76" />
+          </View>
+        )}
+        {isMine && message.sendStatus === 'failed' && (
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              onRetry?.(message.id);
+            }}
+            className="flex-row items-center mt-0.5"
+          >
+            <Ionicons name="alert-circle" size={14} color="#EF4444" />
+            <Text className="text-status-error text-[11px] ml-1">Tap to retry</Text>
+          </Pressable>
+        )}
+      </View>
     </View>
     </>
   );
@@ -84,6 +114,14 @@ export function GroupChatTab({ groupId }: Props) {
   const listRef = useRef<FlatList>(null);
   const messages = useGroupsStore(useShallow((s) => s.getGroupMessages(groupId)));
   const sendGroupMessage = useGroupsStore((s) => s.sendGroupMessage);
+  const retryGroupMessage = useGroupsStore((s) => s.retryGroupMessage);
+  const hasMore = useGroupsStore((s) => s.hasMoreMessages[groupId] ?? false);
+  const isLoadingMore = useGroupsStore((s) => s.loadingMessages.has(groupId));
+
+  // Load messages when entering the group chat
+  useEffect(() => {
+    useGroupsStore.getState().loadGroupMessages(groupId);
+  }, [groupId]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -99,6 +137,12 @@ export function GroupChatTab({ groupId }: Props) {
     sendGroupMessage(groupId, content, userId);
   };
 
+  const handleLoadMore = useCallback(() => {
+    if (hasMore && !isLoadingMore) {
+      useGroupsStore.getState().loadMoreGroupMessages(groupId);
+    }
+  }, [groupId, hasMore, isLoadingMore]);
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -112,11 +156,26 @@ export function GroupChatTab({ groupId }: Props) {
         renderItem={({ item, index }) => {
           const prev = index > 0 ? messages[index - 1] : null;
           const showDateDivider = !prev || !isSameDay(prev.timestamp, item.timestamp);
-          return <GroupMessageBubble message={item} showDateDivider={showDateDivider} />;
+          return (
+            <GroupMessageBubble
+              message={item}
+              showDateDivider={showDateDivider}
+              onRetry={retryGroupMessage}
+            />
+          );
         }}
         contentContainerStyle={{ padding: 16, paddingBottom: 8 }}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="interactive"
+        onStartReached={handleLoadMore}
+        onStartReachedThreshold={0.2}
+        ListHeaderComponent={
+          isLoadingMore ? (
+            <View className="py-3 items-center">
+              <ActivityIndicator color="#6366F1" />
+            </View>
+          ) : null
+        }
       />
       <MessageInput onSend={handleSend} />
     </KeyboardAvoidingView>

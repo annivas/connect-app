@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { View, Text, FlatList } from 'react-native';
+import { View, Text, FlatList, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SearchBar } from '../../../src/components/ui/SearchBar';
 import { EmptyState } from '../../../src/components/ui/EmptyState';
@@ -32,9 +32,13 @@ export default function MessagesScreen() {
     });
   }, [conversations, searchQuery, getUserById]);
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 500);
+    try {
+      await useMessagesStore.getState().init();
+    } finally {
+      setRefreshing(false);
+    }
   }, []);
 
   return (
@@ -56,8 +60,9 @@ export default function MessagesScreen() {
         renderItem={({ item }) => <ConversationListItem conversation={item} />}
         contentContainerStyle={filtered.length === 0 ? { flex: 1 } : { paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
-        refreshing={refreshing}
-        onRefresh={onRefresh}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6366F1" />
+        }
         ListEmptyComponent={
           <EmptyState
             icon="chatbubbles-outline"

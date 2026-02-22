@@ -29,6 +29,7 @@ export interface Message {
   metadata?: Record<string, unknown>;
   reactions?: Reaction[];
   isRead: boolean;
+  sendStatus?: 'sending' | 'sent' | 'failed';
 }
 
 // ─── Shared Objects ──────────────────────────

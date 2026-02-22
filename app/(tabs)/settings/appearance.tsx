@@ -7,48 +7,6 @@ import * as Haptics from 'expo-haptics';
 import { IconButton } from '../../../src/components/ui/IconButton';
 import { useSettingsStore } from '../../../src/stores/useSettingsStore';
 
-function ThemeOption({
-  icon,
-  label,
-  active,
-  onPress,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={() => {
-        Haptics.selectionAsync();
-        onPress();
-      }}
-      className={`flex-1 items-center py-5 rounded-2xl mx-1.5 ${
-        active ? 'bg-accent-primary/20 border border-accent-primary' : 'bg-surface'
-      }`}
-    >
-      <Ionicons
-        name={icon}
-        size={28}
-        color={active ? '#6366F1' : '#A0A0AB'}
-      />
-      <Text
-        className={`text-sm font-semibold mt-2 ${
-          active ? 'text-accent-primary' : 'text-text-secondary'
-        }`}
-      >
-        {label}
-      </Text>
-      {active && (
-        <View className="absolute top-2 right-2">
-          <Ionicons name="checkmark-circle" size={18} color="#6366F1" />
-        </View>
-      )}
-    </Pressable>
-  );
-}
-
 function AccentColor({
   color,
   active,
@@ -85,8 +43,6 @@ const ACCENT_COLORS = [
 
 export default function AppearanceScreen() {
   const router = useRouter();
-  const theme = useSettingsStore((s) => s.theme);
-  const setTheme = useSettingsStore((s) => s.setTheme);
   const accent = useSettingsStore((s) => s.accentColor);
   const setAccent = useSettingsStore((s) => s.setAccentColor);
 
@@ -108,33 +64,19 @@ export default function AppearanceScreen() {
         <Text className="text-text-tertiary text-xs font-semibold px-4 pt-6 pb-3 uppercase tracking-wider">
           Theme
         </Text>
-        <View className="flex-row px-4 mb-2">
-          <ThemeOption
-            icon="moon"
-            label="Dark"
-            active={theme === 'dark'}
-            onPress={() => setTheme('dark')}
-          />
-          <ThemeOption
-            icon="sunny"
-            label="Light"
-            active={theme === 'light'}
-            onPress={() => setTheme('light')}
-          />
-          <ThemeOption
-            icon="phone-portrait-outline"
-            label="System"
-            active={theme === 'system'}
-            onPress={() => setTheme('system')}
-          />
-        </View>
-        {theme !== 'dark' && (
-          <View className="mx-4 mt-2 bg-surface rounded-xl p-3">
-            <Text className="text-text-tertiary text-xs text-center">
-              Only dark mode is available in this preview
+        <View className="mx-4 bg-surface rounded-2xl p-4 flex-row items-center mb-2">
+          <View className="w-10 h-10 bg-accent-primary/20 rounded-full items-center justify-center mr-3">
+            <Ionicons name="moon" size={22} color="#6366F1" />
+          </View>
+          <View>
+            <Text className="text-text-primary font-semibold text-[15px]">
+              Dark Mode
+            </Text>
+            <Text className="text-text-tertiary text-xs mt-0.5">
+              Light mode coming in a future update
             </Text>
           </View>
-        )}
+        </View>
 
         {/* Accent color */}
         <Text className="text-text-tertiary text-xs font-semibold px-4 pt-6 pb-3 uppercase tracking-wider">

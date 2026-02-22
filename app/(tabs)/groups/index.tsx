@@ -1,15 +1,19 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { View, Text, FlatList, Alert } from 'react-native';
+import { View, Text, FlatList, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { SearchBar } from '../../../src/components/ui/SearchBar';
 import { IconButton } from '../../../src/components/ui/IconButton';
 import { EmptyState } from '../../../src/components/ui/EmptyState';
 import { GroupCard } from '../../../src/components/groups/GroupCard';
+import { CreateGroupModal } from '../../../src/components/groups/CreateGroupModal';
 import { useGroupsStore } from '../../../src/stores/useGroupsStore';
 
 export default function GroupsScreen() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
   const groups = useGroupsStore((s) => s.groups);
 
   const filtered = useMemo(() => {
@@ -27,9 +31,13 @@ export default function GroupsScreen() {
     });
   }, [groups, searchQuery]);
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 500);
+    try {
+      await useGroupsStore.getState().init();
+    } finally {
+      setRefreshing(false);
+    }
   }, []);
 
   return (
@@ -39,7 +47,7 @@ export default function GroupsScreen() {
           <Text className="text-text-primary text-3xl font-bold">Groups</Text>
           <IconButton
             icon="add-circle"
-            onPress={() => Alert.alert('Coming Soon', 'Create group is coming in a future update!')}
+            onPress={() => setIsModalVisible(true)}
             size={28}
             color="#6366F1"
           />
@@ -57,8 +65,9 @@ export default function GroupsScreen() {
         renderItem={({ item }) => <GroupCard group={item} />}
         contentContainerStyle={filtered.length === 0 ? { flex: 1 } : { paddingBottom: 100, paddingTop: 8 }}
         showsVerticalScrollIndicator={false}
-        refreshing={refreshing}
-        onRefresh={onRefresh}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6366F1" />
+        }
         ListEmptyComponent={
           <EmptyState
             icon="people-outline"
@@ -66,6 +75,15 @@ export default function GroupsScreen() {
             description={searchQuery ? 'No matches for your search' : 'Create or join a group to get started'}
           />
         }
+      />
+
+      <CreateGroupModal
+        visible={isModalVisible}
+        onClose={() => setIsModalVisible(false)}
+        onCreated={(group) => {
+          setIsModalVisible(false);
+          router.push(`/groups/${group.id}` as any);
+        }}
       />
     </SafeAreaView>
   );

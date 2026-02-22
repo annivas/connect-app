@@ -3,36 +3,43 @@ import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { Avatar } from '../../../src/components/ui/Avatar';
 import { Card } from '../../../src/components/ui/Card';
 import { useUserStore } from '../../../src/stores/useUserStore';
+import { useAuthStore } from '../../../src/stores/useAuthStore';
 
 function SettingItem({
   icon,
   title,
   subtitle,
   onPress,
+  disabled = false,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   title: string;
   subtitle?: string;
-  onPress: () => void;
+  onPress?: () => void;
+  disabled?: boolean;
 }) {
   return (
     <Pressable
-      onPress={onPress}
+      onPress={disabled ? undefined : onPress}
+      disabled={disabled}
       className="flex-row items-center py-3.5 px-4 active:bg-surface-hover"
     >
       <View className="w-9 h-9 bg-surface-elevated rounded-full items-center justify-center mr-3">
-        <Ionicons name={icon} size={18} color="#A0A0AB" />
+        <Ionicons name={icon} size={18} color={disabled ? '#6B6B76' : '#A0A0AB'} />
       </View>
       <View className="flex-1">
-        <Text className="text-text-primary text-[15px]">{title}</Text>
+        <Text className={`text-[15px] ${disabled ? 'text-text-tertiary' : 'text-text-primary'}`}>
+          {title}
+        </Text>
         {subtitle && (
           <Text className="text-text-tertiary text-xs mt-0.5">{subtitle}</Text>
         )}
       </View>
-      <Ionicons name="chevron-forward" size={18} color="#6B6B76" />
+      {!disabled && <Ionicons name="chevron-forward" size={18} color="#6B6B76" />}
     </Pressable>
   );
 }
@@ -45,8 +52,22 @@ export default function SettingsScreen() {
   const router = useRouter();
   const currentUser = useUserStore((s) => s.currentUser)!;
 
-  const showComingSoon = (feature: string) => {
-    Alert.alert(feature, 'This feature is coming soon!', [{ text: 'OK' }]);
+  const handleSignOut = () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            await useAuthStore.getState().signOut();
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -108,14 +129,14 @@ export default function SettingsScreen() {
             icon="lock-closed-outline"
             title="Privacy"
             subtitle="Online status, read receipts"
-            onPress={() => showComingSoon('Privacy')}
+            disabled
           />
           <Divider />
           <SettingItem
             icon="cloud-outline"
             title="Storage & Data"
             subtitle="Manage cache and downloads"
-            onPress={() => showComingSoon('Storage & Data')}
+            disabled
           />
         </View>
 
@@ -124,13 +145,13 @@ export default function SettingsScreen() {
           <SettingItem
             icon="help-circle-outline"
             title="Help & Support"
-            onPress={() => showComingSoon('Help & Support')}
+            disabled
           />
           <Divider />
           <SettingItem
             icon="chatbubble-ellipses-outline"
             title="Send Feedback"
-            onPress={() => showComingSoon('Send Feedback')}
+            disabled
           />
           <Divider />
           <SettingItem
@@ -139,6 +160,18 @@ export default function SettingsScreen() {
             subtitle="v1.0.0"
             onPress={() => router.push('/(tabs)/settings/about')}
           />
+        </View>
+
+        {/* Sign Out */}
+        <View className="px-4 mt-6">
+          <Pressable
+            onPress={handleSignOut}
+            className="bg-surface rounded-2xl py-4 items-center active:bg-surface-hover"
+          >
+            <Text className="text-status-error font-semibold text-[15px]">
+              Sign Out
+            </Text>
+          </Pressable>
         </View>
 
         {/* Footer */}

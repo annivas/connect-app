@@ -1,5 +1,5 @@
-import React, { useRef, useEffect } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, View } from 'react-native';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
+import { FlatList, KeyboardAvoidingView, Platform, View, ActivityIndicator, RefreshControl } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 import { isSameDay } from 'date-fns';
 import { MessageBubble } from './MessageBubble';
@@ -17,6 +17,16 @@ export function ChatTab({ conversationId }: Props) {
     useShallow((s) => s.getMessagesByConversationId(conversationId))
   );
   const sendMessage = useMessagesStore((s) => s.sendMessage);
+  const retryMessage = useMessagesStore((s) => s.retryMessage);
+  const hasMore = useMessagesStore((s) => s.hasMoreMessages[conversationId] ?? false);
+  const isLoadingMore = useMessagesStore(
+    (s) => s.loadingMessages.has(conversationId)
+  );
+
+  // Load messages when entering the conversation
+  useEffect(() => {
+    useMessagesStore.getState().loadMessages(conversationId);
+  }, [conversationId]);
 
   useEffect(() => {
     // Scroll to bottom when messages change
@@ -33,6 +43,23 @@ export function ChatTab({ conversationId }: Props) {
     sendMessage(conversationId, content, userId);
   };
 
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleLoadMore = useCallback(() => {
+    if (hasMore && !isLoadingMore) {
+      useMessagesStore.getState().loadMoreMessages(conversationId);
+    }
+  }, [conversationId, hasMore, isLoadingMore]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await useMessagesStore.getState().loadMessages(conversationId);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [conversationId]);
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -46,11 +73,23 @@ export function ChatTab({ conversationId }: Props) {
         renderItem={({ item, index }) => {
           const prev = index > 0 ? messages[index - 1] : null;
           const showDateDivider = !prev || !isSameDay(prev.timestamp, item.timestamp);
-          return <MessageBubble message={item} showDateDivider={showDateDivider} />;
+          return <MessageBubble message={item} showDateDivider={showDateDivider} onRetry={retryMessage} />;
         }}
         contentContainerStyle={{ padding: 16, paddingBottom: 8 }}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="interactive"
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#6366F1" />
+        }
+        onStartReached={handleLoadMore}
+        onStartReachedThreshold={0.2}
+        ListHeaderComponent={
+          isLoadingMore ? (
+            <View className="py-3 items-center">
+              <ActivityIndicator color="#6366F1" />
+            </View>
+          ) : null
+        }
       />
       <MessageInput onSend={handleSend} />
     </KeyboardAvoidingView>
