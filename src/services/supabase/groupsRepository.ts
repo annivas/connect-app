@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import { Group, Message, RSVPStatus } from '../../types';
-import { IGroupsRepository, PaginationParams, CreateGroupInput } from '../types';
+import { IGroupsRepository, PaginationParams, CreateGroupInput, UpdateGroupInput } from '../types';
 import {
   adaptMessage,
   adaptSharedObject,
@@ -375,5 +375,148 @@ export const supabaseGroupsRepository: IGroupsRepository = {
       );
 
     if (error) throw new Error(`Failed to update RSVP: ${error.message}`);
+  },
+
+  async addMembers(groupId: string, memberIds: string[]): Promise<void> {
+    const rows = memberIds.map((memberId) => ({
+      group_id: groupId,
+      user_id: memberId,
+      is_admin: false,
+      is_pinned: false,
+      is_muted: false,
+    }));
+
+    const { error } = await supabase.from('group_members').insert(rows);
+    if (error) throw new Error(`Failed to add members: ${error.message}`);
+  },
+
+  async removeMember(groupId: string, memberId: string): Promise<void> {
+    const { error } = await supabase
+      .from('group_members')
+      .delete()
+      .eq('group_id', groupId)
+      .eq('user_id', memberId);
+
+    if (error) throw new Error(`Failed to remove member: ${error.message}`);
+  },
+
+  async leaveGroup(groupId: string): Promise<void> {
+    const userId = getCurrentUserId();
+
+    // Check if current user is the last admin
+    const { data: admins, error: adminError } = await supabase
+      .from('group_members')
+      .select('user_id')
+      .eq('group_id', groupId)
+      .eq('is_admin', true);
+
+    if (adminError) throw new Error(`Failed to check admins: ${adminError.message}`);
+
+    const isLastAdmin = admins.length === 1 && admins[0].user_id === userId;
+
+    if (isLastAdmin) {
+      // Find another member to promote
+      const { data: members, error: memError } = await supabase
+        .from('group_members')
+        .select('user_id')
+        .eq('group_id', groupId)
+        .neq('user_id', userId)
+        .limit(1);
+
+      if (memError) throw new Error(`Failed to find replacement admin: ${memError.message}`);
+
+      if (members.length > 0) {
+        await supabase
+          .from('group_members')
+          .update({ is_admin: true })
+          .eq('group_id', groupId)
+          .eq('user_id', members[0].user_id);
+      }
+    }
+
+    // Remove the user from the group
+    const { error } = await supabase
+      .from('group_members')
+      .delete()
+      .eq('group_id', groupId)
+      .eq('user_id', userId);
+
+    if (error) throw new Error(`Failed to leave group: ${error.message}`);
+  },
+
+  async updateGroup(groupId: string, updates: UpdateGroupInput): Promise<Group> {
+    const userId = getCurrentUserId();
+
+    // Build the update object with only provided fields
+    const updateData: Record<string, unknown> = {};
+    if (updates.name !== undefined) updateData.name = updates.name;
+    if (updates.description !== undefined) updateData.description = updates.description;
+    if (updates.type !== undefined) updateData.type = updates.type;
+
+    const { data: groupRow, error } = await supabase
+      .from('groups')
+      .update(updateData)
+      .eq('id', groupId)
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to update group: ${error.message}`);
+
+    // Fetch current members and admin data to reassemble the group
+    const { data: memberRows, error: memError } = await supabase
+      .from('group_members')
+      .select('user_id, is_admin, is_pinned, is_muted')
+      .eq('group_id', groupId);
+
+    if (memError) throw new Error(`Failed to fetch members: ${memError.message}`);
+
+    const memberIds = memberRows.map((m) => m.user_id);
+    const adminIds = memberRows.filter((m) => m.is_admin).map((m) => m.user_id);
+    const userMem = memberRows.find((m) => m.user_id === userId);
+
+    return adaptGroup({
+      group: groupRow,
+      memberIds,
+      adminIds,
+      isPinned: userMem?.is_pinned ?? false,
+      isMuted: userMem?.is_muted ?? false,
+      events: [],
+      trip: undefined,
+      sharedObjects: [],
+      notes: [],
+    });
+  },
+
+  async toggleAdmin(groupId: string, memberId: string): Promise<void> {
+    const { data, error: readError } = await supabase
+      .from('group_members')
+      .select('is_admin')
+      .eq('group_id', groupId)
+      .eq('user_id', memberId)
+      .single();
+
+    if (readError) throw new Error(`Failed to read admin state: ${readError.message}`);
+
+    const { error } = await supabase
+      .from('group_members')
+      .update({ is_admin: !data.is_admin })
+      .eq('group_id', groupId)
+      .eq('user_id', memberId);
+
+    if (error) throw new Error(`Failed to toggle admin: ${error.message}`);
+  },
+
+  async searchGroupMessages(groupId: string, query: string): Promise<Message[]> {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('context_type', 'group')
+      .eq('context_id', groupId)
+      .ilike('content', `%${query}%`)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) throw new Error(`Failed to search group messages: ${error.message}`);
+    return data.reverse().map(adaptMessage);
   },
 };

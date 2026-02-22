@@ -209,4 +209,11 @@ export const mockMessagesRepository: IMessagesRepository = {
         : c.metadata,
     }));
   },
+
+  async searchMessages(conversationId: string, query: string): Promise<Message[]> {
+    const q = query.toLowerCase();
+    return messages.filter(
+      (m) => m.conversationId === conversationId && m.content.toLowerCase().includes(q),
+    );
+  },
 };

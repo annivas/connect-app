@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { config } from '../config/env';
 import { adaptMessage } from '../services/supabase/adapters';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import type { CreateGroupInput } from '../services/types';
+import type { CreateGroupInput, UpdateGroupInput } from '../services/types';
 
 const PAGE_SIZE = 50;
 
@@ -45,6 +45,11 @@ interface GroupsState {
   toggleMute: (groupId: string) => void;
   createGroup: (input: CreateGroupInput) => Promise<Group>;
   updateRSVP: (groupId: string, eventId: string, status: RSVPStatus) => void;
+  addMembers: (groupId: string, memberIds: string[]) => void;
+  removeMember: (groupId: string, memberId: string) => void;
+  leaveGroup: (groupId: string) => void;
+  updateGroup: (groupId: string, updates: UpdateGroupInput) => Promise<Group>;
+  toggleAdmin: (groupId: string, memberId: string) => void;
 }
 
 export const useGroupsStore = create<GroupsState>((set, get) => ({
@@ -486,6 +491,129 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
     groupsRepository.updateRSVP(eventId, status).catch(() => {
       // Revert by re-fetching
       get().init();
+    });
+  },
+
+  addMembers: (groupId, memberIds) => {
+    const group = get().groups.find((g) => g.id === groupId);
+    if (!group) return;
+    const originalMembers = [...group.members];
+
+    // Optimistic: append new members (dedup)
+    set((state) => ({
+      groups: state.groups.map((g) =>
+        g.id === groupId
+          ? { ...g, members: [...g.members, ...memberIds.filter((id) => !g.members.includes(id))] }
+          : g,
+      ),
+    }));
+
+    groupsRepository.addMembers(groupId, memberIds).catch(() => {
+      // Revert on failure
+      set((state) => ({
+        groups: state.groups.map((g) =>
+          g.id === groupId ? { ...g, members: originalMembers } : g,
+        ),
+      }));
+    });
+  },
+
+  removeMember: (groupId, memberId) => {
+    const group = get().groups.find((g) => g.id === groupId);
+    if (!group) return;
+    const originalMembers = [...group.members];
+    const originalAdmins = [...group.admins];
+
+    // Optimistic: filter member from members + admins
+    set((state) => ({
+      groups: state.groups.map((g) =>
+        g.id === groupId
+          ? {
+              ...g,
+              members: g.members.filter((id) => id !== memberId),
+              admins: g.admins.filter((id) => id !== memberId),
+            }
+          : g,
+      ),
+    }));
+
+    groupsRepository.removeMember(groupId, memberId).catch(() => {
+      set((state) => ({
+        groups: state.groups.map((g) =>
+          g.id === groupId ? { ...g, members: originalMembers, admins: originalAdmins } : g,
+        ),
+      }));
+    });
+  },
+
+  leaveGroup: (groupId) => {
+    const group = get().groups.find((g) => g.id === groupId);
+    if (!group) return;
+    const originalGroups = [...get().groups];
+
+    // Optimistic: remove group from list (user won't see it after leaving)
+    set((state) => ({
+      groups: state.groups.filter((g) => g.id !== groupId),
+    }));
+
+    groupsRepository.leaveGroup(groupId).catch(() => {
+      // Revert on failure
+      set({ groups: originalGroups });
+    });
+  },
+
+  updateGroup: async (groupId, updates) => {
+    const group = get().groups.find((g) => g.id === groupId);
+    if (!group) throw new Error('Group not found');
+    const original = { ...group };
+
+    // Optimistic: apply updates
+    set((state) => ({
+      groups: state.groups.map((g) =>
+        g.id === groupId ? { ...g, ...updates } : g,
+      ),
+    }));
+
+    try {
+      const updated = await groupsRepository.updateGroup(groupId, updates);
+      set((state) => ({
+        groups: state.groups.map((g) => (g.id === groupId ? { ...g, ...updated } : g)),
+      }));
+      return updated;
+    } catch (err) {
+      // Revert on failure
+      set((state) => ({
+        groups: state.groups.map((g) => (g.id === groupId ? original : g)),
+      }));
+      throw err;
+    }
+  },
+
+  toggleAdmin: (groupId, memberId) => {
+    const group = get().groups.find((g) => g.id === groupId);
+    if (!group) return;
+    const originalAdmins = [...group.admins];
+
+    const isAdmin = group.admins.includes(memberId);
+    set((state) => ({
+      groups: state.groups.map((g) =>
+        g.id === groupId
+          ? {
+              ...g,
+              admins: isAdmin
+                ? g.admins.filter((id) => id !== memberId)
+                : [...g.admins, memberId],
+            }
+          : g,
+      ),
+    }));
+
+    groupsRepository.toggleAdmin(groupId, memberId).catch(() => {
+      set((state) => ({
+        groups: state.groups.map((g) =>
+          g.id === groupId ? { ...g, admins: originalAdmins } : g,
+        ),
+      }));
     });
   },
 }));

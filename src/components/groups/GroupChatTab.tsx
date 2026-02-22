@@ -31,12 +31,14 @@ function useKeyboardOffset() {
 
 interface Props {
   groupId: string;
+  highlightText?: string;
+  matchingMessageIds?: Set<string>;
 }
 
 // Messages within this window from the same sender are grouped (no avatar/name repeated)
 const GROUP_THRESHOLD_MINUTES = 3;
 
-export function GroupChatTab({ groupId }: Props) {
+export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Props) {
   const listRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
   const { containerRef, offset: kbOffset, onLayout } = useKeyboardOffset();
@@ -177,6 +179,8 @@ export function GroupChatTab({ groupId }: Props) {
               onReact={handleReact}
               onReply={handleReply}
               onEdit={handleEdit}
+              highlightText={highlightText}
+              isSearchMatch={matchingMessageIds?.has(item.id)}
             />
           );
         }}

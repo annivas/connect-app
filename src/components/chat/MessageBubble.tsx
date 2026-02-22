@@ -14,6 +14,7 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { ReactionPicker } from './ReactionPicker';
+import { renderHighlightedText } from '../../utils/highlightText';
 import { Message, Reaction } from '../../types';
 import { useUserStore } from '../../stores/useUserStore';
 
@@ -28,6 +29,8 @@ interface Props {
   onReact?: (messageId: string, emoji: string) => void;
   onReply?: (message: Message) => void;
   onEdit?: (messageId: string, currentContent: string) => void;
+  highlightText?: string;
+  isSearchMatch?: boolean;
 }
 
 // ─── Date Divider ────────────────────────────
@@ -180,6 +183,8 @@ export function MessageBubble({
   onReact,
   onReply,
   onEdit,
+  highlightText,
+  isSearchMatch,
 }: Props) {
   const currentUserId = useUserStore((s) => s.currentUser?.id);
   const getUserById = useUserStore((s) => s.getUserById);
@@ -425,7 +430,7 @@ export function MessageBubble({
                           ? 'bg-accent-primary/60'
                           : 'bg-accent-primary'
                         : 'bg-surface-elevated'
-                    }`}
+                    } ${isSearchMatch ? 'border-l-2 border-status-warning' : ''}`}
                   >
                     {/* Inline reply preview */}
                     {message.replyTo && (
@@ -449,13 +454,21 @@ export function MessageBubble({
                       </View>
                     )}
 
-                    <Text
-                      className={`text-[15px] leading-[21px] ${
-                        isMine ? 'text-white' : 'text-text-primary'
-                      }`}
-                    >
-                      {message.content}
-                    </Text>
+                    {highlightText ? (
+                      renderHighlightedText(
+                        message.content,
+                        highlightText,
+                        `text-[15px] leading-[21px] ${isMine ? 'text-white' : 'text-text-primary'}`,
+                      )
+                    ) : (
+                      <Text
+                        className={`text-[15px] leading-[21px] ${
+                          isMine ? 'text-white' : 'text-text-primary'
+                        }`}
+                      >
+                        {message.content}
+                      </Text>
+                    )}
 
                     {/* Inline timestamp + status */}
                     {isLastInGroup && (

@@ -12,7 +12,10 @@ import { Avatar } from '../../../src/components/ui/Avatar';
 import { Card } from '../../../src/components/ui/Card';
 import { EmptyState } from '../../../src/components/ui/EmptyState';
 import { GroupChatTab } from '../../../src/components/groups/GroupChatTab';
+import { GroupInfoSheet } from '../../../src/components/groups/GroupInfoSheet';
 import { SharedTab } from '../../../src/components/chat/SharedTab';
+import { InChatSearchBar } from '../../../src/components/chat/InChatSearchBar';
+import { useMessageSearch } from '../../../src/hooks/useMessageSearch';
 import { useGroupsStore } from '../../../src/stores/useGroupsStore';
 import { useUserStore } from '../../../src/stores/useUserStore';
 import type { RSVPStatus } from '../../../src/types';
@@ -262,6 +265,7 @@ export default function GroupDetailScreen() {
   const navigation = useNavigation();
   const layout = useWindowDimensions();
   const [tabIndex, setTabIndex] = useState(0);
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
 
   // Hide the bottom tab bar when this screen is focused
   const parentNavigation = navigation.getParent();
@@ -282,6 +286,17 @@ export default function GroupDetailScreen() {
   }, [parentNavigation]);
 
   const group = useGroupsStore(useShallow((s) => s.getGroupById(id!)));
+  const groupMessages = useGroupsStore(useShallow((s) => s.getGroupMessages(id!)));
+
+  const {
+    searchQuery: chatSearchQuery,
+    setSearchQuery: setChatSearchQuery,
+    isSearching,
+    openSearch,
+    clearSearch,
+    matchingMessageIds,
+    matchCount,
+  } = useMessageSearch(groupMessages);
 
   const showMenu = () => {
     const { togglePin, toggleMute, getGroupById } = useGroupsStore.getState();
@@ -290,6 +305,7 @@ export default function GroupDetailScreen() {
     const isMuted = g?.isMuted ?? false;
 
     const options = [
+      'Group Info',
       isPinned ? 'Unpin' : 'Pin',
       isMuted ? 'Unmute' : 'Mute',
       'Cancel',
@@ -297,16 +313,18 @@ export default function GroupDetailScreen() {
 
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
-        { options, cancelButtonIndex: 2 },
+        { options, cancelButtonIndex: 3 },
         (idx) => {
-          if (idx === 0) togglePin(id!);
-          if (idx === 1) toggleMute(id!);
+          if (idx === 0) setShowGroupInfo(true);
+          if (idx === 1) togglePin(id!);
+          if (idx === 2) toggleMute(id!);
         }
       );
     } else {
       Alert.alert('Options', undefined, [
-        { text: options[0], onPress: () => togglePin(id!) },
-        { text: options[1], onPress: () => toggleMute(id!) },
+        { text: 'Group Info', onPress: () => setShowGroupInfo(true) },
+        { text: options[1], onPress: () => togglePin(id!) },
+        { text: options[2], onPress: () => toggleMute(id!) },
         { text: 'Cancel', style: 'cancel' },
       ]);
     }
@@ -333,7 +351,13 @@ export default function GroupDetailScreen() {
   }: SceneRendererProps & { route: Route }) => {
     switch (route.key) {
       case 'chat':
-        return <GroupChatTab groupId={id!} />;
+        return (
+          <GroupChatTab
+            groupId={id!}
+            highlightText={isSearching ? chatSearchQuery : undefined}
+            matchingMessageIds={isSearching ? matchingMessageIds : undefined}
+          />
+        );
       case 'events':
         return <EventsTab groupId={id!} />;
       case 'shared':
@@ -350,7 +374,10 @@ export default function GroupDetailScreen() {
       {/* Header */}
       <View className="flex-row items-center px-2 pb-2 border-b border-border-subtle">
         <IconButton icon="chevron-back" onPress={() => router.back()} />
-        <View className="flex-1 flex-row items-center ml-1">
+        <Pressable
+          onPress={() => setShowGroupInfo(true)}
+          className="flex-1 flex-row items-center ml-1"
+        >
           <Avatar uri={group.avatar} size="md" />
           <View className="ml-3 flex-1">
             <Text className="text-text-primary text-[17px] font-semibold">
@@ -360,9 +387,19 @@ export default function GroupDetailScreen() {
               {group.members.length} members
             </Text>
           </View>
-        </View>
+        </Pressable>
+        <IconButton icon="search" onPress={openSearch} />
         <IconButton icon="ellipsis-horizontal" onPress={showMenu} />
       </View>
+
+      {/* In-chat search bar */}
+      <InChatSearchBar
+        visible={isSearching}
+        query={chatSearchQuery}
+        onChangeQuery={setChatSearchQuery}
+        matchCount={matchCount}
+        onClose={clearSearch}
+      />
 
       {/* Top Tabs */}
       <TabView
@@ -390,6 +427,13 @@ export default function GroupDetailScreen() {
             inactiveColor="#A8937F"
           />
         )}
+      />
+
+      <GroupInfoSheet
+        group={group}
+        visible={showGroupInfo}
+        onClose={() => setShowGroupInfo(false)}
+        onLeave={() => router.back()}
       />
     </SafeAreaView>
   );

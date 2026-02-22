@@ -1,4 +1,4 @@
-import { Conversation, Message, MessageType, Group, User, Collection, Note, Reminder, LedgerEntry, RSVPStatus } from '../types';
+import { Conversation, Message, MessageType, Group, GroupType, User, Collection, Note, Reminder, LedgerEntry, RSVPStatus } from '../types';
 
 // ─── Pagination ─────────────────────────────
 export interface PaginationParams {
@@ -36,6 +36,12 @@ export type CreateGroupInput = {
   memberIds: string[]; // excluding creator — creator auto-added as admin
 };
 
+export type UpdateGroupInput = {
+  name?: string;
+  description?: string;
+  type?: GroupType;
+};
+
 // ─── Messages Repository ────────────────────
 export interface IMessagesRepository {
   getConversations(): Promise<Conversation[]>;
@@ -58,6 +64,7 @@ export interface IMessagesRepository {
   toggleReminderComplete(reminderId: string): Promise<void>;
   createLedgerEntry(conversationId: string, input: CreateLedgerEntryInput): Promise<LedgerEntry>;
   settleLedgerEntry(entryId: string): Promise<void>;
+  searchMessages(conversationId: string, query: string): Promise<Message[]>;
 }
 
 // ─── Groups Repository ──────────────────────
@@ -77,6 +84,12 @@ export interface IGroupsRepository {
   toggleMute(groupId: string): Promise<void>;
   createGroup(input: CreateGroupInput): Promise<Group>;
   updateRSVP(eventId: string, status: RSVPStatus): Promise<void>;
+  addMembers(groupId: string, memberIds: string[]): Promise<void>;
+  removeMember(groupId: string, memberId: string): Promise<void>;
+  leaveGroup(groupId: string): Promise<void>;
+  updateGroup(groupId: string, updates: UpdateGroupInput): Promise<Group>;
+  toggleAdmin(groupId: string, memberId: string): Promise<void>;
+  searchGroupMessages(groupId: string, query: string): Promise<Message[]>;
 }
 
 // ─── User Repository ────────────────────────

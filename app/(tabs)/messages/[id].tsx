@@ -12,6 +12,8 @@ import { NotesTab } from '../../../src/components/chat/NotesTab';
 import { RemindersTab } from '../../../src/components/chat/RemindersTab';
 import { LedgerTab } from '../../../src/components/chat/LedgerTab';
 import { UserProfileSheet } from '../../../src/components/chat/UserProfileSheet';
+import { InChatSearchBar } from '../../../src/components/chat/InChatSearchBar';
+import { useMessageSearch } from '../../../src/hooks/useMessageSearch';
 import { useMessagesStore } from '../../../src/stores/useMessagesStore';
 import { useUserStore } from '../../../src/stores/useUserStore';
 
@@ -52,7 +54,18 @@ export default function ConversationDetailScreen() {
   }, [parentNavigation]);
 
   const conversation = useMessagesStore(useShallow((s) => s.getConversationById(id!)));
+  const messages = useMessagesStore(useShallow((s) => s.getMessagesByConversationId(id!)));
   const getUserById = useUserStore((s) => s.getUserById);
+
+  const {
+    searchQuery: chatSearchQuery,
+    setSearchQuery: setChatSearchQuery,
+    isSearching,
+    openSearch,
+    clearSearch,
+    matchingMessageIds,
+    matchCount,
+  } = useMessageSearch(messages);
 
   const showMenu = () => {
     const { togglePin, toggleMute, getConversationById } = useMessagesStore.getState();
@@ -101,7 +114,13 @@ export default function ConversationDetailScreen() {
   }: SceneRendererProps & { route: Route }) => {
     switch (route.key) {
       case 'chat':
-        return <ChatTab conversationId={id!} />;
+        return (
+          <ChatTab
+            conversationId={id!}
+            highlightText={isSearching ? chatSearchQuery : undefined}
+            matchingMessageIds={isSearching ? matchingMessageIds : undefined}
+          />
+        );
       case 'shared':
         return <SharedTab conversationId={id!} />;
       case 'notes':
@@ -140,11 +159,21 @@ export default function ConversationDetailScreen() {
           </View>
         </Pressable>
 
+        <IconButton icon="search" onPress={openSearch} />
         <IconButton
           icon="ellipsis-horizontal"
           onPress={showMenu}
         />
       </View>
+
+      {/* In-chat search bar */}
+      <InChatSearchBar
+        visible={isSearching}
+        query={chatSearchQuery}
+        onChangeQuery={setChatSearchQuery}
+        matchCount={matchCount}
+        onClose={clearSearch}
+      />
 
       {/* Top Tabs */}
       <TabView
