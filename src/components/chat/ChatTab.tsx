@@ -5,6 +5,7 @@ import { isSameDay } from 'date-fns';
 import { MessageBubble } from './MessageBubble';
 import { MessageInput } from './MessageInput';
 import { useMessagesStore } from '../../stores/useMessagesStore';
+import { useUserStore } from '../../stores/useUserStore';
 
 interface Props {
   conversationId: string;
@@ -27,7 +28,9 @@ export function ChatTab({ conversationId }: Props) {
   }, [messages.length]);
 
   const handleSend = (content: string) => {
-    sendMessage(conversationId, content);
+    const userId = useUserStore.getState().currentUser?.id;
+    if (!userId) return;
+    sendMessage(conversationId, content, userId);
   };
 
   return (

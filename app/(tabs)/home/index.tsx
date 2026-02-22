@@ -76,7 +76,7 @@ export default function HomeScreen() {
             {getGreeting()},
           </Text>
           <Text className="text-text-primary text-3xl font-bold">
-            {currentUser.name}
+            {currentUser?.name}
           </Text>
         </View>
 

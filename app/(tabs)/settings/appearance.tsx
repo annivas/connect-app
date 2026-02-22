@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { IconButton } from '../../../src/components/ui/IconButton';
+import { useSettingsStore } from '../../../src/stores/useSettingsStore';
 
 function ThemeOption({
   icon,
@@ -84,8 +85,10 @@ const ACCENT_COLORS = [
 
 export default function AppearanceScreen() {
   const router = useRouter();
-  const [theme, setTheme] = useState<'dark' | 'light' | 'system'>('dark');
-  const [accent, setAccent] = useState('#6366F1');
+  const theme = useSettingsStore((s) => s.theme);
+  const setTheme = useSettingsStore((s) => s.setTheme);
+  const accent = useSettingsStore((s) => s.accentColor);
+  const setAccent = useSettingsStore((s) => s.setAccentColor);
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-background-primary">

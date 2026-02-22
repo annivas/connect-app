@@ -43,7 +43,7 @@ function Divider() {
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const currentUser = useUserStore((s) => s.currentUser);
+  const currentUser = useUserStore((s) => s.currentUser)!;
 
   const showComingSoon = (feature: string) => {
     Alert.alert(feature, 'This feature is coming soon!', [{ text: 'OK' }]);

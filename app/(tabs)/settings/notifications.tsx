@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, ScrollView, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { IconButton } from '../../../src/components/ui/IconButton';
+import { useSettingsStore } from '../../../src/stores/useSettingsStore';
 
 function ToggleRow({
   icon,
@@ -42,12 +43,8 @@ function ToggleRow({
 
 export default function NotificationsScreen() {
   const router = useRouter();
-  const [pushEnabled, setPushEnabled] = useState(true);
-  const [sounds, setSounds] = useState(true);
-  const [badges, setBadges] = useState(true);
-  const [messagePreview, setMessagePreview] = useState(true);
-  const [groupNotifs, setGroupNotifs] = useState(true);
-  const [reminderNotifs, setReminderNotifs] = useState(true);
+  const notifications = useSettingsStore((s) => s.notifications);
+  const updateNotification = useSettingsStore((s) => s.updateNotification);
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-background-primary">
@@ -72,24 +69,24 @@ export default function NotificationsScreen() {
             icon="notifications-outline"
             title="Push Notifications"
             subtitle="Receive push notifications"
-            value={pushEnabled}
-            onToggle={setPushEnabled}
+            value={notifications.push}
+            onToggle={(val) => updateNotification('push', val)}
           />
           <View className="h-px bg-border-subtle mx-4" />
           <ToggleRow
             icon="volume-high-outline"
             title="Sounds"
             subtitle="Play notification sounds"
-            value={sounds}
-            onToggle={setSounds}
+            value={notifications.sounds}
+            onToggle={(val) => updateNotification('sounds', val)}
           />
           <View className="h-px bg-border-subtle mx-4" />
           <ToggleRow
             icon="ellipse"
             title="Badge Count"
             subtitle="Show unread count on app icon"
-            value={badges}
-            onToggle={setBadges}
+            value={notifications.badges}
+            onToggle={(val) => updateNotification('badges', val)}
           />
         </View>
 
@@ -102,24 +99,24 @@ export default function NotificationsScreen() {
             icon="eye-outline"
             title="Message Preview"
             subtitle="Show message content in notifications"
-            value={messagePreview}
-            onToggle={setMessagePreview}
+            value={notifications.messagePreview}
+            onToggle={(val) => updateNotification('messagePreview', val)}
           />
           <View className="h-px bg-border-subtle mx-4" />
           <ToggleRow
             icon="people-outline"
             title="Group Notifications"
             subtitle="Get notified for group messages"
-            value={groupNotifs}
-            onToggle={setGroupNotifs}
+            value={notifications.groupNotifications}
+            onToggle={(val) => updateNotification('groupNotifications', val)}
           />
           <View className="h-px bg-border-subtle mx-4" />
           <ToggleRow
             icon="alarm-outline"
             title="Reminder Alerts"
             subtitle="Get notified for upcoming reminders"
-            value={reminderNotifs}
-            onToggle={setReminderNotifs}
+            value={notifications.reminderAlerts}
+            onToggle={(val) => updateNotification('reminderAlerts', val)}
           />
         </View>
       </ScrollView>

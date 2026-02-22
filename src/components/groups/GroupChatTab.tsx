@@ -6,7 +6,6 @@ import { useShallow } from 'zustand/react/shallow';
 import { MessageInput } from '../chat/MessageInput';
 import { useGroupsStore } from '../../stores/useGroupsStore';
 import { useUserStore } from '../../stores/useUserStore';
-import { CURRENT_USER_ID } from '../../mocks/users';
 import type { Message } from '../../types';
 
 // ─── Day divider ─────────────────────────────
@@ -31,7 +30,8 @@ function DateDivider({ date }: { date: Date }) {
 // ─── Group message bubble ────────────────────
 
 function GroupMessageBubble({ message, showDateDivider }: { message: Message; showDateDivider?: boolean }) {
-  const isMine = message.senderId === CURRENT_USER_ID;
+  const currentUserId = useUserStore((s) => s.currentUser?.id);
+  const isMine = message.senderId === currentUserId;
   const getUserById = useUserStore((s) => s.getUserById);
   const sender = getUserById(message.senderId);
 
@@ -94,7 +94,9 @@ export function GroupChatTab({ groupId }: Props) {
   }, [messages.length]);
 
   const handleSend = (content: string) => {
-    sendGroupMessage(groupId, content);
+    const userId = useUserStore.getState().currentUser?.id;
+    if (!userId) return;
+    sendGroupMessage(groupId, content, userId);
   };
 
   return (

@@ -31,7 +31,7 @@ function InfoRow({
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const currentUser = useUserStore((s) => s.currentUser);
+  const currentUser = useUserStore((s) => s.currentUser)!;
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-background-primary">

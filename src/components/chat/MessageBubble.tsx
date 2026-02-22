@@ -4,7 +4,7 @@ import { format, isToday, isYesterday } from 'date-fns';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { Message } from '../../types';
-import { CURRENT_USER_ID } from '../../mocks/users';
+import { useUserStore } from '../../stores/useUserStore';
 
 interface Props {
   message: Message;
@@ -29,7 +29,8 @@ function DateDivider({ date }: { date: Date }) {
 }
 
 export function MessageBubble({ message, showDateDivider }: Props) {
-  const isMine = message.senderId === CURRENT_USER_ID;
+  const currentUserId = useUserStore((s) => s.currentUser?.id);
+  const isMine = message.senderId === currentUserId;
 
   const handleLongPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);

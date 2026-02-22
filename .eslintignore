@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.expo/
+ios/
+android/
+web-build/
+*.config.js

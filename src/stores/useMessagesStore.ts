@@ -1,26 +1,52 @@
 import { create } from 'zustand';
 import { Message, Conversation } from '../types';
-import { MOCK_MESSAGES } from '../mocks/messages';
-import { MOCK_CONVERSATIONS } from '../mocks/conversations';
-import { CURRENT_USER_ID } from '../mocks/users';
+import { messagesRepository } from '../services';
 
 interface MessagesState {
   conversations: Conversation[];
   messages: Message[];
+  isLoading: boolean;
+  error: string | null;
 
+  init: () => Promise<void>;
   getConversationById: (id: string) => Conversation | undefined;
   getMessagesByConversationId: (conversationId: string) => Message[];
   getUnreadCount: () => number;
 
-  sendMessage: (conversationId: string, content: string) => void;
+  sendMessage: (conversationId: string, content: string, senderId: string) => void;
   markAsRead: (conversationId: string) => void;
   togglePin: (conversationId: string) => void;
   toggleMute: (conversationId: string) => void;
 }
 
 export const useMessagesStore = create<MessagesState>((set, get) => ({
-  conversations: MOCK_CONVERSATIONS,
-  messages: MOCK_MESSAGES,
+  conversations: [],
+  messages: [],
+  isLoading: false,
+  error: null,
+
+  init: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const [conversations, messages] = await Promise.all([
+        messagesRepository.getConversations(),
+        // Load all messages upfront for now; Phase 4 adds pagination
+        Promise.resolve([]),
+      ]);
+      // Flatten all conversation messages
+      const allMessages: Message[] = [];
+      for (const conv of conversations) {
+        const convMessages = await messagesRepository.getMessages(conv.id);
+        allMessages.push(...convMessages);
+      }
+      set({ conversations, messages: allMessages, isLoading: false });
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : 'Failed to load conversations',
+        isLoading: false,
+      });
+    }
+  },
 
   getConversationById: (id) => get().conversations.find((c) => c.id === id),
 
@@ -30,11 +56,12 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
   getUnreadCount: () =>
     get().conversations.reduce((acc, conv) => acc + conv.unreadCount, 0),
 
-  sendMessage: (conversationId, content) => {
+  sendMessage: (conversationId, content, senderId) => {
+    // Optimistic update
     const newMessage: Message = {
       id: `msg-${Date.now()}`,
       conversationId,
-      senderId: CURRENT_USER_ID,
+      senderId,
       content,
       timestamp: new Date(),
       type: 'text',
@@ -46,29 +73,40 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
       conversations: state.conversations.map((c) =>
         c.id === conversationId
           ? { ...c, lastMessage: newMessage, updatedAt: new Date() }
-          : c
+          : c,
       ),
     }));
+
+    // Fire-and-forget to repository
+    messagesRepository.sendMessage(conversationId, content, senderId).catch(() => {
+      // In Phase 4, this will handle rollback for failed sends
+    });
   },
 
-  markAsRead: (conversationId) =>
+  markAsRead: (conversationId) => {
     set((state) => ({
       conversations: state.conversations.map((c) =>
-        c.id === conversationId ? { ...c, unreadCount: 0 } : c
+        c.id === conversationId ? { ...c, unreadCount: 0 } : c,
       ),
-    })),
+    }));
+    messagesRepository.markAsRead(conversationId).catch(() => {});
+  },
 
-  togglePin: (conversationId) =>
+  togglePin: (conversationId) => {
     set((state) => ({
       conversations: state.conversations.map((c) =>
-        c.id === conversationId ? { ...c, isPinned: !c.isPinned } : c
+        c.id === conversationId ? { ...c, isPinned: !c.isPinned } : c,
       ),
-    })),
+    }));
+    messagesRepository.togglePin(conversationId).catch(() => {});
+  },
 
-  toggleMute: (conversationId) =>
+  toggleMute: (conversationId) => {
     set((state) => ({
       conversations: state.conversations.map((c) =>
-        c.id === conversationId ? { ...c, isMuted: !c.isMuted } : c
+        c.id === conversationId ? { ...c, isMuted: !c.isMuted } : c,
       ),
-    })),
+    }));
+    messagesRepository.toggleMute(conversationId).catch(() => {});
+  },
 }));
