@@ -85,7 +85,7 @@ function FAB({ onPress }: { onPress: () => void }) {
       onPress={onPress}
       className="absolute bottom-4 right-4 w-14 h-14 rounded-full bg-accent-primary items-center justify-center"
       style={{
-        shadowColor: '#6366F1',
+        shadowColor: '#D4764E',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,

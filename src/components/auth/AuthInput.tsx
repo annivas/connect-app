@@ -28,13 +28,13 @@ export function AuthInput({ label, icon, error, secureTextEntry, ...rest }: Auth
           <Ionicons
             name={icon}
             size={18}
-            color={isFocused ? '#6366F1' : '#6B6B76'}
+            color={isFocused ? '#D4764E' : '#A8937F'}
             style={{ marginRight: 10 }}
           />
         )}
         <TextInput
           className="flex-1 text-text-primary text-[15px]"
-          placeholderTextColor="#6B6B76"
+          placeholderTextColor="#A8937F"
           secureTextEntry={secureTextEntry && !isPasswordVisible}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
@@ -45,7 +45,7 @@ export function AuthInput({ label, icon, error, secureTextEntry, ...rest }: Auth
             <Ionicons
               name={isPasswordVisible ? 'eye-off-outline' : 'eye-outline'}
               size={20}
-              color="#6B6B76"
+              color="#A8937F"
             />
           </Pressable>
         )}

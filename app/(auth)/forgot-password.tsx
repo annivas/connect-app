@@ -54,7 +54,7 @@ export default function ForgotPasswordScreen() {
           {/* Header */}
           <View className="items-center mb-8">
             <View className="w-16 h-16 bg-accent-primary/20 rounded-2xl items-center justify-center mb-4">
-              <Ionicons name="key-outline" size={28} color="#6366F1" />
+              <Ionicons name="key-outline" size={28} color="#D4764E" />
             </View>
             <Text className="text-text-primary text-2xl font-bold">Reset password</Text>
             <Text className="text-text-tertiary text-sm mt-1 text-center px-4">
@@ -66,7 +66,7 @@ export default function ForgotPasswordScreen() {
             /* Success State */
             <View className="bg-status-success/10 border border-status-success/30 rounded-xl px-4 py-5 mb-6">
               <View className="items-center">
-                <Ionicons name="checkmark-circle" size={32} color="#10B981" />
+                <Ionicons name="checkmark-circle" size={32} color="#2D9F6F" />
                 <Text className="text-status-success text-base font-semibold mt-2">
                   Check your email
                 </Text>
@@ -109,7 +109,7 @@ export default function ForgotPasswordScreen() {
 
           {/* Back to Sign In */}
           <Pressable onPress={() => router.back()} className="flex-row items-center justify-center mt-6">
-            <Ionicons name="arrow-back" size={16} color="#6366F1" />
+            <Ionicons name="arrow-back" size={16} color="#D4764E" />
             <Text className="text-accent-primary text-sm font-semibold ml-1">
               Back to Sign In
             </Text>

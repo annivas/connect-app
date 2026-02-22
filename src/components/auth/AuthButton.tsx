@@ -38,7 +38,7 @@ export function AuthButton({
       disabled={isDisabled}
     >
       {isLoading ? (
-        <ActivityIndicator color={isPrimary ? '#FFFFFF' : '#A0A0AB'} size="small" />
+        <ActivityIndicator color={isPrimary ? '#FFFFFF' : '#7A6355'} size="small" />
       ) : (
         <Text
           className={`text-[15px] font-semibold ${

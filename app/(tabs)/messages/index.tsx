@@ -67,7 +67,7 @@ export default function MessagesScreen() {
         contentContainerStyle={filtered.length === 0 ? { flex: 1 } : { paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6366F1" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#D4764E" />
         }
         ListEmptyComponent={
           <EmptyState

@@ -12,9 +12,9 @@ interface AvatarProps {
 const sizeMap = { sm: 32, md: 40, lg: 52, xl: 80 };
 
 const statusColors = {
-  online: '#10B981',
-  away: '#F59E0B',
-  offline: '#6B6B76',
+  online: '#2D9F6F',
+  away: '#D4964E',
+  offline: '#A8937F',
 };
 
 export function Avatar({
@@ -45,7 +45,7 @@ export function Avatar({
             borderRadius: dot / 2,
             backgroundColor: statusColors[status],
             borderWidth: 2,
-            borderColor: '#0A0A0F',
+            borderColor: '#FFF8F0',
           }}
         />
       )}

@@ -98,7 +98,7 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6366F1" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#D4764E" />
         }
       >
         {/* Header */}
@@ -117,21 +117,21 @@ export default function HomeScreen() {
             icon="alarm-outline"
             label="Reminders"
             count={pendingReminders.length}
-            color="#F59E0B"
+            color="#D4964E"
             onPress={navigateToMessages}
           />
           <QuickAction
             icon="wallet-outline"
             label="Expenses"
             count={unsettled.length}
-            color="#10B981"
+            color="#2D9F6F"
             onPress={navigateToMessages}
           />
           <QuickAction
             icon="document-text-outline"
             label="Notes"
             count={allNotes.length}
-            color="#3B82F6"
+            color="#5B8EC9"
             onPress={navigateToMessages}
           />
         </View>
@@ -178,7 +178,7 @@ export default function HomeScreen() {
               <Ionicons
                 name="document-text-outline"
                 size={24}
-                color="#6B6B76"
+                color="#A8937F"
               />
               <Text className="text-text-tertiary text-sm mt-2">
                 No notes yet
@@ -203,7 +203,7 @@ export default function HomeScreen() {
             ))
           ) : (
             <View className="bg-surface rounded-2xl p-6 items-center">
-              <Ionicons name="checkmark-circle" size={24} color="#10B981" />
+              <Ionicons name="checkmark-circle" size={24} color="#2D9F6F" />
               <Text className="text-text-tertiary text-sm mt-2">
                 All caught up!
               </Text>
@@ -229,7 +229,7 @@ export default function HomeScreen() {
             ))
           ) : (
             <View className="bg-surface rounded-2xl p-6 items-center">
-              <Ionicons name="wallet-outline" size={24} color="#6B6B76" />
+              <Ionicons name="wallet-outline" size={24} color="#A8937F" />
               <Text className="text-text-tertiary text-sm mt-2">
                 No pending expenses
               </Text>

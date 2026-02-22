@@ -83,7 +83,7 @@ function GroupMessageBubble({
         </Text>
         {isMine && message.sendStatus === 'sending' && (
           <View className="flex-row items-center mt-0.5">
-            <Ionicons name="time-outline" size={12} color="#6B6B76" />
+            <Ionicons name="time-outline" size={12} color="#A8937F" />
           </View>
         )}
         {isMine && message.sendStatus === 'failed' && (
@@ -94,7 +94,7 @@ function GroupMessageBubble({
             }}
             className="flex-row items-center mt-0.5"
           >
-            <Ionicons name="alert-circle" size={14} color="#EF4444" />
+            <Ionicons name="alert-circle" size={14} color="#C94F4F" />
             <Text className="text-status-error text-[11px] ml-1">Tap to retry</Text>
           </Pressable>
         )}
@@ -177,7 +177,7 @@ export function GroupChatTab({ groupId }: Props) {
         ListHeaderComponent={
           isLoadingMore ? (
             <View className="py-3 items-center">
-              <ActivityIndicator color="#6366F1" />
+              <ActivityIndicator color="#D4764E" />
             </View>
           ) : null
         }

@@ -12,9 +12,9 @@ interface Props {
 
 function StatusPill({ status }: { status: User['status'] }) {
   const colors: Record<User['status'], string> = {
-    online: '#10B981',
-    away: '#F59E0B',
-    offline: '#6B6B76',
+    online: '#2D9F6F',
+    away: '#D4964E',
+    offline: '#A8937F',
   };
 
   const labels: Record<User['status'], string> = {
@@ -37,7 +37,7 @@ function ContactRow({ icon, value }: { icon: string; value: string }) {
   return (
     <View className="flex-row items-center py-3">
       <View className="w-9 h-9 rounded-full bg-surface-elevated items-center justify-center">
-        <Ionicons name={icon as any} size={18} color="#6B6B76" />
+        <Ionicons name={icon as any} size={18} color="#A8937F" />
       </View>
       <Text className="text-text-primary text-[15px] ml-3">{value}</Text>
     </View>

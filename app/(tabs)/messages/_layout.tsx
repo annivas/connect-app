@@ -5,7 +5,7 @@ export default function MessagesLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: '#0A0A0F' },
+        contentStyle: { backgroundColor: '#FFF8F0' },
         animation: 'slide_from_right',
       }}
     >

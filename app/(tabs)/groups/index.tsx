@@ -49,7 +49,7 @@ export default function GroupsScreen() {
             icon="add-circle"
             onPress={() => setIsModalVisible(true)}
             size={28}
-            color="#6366F1"
+            color="#D4764E"
           />
         </View>
         <SearchBar
@@ -66,7 +66,7 @@ export default function GroupsScreen() {
         contentContainerStyle={filtered.length === 0 ? { flex: 1 } : { paddingBottom: 100, paddingTop: 8 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6366F1" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#D4764E" />
         }
         ListEmptyComponent={
           <EmptyState

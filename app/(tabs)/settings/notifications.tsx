@@ -23,7 +23,7 @@ function ToggleRow({
   return (
     <View className="flex-row items-center py-3.5 px-4">
       <View className="w-9 h-9 bg-surface-elevated rounded-full items-center justify-center mr-3">
-        <Ionicons name={icon} size={18} color="#A0A0AB" />
+        <Ionicons name={icon} size={18} color="#7A6355" />
       </View>
       <View className="flex-1">
         <Text className="text-text-primary text-[15px]">{title}</Text>
@@ -34,7 +34,7 @@ function ToggleRow({
       <Switch
         value={value}
         onValueChange={(val) => { Haptics.selectionAsync(); onToggle(val); }}
-        trackColor={{ false: '#1C1C28', true: '#6366F1' }}
+        trackColor={{ false: '#FFE8D6', true: '#D4764E' }}
         thumbColor="#FFFFFF"
       />
     </View>

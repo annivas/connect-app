@@ -16,7 +16,7 @@ export function SectionHeader({ title, onSeeAll }: SectionHeaderProps) {
           <Text className="text-accent-primary text-sm font-medium mr-1">
             See All
           </Text>
-          <Ionicons name="chevron-forward" size={16} color="#6366F1" />
+          <Ionicons name="chevron-forward" size={16} color="#D4764E" />
         </Pressable>
       )}
     </View>

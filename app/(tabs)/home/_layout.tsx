@@ -5,7 +5,7 @@ export default function HomeLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: '#0A0A0F' },
+        contentStyle: { backgroundColor: '#FFF8F0' },
       }}
     >
       <Stack.Screen name="index" />

@@ -46,7 +46,7 @@ export default function RootLayout() {
   if (!isAuthenticated) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(auth)" />
         </Stack>
@@ -66,7 +66,7 @@ export default function RootLayout() {
   // Phase 3: Fully initialized — show main app
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="(tabs)" />

@@ -119,7 +119,7 @@ export function CreateGroupModal({ visible, onClose, onCreated }: Props) {
         <Ionicons
           name={isSelected ? 'checkbox' : 'square-outline'}
           size={22}
-          color={isSelected ? '#6366F1' : '#6B6B76'}
+          color={isSelected ? '#D4764E' : '#A8937F'}
         />
       </Pressable>
     );
@@ -165,7 +165,7 @@ export function CreateGroupModal({ visible, onClose, onCreated }: Props) {
               value={name}
               onChangeText={setName}
               placeholder="Group name"
-              placeholderTextColor="#6B6B76"
+              placeholderTextColor="#A8937F"
               className="bg-surface-elevated rounded-xl px-4 py-3 text-text-primary text-[15px]"
             />
           </View>
@@ -179,7 +179,7 @@ export function CreateGroupModal({ visible, onClose, onCreated }: Props) {
               value={description}
               onChangeText={setDescription}
               placeholder="What's this group about?"
-              placeholderTextColor="#6B6B76"
+              placeholderTextColor="#A8937F"
               multiline
               className="bg-surface-elevated rounded-xl px-4 py-3 text-text-primary text-[15px]"
               style={{ minHeight: 64, textAlignVertical: 'top' }}
@@ -208,7 +208,7 @@ export function CreateGroupModal({ visible, onClose, onCreated }: Props) {
                     <Ionicons
                       name={icon}
                       size={20}
-                      color={isSelected ? '#6366F1' : '#A0A0AB'}
+                      color={isSelected ? '#D4764E' : '#7A6355'}
                     />
                     <Text
                       className={`text-xs mt-1 font-medium ${

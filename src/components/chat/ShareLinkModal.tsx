@@ -78,7 +78,7 @@ export function ShareLinkModal({ visible, conversationId, onClose }: Props) {
             value={url}
             onChangeText={setUrl}
             placeholder="https://example.com"
-            placeholderTextColor="#6B6B76"
+            placeholderTextColor="#A8937F"
             className="bg-surface rounded-xl px-4 py-3 text-text-primary text-[15px] mb-5"
             autoCapitalize="none"
             keyboardType="url"
@@ -93,7 +93,7 @@ export function ShareLinkModal({ visible, conversationId, onClose }: Props) {
             value={title}
             onChangeText={setTitle}
             placeholder="Link title"
-            placeholderTextColor="#6B6B76"
+            placeholderTextColor="#A8937F"
             className="bg-surface rounded-xl px-4 py-3 text-text-primary text-[15px] mb-5"
           />
 
@@ -105,7 +105,7 @@ export function ShareLinkModal({ visible, conversationId, onClose }: Props) {
             value={description}
             onChangeText={setDescription}
             placeholder="Brief description..."
-            placeholderTextColor="#6B6B76"
+            placeholderTextColor="#A8937F"
             className="bg-surface rounded-xl px-4 py-3 text-text-primary text-[15px]"
             multiline
             style={{ minHeight: 80 }}

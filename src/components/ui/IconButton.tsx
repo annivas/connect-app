@@ -22,7 +22,7 @@ export function IconButton({
   icon,
   onPress,
   size = 24,
-  color = '#F5F5F7',
+  color = '#2D1F14',
   variant = 'ghost',
 }: IconButtonProps) {
   const scale = useSharedValue(1);

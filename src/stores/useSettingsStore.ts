@@ -24,8 +24,8 @@ interface SettingsState {
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
-      theme: 'dark',
-      accentColor: '#6366F1',
+      theme: 'light',
+      accentColor: '#D4764E',
       notifications: {
         push: true,
         sounds: true,

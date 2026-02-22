@@ -43,7 +43,7 @@ function FilterChip({
       <Ionicons
         name={icon}
         size={14}
-        color={active ? '#FFFFFF' : '#A0A0AB'}
+        color={active ? '#FFFFFF' : '#7A6355'}
       />
       <Text
         className={`text-xs font-semibold ml-1.5 ${
@@ -68,12 +68,12 @@ const typeIcons: Record<SharedObjectType, keyof typeof Ionicons.glyphMap> = {
 };
 
 const typeColors: Record<SharedObjectType, string> = {
-  link: '#3B82F6',
-  place: '#10B981',
-  song: '#8B5CF6',
-  photo: '#F59E0B',
-  video: '#EF4444',
-  file: '#6B7280',
+  link: '#5B8EC9',
+  place: '#2D9F6F',
+  song: '#C2956B',
+  photo: '#D4964E',
+  video: '#C94F4F',
+  file: '#A8937F',
 };
 
 function SharedItemCard({ item }: { item: SharedObject }) {
@@ -180,7 +180,7 @@ export function SharedTab({ conversationId, sharedObjects: directObjects }: Shar
           renderItem={({ item }) => <SharedItemCard item={item} />}
           ListEmptyComponent={
             <View className="px-4 py-12 items-center">
-              <Ionicons name="search-outline" size={28} color="#6B6B76" />
+              <Ionicons name="search-outline" size={28} color="#A8937F" />
               <Text className="text-text-tertiary text-sm mt-2">
                 No {activeFilter === 'all' ? 'items' : activeFilter + 's'} found
               </Text>

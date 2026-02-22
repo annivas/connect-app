@@ -86,7 +86,7 @@ export function CreateExpenseModal({ visible, conversationId, onClose }: Props) 
           <Text className="text-text-primary text-[17px] font-semibold">New Expense</Text>
           <Pressable onPress={handleSave} disabled={!canSave} hitSlop={8}>
             {isSaving ? (
-              <ActivityIndicator size="small" color="#6366F1" />
+              <ActivityIndicator size="small" color="#D4764E" />
             ) : (
               <Text
                 className={`text-[16px] font-semibold ${
@@ -108,7 +108,7 @@ export function CreateExpenseModal({ visible, conversationId, onClose }: Props) 
             value={description}
             onChangeText={setDescription}
             placeholder="What was this for?"
-            placeholderTextColor="#6B6B76"
+            placeholderTextColor="#A8937F"
             className="bg-surface rounded-xl px-4 py-3 text-text-primary text-[15px] mb-5"
           />
 
@@ -122,7 +122,7 @@ export function CreateExpenseModal({ visible, conversationId, onClose }: Props) 
               value={amountText}
               onChangeText={setAmountText}
               placeholder="0.00"
-              placeholderTextColor="#6B6B76"
+              placeholderTextColor="#A8937F"
               keyboardType="decimal-pad"
               className="flex-1 text-text-primary text-[18px] font-semibold"
             />

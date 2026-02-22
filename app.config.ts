@@ -7,13 +7,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/icon.png',
-  userInterfaceStyle: 'dark',
+  userInterfaceStyle: 'light',
   scheme: 'connect',
   newArchEnabled: true,
   splash: {
     image: './assets/splash-icon.png',
     resizeMode: 'contain',
-    backgroundColor: '#0A0A0F',
+    backgroundColor: '#FFF8F0',
   },
   ios: {
     supportsTablet: true,
@@ -22,7 +22,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   android: {
     adaptiveIcon: {
       foregroundImage: './assets/adaptive-icon.png',
-      backgroundColor: '#0A0A0F',
+      backgroundColor: '#FFF8F0',
     },
     package: 'com.connect.app',
     edgeToEdgeEnabled: true,

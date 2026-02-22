@@ -67,7 +67,7 @@ export function ConversationListItem({ conversation }: Props) {
       <Ionicons
         name={conversation.isMuted ? 'notifications' : 'notifications-off'}
         size={22}
-        color="#A0A0AB"
+        color="#7A6355"
       />
     </Pressable>
   );
@@ -108,7 +108,7 @@ export function ConversationListItem({ conversation }: Props) {
                 <Ionicons
                   name="notifications-off"
                   size={14}
-                  color="#6B6B76"
+                  color="#A8937F"
                   style={{ marginLeft: 6 }}
                 />
               )}

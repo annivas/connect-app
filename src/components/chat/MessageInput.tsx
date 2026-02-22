@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -15,19 +15,28 @@ interface Props {
 
 export function MessageInput({ onSend, onPickImage, replyTo, onCancelReply, editingContent, onSaveEdit, onCancelEdit }: Props) {
   const [text, setText] = useState('');
+  const inputRef = useRef<TextInput>(null);
   const isEditing = editingContent != null;
 
   // Pre-populate text when entering edit mode
   useEffect(() => {
     if (editingContent != null) {
       setText(editingContent);
+      setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [editingContent]);
+
+  // Focus when replying
+  useEffect(() => {
+    if (replyTo) {
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [replyTo]);
 
   const handleSend = () => {
     const trimmed = text.trim();
     if (!trimmed) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (isEditing && onSaveEdit) {
       onSaveEdit(trimmed);
     } else {
@@ -42,17 +51,21 @@ export function MessageInput({ onSend, onPickImage, replyTo, onCancelReply, edit
     <View className="bg-background-secondary border-t border-border-subtle">
       {/* Editing banner */}
       {isEditing && (
-        <View className="flex-row items-center px-4 pt-2 pb-1">
-          <View className="flex-1 flex-row items-center bg-surface/50 rounded-lg px-3 py-2 border-l-2 border-accent-secondary">
-            <Ionicons name="pencil" size={14} color="#8B5CF6" />
+        <View className="flex-row items-center px-3 pt-2 pb-1">
+          <View className="flex-1 flex-row items-center bg-background-primary rounded-xl px-3 py-2 border-l-[3px] border-accent-secondary">
+            <Ionicons name="pencil" size={14} color="#C2956B" />
             <View className="flex-1 ml-2">
-              <Text className="text-accent-secondary text-[11px] font-semibold">Editing</Text>
+              <Text className="text-accent-secondary text-[11px] font-semibold">Editing message</Text>
               <Text className="text-text-tertiary text-[12px]" numberOfLines={1}>
                 {editingContent}
               </Text>
             </View>
-            <Pressable onPress={onCancelEdit} hitSlop={8} className="ml-2">
-              <Ionicons name="close" size={18} color="#6B6B76" />
+            <Pressable
+              onPress={onCancelEdit}
+              hitSlop={12}
+              className="ml-2 w-6 h-6 items-center justify-center rounded-full bg-surface-elevated"
+            >
+              <Ionicons name="close" size={14} color="#7A6355" />
             </Pressable>
           </View>
         </View>
@@ -60,64 +73,72 @@ export function MessageInput({ onSend, onPickImage, replyTo, onCancelReply, edit
 
       {/* Reply preview banner */}
       {!isEditing && replyTo && (
-        <View className="flex-row items-center px-4 pt-2 pb-1">
-          <View className="flex-1 flex-row items-center bg-surface/50 rounded-lg px-3 py-2 border-l-2 border-accent-primary">
-            <Ionicons name="return-down-forward" size={14} color="#6366F1" />
+        <View className="flex-row items-center px-3 pt-2 pb-1">
+          <View className="flex-1 flex-row items-center bg-background-primary rounded-xl px-3 py-2 border-l-[3px] border-accent-primary">
+            <Ionicons name="return-down-forward" size={14} color="#D4764E" />
             <View className="flex-1 ml-2">
               <Text className="text-accent-primary text-[11px] font-semibold" numberOfLines={1}>
-                {replyTo.senderName}
+                Replying to {replyTo.senderName}
               </Text>
               <Text className="text-text-tertiary text-[12px]" numberOfLines={1}>
                 {replyTo.content}
               </Text>
             </View>
-            <Pressable onPress={onCancelReply} hitSlop={8} className="ml-2">
-              <Ionicons name="close" size={18} color="#6B6B76" />
+            <Pressable
+              onPress={onCancelReply}
+              hitSlop={12}
+              className="ml-2 w-6 h-6 items-center justify-center rounded-full bg-surface-elevated"
+            >
+              <Ionicons name="close" size={14} color="#7A6355" />
             </Pressable>
           </View>
         </View>
       )}
 
-      <View className="flex-row items-end px-4 py-3">
-        {/* Image picker button */}
-        {onPickImage && (
+      {/* Input row */}
+      <View className="flex-row items-end px-3 py-2">
+        {/* Attachment button */}
+        {onPickImage && !isEditing && (
           <Pressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               onPickImage();
             }}
-            className="w-11 h-11 items-center justify-center mr-1"
-            hitSlop={4}
+            className="w-9 h-9 items-center justify-center mb-0.5 mr-1.5"
+            hitSlop={6}
           >
-            <Ionicons name="image-outline" size={24} color="#6B6B76" />
+            <Ionicons name="add-circle" size={28} color="#D4764E" />
           </Pressable>
         )}
 
-        <View className="flex-1 flex-row items-end bg-surface rounded-3xl px-4 py-2 mr-2 min-h-[44px]">
+        {/* Text input container */}
+        <View className="flex-1 flex-row items-end bg-surface-elevated rounded-[22px] px-3.5 py-1.5 mr-2 min-h-[38px] border border-border-subtle">
           <TextInput
+            ref={inputRef}
             value={text}
             onChangeText={setText}
-            placeholder="Message..."
-            placeholderTextColor="#6B6B76"
-            className="flex-1 text-text-primary text-[15px] max-h-[100px]"
+            placeholder={isEditing ? 'Edit message...' : 'Message...'}
+            placeholderTextColor="#A8937F"
+            className="flex-1 text-text-primary text-[15px] max-h-[100px] py-1"
             multiline
             textAlignVertical="center"
           />
         </View>
 
+        {/* Send button */}
         <Pressable
           onPress={handleSend}
           disabled={!hasText}
-          className={`w-11 h-11 rounded-full items-center justify-center ${
+          className={`w-9 h-9 rounded-full items-center justify-center mb-0.5 ${
             hasText
               ? isEditing ? 'bg-accent-secondary' : 'bg-accent-primary'
-              : 'bg-surface'
+              : 'bg-transparent'
           }`}
         >
           <Ionicons
             name={isEditing ? 'checkmark' : 'arrow-up'}
-            size={22}
-            color={hasText ? '#FFFFFF' : '#6B6B76'}
+            size={20}
+            color={hasText ? '#FFFFFF' : '#A8937F'}
           />
         </Pressable>
       </View>
