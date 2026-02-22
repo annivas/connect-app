@@ -1,7 +1,7 @@
 import { Message, Group, RSVPStatus } from '../../types';
 import { MOCK_GROUPS } from '../../mocks/groups';
 import { MOCK_GROUP_MESSAGES } from '../../mocks/messages';
-import { IGroupsRepository, PaginationParams, CreateGroupInput } from '../types';
+import { IGroupsRepository, PaginationParams, CreateGroupInput, UpdateGroupInput } from '../types';
 
 let groups = [...MOCK_GROUPS];
 let groupMessages = [...MOCK_GROUP_MESSAGES];
@@ -23,14 +23,15 @@ export const mockGroupsRepository: IGroupsRepository = {
     return filtered.slice(-limit);
   },
 
-  async sendGroupMessage(groupId: string, content: string, senderId: string) {
+  async sendGroupMessage(groupId: string, content: string, senderId: string, options?: { type?: import('../../types').MessageType; metadata?: Record<string, unknown> }) {
     const newMessage: Message = {
       id: `gmsg-${Date.now()}`,
       conversationId: groupId,
       senderId,
       content,
       timestamp: new Date(),
-      type: 'text',
+      type: options?.type ?? 'text',
+      metadata: options?.metadata,
       isRead: true,
     };
     groupMessages = [...groupMessages, newMessage];
@@ -38,6 +39,35 @@ export const mockGroupsRepository: IGroupsRepository = {
       g.id === groupId ? { ...g, lastActivity: new Date() } : g,
     );
     return newMessage;
+  },
+
+  async deleteGroupMessage(messageId: string) {
+    groupMessages = groupMessages.filter((m) => m.id !== messageId);
+  },
+
+  async toggleGroupReaction(messageId: string, emoji: string) {
+    groupMessages = groupMessages.map((m) => {
+      if (m.id !== messageId) return m;
+      const reactions = [...(m.reactions ?? [])];
+      const idx = reactions.findIndex((r) => r.emoji === emoji && r.userId === 'current-user');
+      if (idx >= 0) {
+        reactions.splice(idx, 1);
+      } else {
+        reactions.push({ emoji, userId: 'current-user', timestamp: new Date() });
+      }
+      return { ...m, reactions };
+    });
+  },
+
+  async editGroupMessage(messageId: string, newContent: string) {
+    let edited: Message | undefined;
+    groupMessages = groupMessages.map((m) => {
+      if (m.id !== messageId) return m;
+      edited = { ...m, content: newContent, isEdited: true, metadata: { ...m.metadata, edited: true } };
+      return edited;
+    });
+    if (!edited) throw new Error('Message not found');
+    return edited;
   },
 
   async togglePin(groupId: string) {
@@ -87,5 +117,69 @@ export const mockGroupsRepository: IGroupsRepository = {
           : e,
       ),
     }));
+  },
+
+  async addMembers(groupId: string, memberIds: string[]): Promise<void> {
+    groups = groups.map((g) =>
+      g.id === groupId
+        ? { ...g, members: [...g.members, ...memberIds.filter((id) => !g.members.includes(id))] }
+        : g,
+    );
+  },
+
+  async removeMember(groupId: string, memberId: string): Promise<void> {
+    groups = groups.map((g) =>
+      g.id === groupId
+        ? {
+            ...g,
+            members: g.members.filter((id) => id !== memberId),
+            admins: g.admins.filter((id) => id !== memberId),
+          }
+        : g,
+    );
+  },
+
+  async leaveGroup(groupId: string): Promise<void> {
+    groups = groups.map((g) => {
+      if (g.id !== groupId) return g;
+      const updatedMembers = g.members.filter((id) => id !== 'current-user');
+      let updatedAdmins = g.admins.filter((id) => id !== 'current-user');
+      // Auto-promote first remaining member if no admins left
+      if (updatedAdmins.length === 0 && updatedMembers.length > 0) {
+        updatedAdmins = [updatedMembers[0]];
+      }
+      return { ...g, members: updatedMembers, admins: updatedAdmins };
+    });
+  },
+
+  async updateGroup(groupId: string, updates: UpdateGroupInput): Promise<Group> {
+    let updated: Group | undefined;
+    groups = groups.map((g) => {
+      if (g.id !== groupId) return g;
+      updated = { ...g, ...updates };
+      return updated;
+    });
+    if (!updated) throw new Error('Group not found');
+    return updated;
+  },
+
+  async toggleAdmin(groupId: string, memberId: string): Promise<void> {
+    groups = groups.map((g) => {
+      if (g.id !== groupId) return g;
+      const isAdmin = g.admins.includes(memberId);
+      return {
+        ...g,
+        admins: isAdmin
+          ? g.admins.filter((id) => id !== memberId)
+          : [...g.admins, memberId],
+      };
+    });
+  },
+
+  async searchGroupMessages(groupId: string, query: string): Promise<Message[]> {
+    const q = query.toLowerCase();
+    return groupMessages.filter(
+      (m) => m.conversationId === groupId && m.content.toLowerCase().includes(q),
+    );
   },
 };

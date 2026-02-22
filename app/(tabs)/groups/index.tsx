@@ -21,7 +21,9 @@ export default function GroupsScreen() {
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      list = list.filter((g) => g.name.toLowerCase().includes(q));
+      list = list.filter(
+        (g) => g.name.toLowerCase().includes(q) || g.description?.toLowerCase().includes(q),
+      );
     }
 
     return list.sort((a, b) => {

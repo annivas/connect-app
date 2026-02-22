@@ -7,12 +7,14 @@ import * as Haptics from 'expo-haptics';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { Avatar } from '../ui/Avatar';
 import { Badge } from '../ui/Badge';
+import { renderHighlightedText } from '../../utils/highlightText';
 import { Conversation } from '../../types';
 import { useUserStore } from '../../stores/useUserStore';
 import { useMessagesStore } from '../../stores/useMessagesStore';
 
 interface Props {
   conversation: Conversation;
+  highlightText?: string;
 }
 
 function formatTimestamp(date: Date) {
@@ -21,7 +23,7 @@ function formatTimestamp(date: Date) {
   return format(date, 'MMM d');
 }
 
-export function ConversationListItem({ conversation }: Props) {
+export function ConversationListItem({ conversation, highlightText }: Props) {
   const router = useRouter();
   const getUserById = useUserStore((s) => s.getUserById);
   const swipeableRef = useRef<Swipeable>(null);
@@ -121,12 +123,22 @@ export function ConversationListItem({ conversation }: Props) {
           </View>
 
           <View className="flex-row items-center justify-between">
-            <Text
-              className="text-text-secondary text-sm flex-1 mr-2"
-              numberOfLines={1}
-            >
-              {conversation.lastMessage?.content || 'No messages yet'}
-            </Text>
+            <View className="flex-1 mr-2" style={{ overflow: 'hidden' }}>
+              {highlightText && conversation.lastMessage?.content ? (
+                renderHighlightedText(
+                  conversation.lastMessage.content,
+                  highlightText,
+                  'text-text-secondary text-sm',
+                )
+              ) : (
+                <Text
+                  className="text-text-secondary text-sm"
+                  numberOfLines={1}
+                >
+                  {conversation.lastMessage?.content || 'No messages yet'}
+                </Text>
+              )}
+            </View>
             {conversation.unreadCount > 0 && (
               <Badge count={conversation.unreadCount} />
             )}

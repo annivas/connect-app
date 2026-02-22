@@ -27,7 +27,9 @@ export default function MessagesScreen() {
       list = list.filter((c) => {
         const other = c.participants.find((id) => id !== useUserStore.getState().currentUser?.id);
         const user = other ? getUserById(other) : null;
-        return user?.name.toLowerCase().includes(q);
+        const nameMatch = user?.name.toLowerCase().includes(q);
+        const messageMatch = c.lastMessage?.content?.toLowerCase().includes(q);
+        return nameMatch || messageMatch;
       });
     }
 
@@ -63,7 +65,12 @@ export default function MessagesScreen() {
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <ConversationListItem conversation={item} />}
+        renderItem={({ item }) => (
+          <ConversationListItem
+            conversation={item}
+            highlightText={searchQuery.trim() ? searchQuery : undefined}
+          />
+        )}
         contentContainerStyle={filtered.length === 0 ? { flex: 1 } : { paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
         refreshControl={

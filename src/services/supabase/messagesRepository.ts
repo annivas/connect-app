@@ -440,4 +440,18 @@ export const supabaseMessagesRepository: IMessagesRepository = {
 
     if (error) throw new Error(`Failed to settle ledger entry: ${error.message}`);
   },
+
+  async searchMessages(conversationId: string, query: string): Promise<Message[]> {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('context_type', 'conversation')
+      .eq('context_id', conversationId)
+      .ilike('content', `%${query}%`)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) throw new Error(`Failed to search messages: ${error.message}`);
+    return data.reverse().map(adaptMessage);
+  },
 };

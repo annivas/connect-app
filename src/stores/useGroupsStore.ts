@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { config } from '../config/env';
 import { adaptMessage } from '../services/supabase/adapters';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import type { CreateGroupInput } from '../services/types';
+import type { CreateGroupInput, UpdateGroupInput } from '../services/types';
 
 const PAGE_SIZE = 50;
 
@@ -18,6 +18,9 @@ interface GroupsState {
   // Pagination
   hasMoreMessages: Record<string, boolean>;
   loadingMessages: Set<string>;
+
+  // Reply state (per group)
+  replyingTo: Record<string, Message | null>;
 
   // Realtime
   _channel: RealtimeChannel | null;
@@ -32,12 +35,21 @@ interface GroupsState {
   loadGroupMessages: (groupId: string) => Promise<void>;
   loadMoreGroupMessages: (groupId: string) => Promise<void>;
 
-  sendGroupMessage: (groupId: string, content: string, senderId: string) => void;
+  sendGroupMessage: (groupId: string, content: string, senderId: string, options?: { type?: import('../types').MessageType; metadata?: Record<string, unknown> }) => void;
   retryGroupMessage: (messageId: string) => void;
+  deleteGroupMessage: (groupId: string, messageId: string) => void;
+  toggleGroupReaction: (groupId: string, messageId: string, emoji: string) => void;
+  setReplyTo: (groupId: string, message: Message | null) => void;
+  editGroupMessage: (groupId: string, messageId: string, newContent: string) => void;
   togglePin: (groupId: string) => void;
   toggleMute: (groupId: string) => void;
   createGroup: (input: CreateGroupInput) => Promise<Group>;
   updateRSVP: (groupId: string, eventId: string, status: RSVPStatus) => void;
+  addMembers: (groupId: string, memberIds: string[]) => void;
+  removeMember: (groupId: string, memberId: string) => void;
+  leaveGroup: (groupId: string) => void;
+  updateGroup: (groupId: string, updates: UpdateGroupInput) => Promise<Group>;
+  toggleAdmin: (groupId: string, memberId: string) => void;
 }
 
 export const useGroupsStore = create<GroupsState>((set, get) => ({
@@ -47,6 +59,7 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
   error: null,
   hasMoreMessages: {},
   loadingMessages: new Set(),
+  replyingTo: {},
   _channel: null,
 
   init: async () => {
@@ -131,6 +144,54 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
           }
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: 'context_type=eq.group',
+        },
+        (payload) => {
+          const updatedRow = payload.new as Record<string, unknown>;
+          const updatedMessage = adaptMessage(updatedRow as any);
+          const state = get();
+
+          const localMsg = state.groupMessages.find((m) => m.id === updatedMessage.id);
+          if (
+            localMsg &&
+            localMsg.content === updatedMessage.content &&
+            JSON.stringify(localMsg.reactions) === JSON.stringify(updatedMessage.reactions)
+          ) {
+            return;
+          }
+
+          set((s) => ({
+            groupMessages: s.groupMessages.map((m) =>
+              m.id === updatedMessage.id ? updatedMessage : m,
+            ),
+          }));
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'messages',
+          filter: 'context_type=eq.group',
+        },
+        (payload) => {
+          const deletedId = (payload.old as Record<string, unknown>).id as string;
+          const state = get();
+
+          if (!state.groupMessages.some((m) => m.id === deletedId)) return;
+
+          set((s) => ({
+            groupMessages: s.groupMessages.filter((m) => m.id !== deletedId),
+          }));
+        }
+      )
       .subscribe();
 
     set({ _channel: channel });
@@ -201,38 +262,60 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
     }
   },
 
-  sendGroupMessage: (groupId, content, senderId) => {
+  sendGroupMessage: (groupId, content, senderId, options) => {
     const messageId = `gmsg-${Date.now()}`;
+    const state = get();
+
+    // Attach reply data if replying to a message
+    const replyingMsg = state.replyingTo[groupId];
+    let metadata = options?.metadata;
+    let replyTo: Message['replyTo'] | undefined;
+    if (replyingMsg) {
+      const { useUserStore } = require('./useUserStore');
+      const senderUser = useUserStore.getState().getUserById(replyingMsg.senderId);
+      replyTo = {
+        messageId: replyingMsg.id,
+        content: replyingMsg.content,
+        senderName: senderUser?.name ?? 'Unknown',
+      };
+      metadata = { ...metadata, replyTo };
+    }
+
     const newMessage: Message = {
       id: messageId,
       conversationId: groupId,
       senderId,
       content,
       timestamp: new Date(),
-      type: 'text',
+      type: options?.type ?? 'text',
+      metadata,
+      replyTo,
       isRead: true,
       sendStatus: 'sending',
     };
 
-    set((state) => ({
-      groupMessages: [...state.groupMessages, newMessage],
-      groups: state.groups.map((g) =>
+    set((s) => ({
+      groupMessages: [...s.groupMessages, newMessage],
+      groups: s.groups.map((g) =>
         g.id === groupId ? { ...g, lastActivity: new Date() } : g,
       ),
+      // Clear reply state after sending
+      replyingTo: { ...s.replyingTo, [groupId]: null },
     }));
 
+    const sendOptions = metadata ? { ...options, metadata } : options;
     groupsRepository
-      .sendGroupMessage(groupId, content, senderId)
+      .sendGroupMessage(groupId, content, senderId, sendOptions)
       .then((savedMessage) => {
-        set((state) => ({
-          groupMessages: state.groupMessages.map((m) =>
+        set((s) => ({
+          groupMessages: s.groupMessages.map((m) =>
             m.id === messageId ? { ...savedMessage, sendStatus: 'sent' as const } : m,
           ),
         }));
       })
       .catch(() => {
-        set((state) => ({
-          groupMessages: state.groupMessages.map((m) =>
+        set((s) => ({
+          groupMessages: s.groupMessages.map((m) =>
             m.id === messageId ? { ...m, sendStatus: 'failed' as const } : m,
           ),
         }));
@@ -265,6 +348,92 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
           ),
         }));
       });
+  },
+
+  deleteGroupMessage: (groupId, messageId) => {
+    const deletedMsg = get().groupMessages.find((m) => m.id === messageId);
+    if (!deletedMsg) return;
+
+    // Optimistic removal
+    set((s) => ({
+      groupMessages: s.groupMessages.filter((m) => m.id !== messageId),
+    }));
+
+    groupsRepository.deleteGroupMessage(messageId).catch(() => {
+      // Revert on failure
+      set((s) => ({
+        groupMessages: [...s.groupMessages, deletedMsg].sort(
+          (a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
+        ),
+      }));
+    });
+  },
+
+  toggleGroupReaction: (groupId, messageId, emoji) => {
+    const { useUserStore } = require('./useUserStore');
+    const userId = useUserStore.getState().currentUser?.id;
+    if (!userId) return;
+
+    // Optimistic update
+    set((state) => ({
+      groupMessages: state.groupMessages.map((m) => {
+        if (m.id !== messageId) return m;
+        const reactions = [...(m.reactions ?? [])];
+        const idx = reactions.findIndex((r) => r.emoji === emoji && r.userId === userId);
+        if (idx >= 0) {
+          reactions.splice(idx, 1);
+        } else {
+          reactions.push({ emoji, userId, timestamp: new Date() });
+        }
+        return { ...m, reactions };
+      }),
+    }));
+
+    groupsRepository.toggleGroupReaction(messageId, emoji).catch(() => {
+      // Revert by toggling back
+      set((state) => ({
+        groupMessages: state.groupMessages.map((m) => {
+          if (m.id !== messageId) return m;
+          const reactions = [...(m.reactions ?? [])];
+          const idx = reactions.findIndex((r) => r.emoji === emoji && r.userId === userId);
+          if (idx >= 0) {
+            reactions.splice(idx, 1);
+          } else {
+            reactions.push({ emoji, userId, timestamp: new Date() });
+          }
+          return { ...m, reactions };
+        }),
+      }));
+    });
+  },
+
+  setReplyTo: (groupId, message) => {
+    set((state) => ({
+      replyingTo: { ...state.replyingTo, [groupId]: message },
+    }));
+  },
+
+  editGroupMessage: (groupId, messageId, newContent) => {
+    const original = get().groupMessages.find((m) => m.id === messageId);
+    if (!original) return;
+
+    // Optimistic update
+    set((state) => ({
+      groupMessages: state.groupMessages.map((m) =>
+        m.id === messageId
+          ? { ...m, content: newContent, isEdited: true }
+          : m,
+      ),
+    }));
+
+    groupsRepository.editGroupMessage(messageId, newContent).catch(() => {
+      // Revert on failure
+      set((state) => ({
+        groupMessages: state.groupMessages.map((m) =>
+          m.id === messageId ? original : m,
+        ),
+      }));
+    });
   },
 
   togglePin: (groupId) => {
@@ -322,6 +491,129 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
     groupsRepository.updateRSVP(eventId, status).catch(() => {
       // Revert by re-fetching
       get().init();
+    });
+  },
+
+  addMembers: (groupId, memberIds) => {
+    const group = get().groups.find((g) => g.id === groupId);
+    if (!group) return;
+    const originalMembers = [...group.members];
+
+    // Optimistic: append new members (dedup)
+    set((state) => ({
+      groups: state.groups.map((g) =>
+        g.id === groupId
+          ? { ...g, members: [...g.members, ...memberIds.filter((id) => !g.members.includes(id))] }
+          : g,
+      ),
+    }));
+
+    groupsRepository.addMembers(groupId, memberIds).catch(() => {
+      // Revert on failure
+      set((state) => ({
+        groups: state.groups.map((g) =>
+          g.id === groupId ? { ...g, members: originalMembers } : g,
+        ),
+      }));
+    });
+  },
+
+  removeMember: (groupId, memberId) => {
+    const group = get().groups.find((g) => g.id === groupId);
+    if (!group) return;
+    const originalMembers = [...group.members];
+    const originalAdmins = [...group.admins];
+
+    // Optimistic: filter member from members + admins
+    set((state) => ({
+      groups: state.groups.map((g) =>
+        g.id === groupId
+          ? {
+              ...g,
+              members: g.members.filter((id) => id !== memberId),
+              admins: g.admins.filter((id) => id !== memberId),
+            }
+          : g,
+      ),
+    }));
+
+    groupsRepository.removeMember(groupId, memberId).catch(() => {
+      set((state) => ({
+        groups: state.groups.map((g) =>
+          g.id === groupId ? { ...g, members: originalMembers, admins: originalAdmins } : g,
+        ),
+      }));
+    });
+  },
+
+  leaveGroup: (groupId) => {
+    const group = get().groups.find((g) => g.id === groupId);
+    if (!group) return;
+    const originalGroups = [...get().groups];
+
+    // Optimistic: remove group from list (user won't see it after leaving)
+    set((state) => ({
+      groups: state.groups.filter((g) => g.id !== groupId),
+    }));
+
+    groupsRepository.leaveGroup(groupId).catch(() => {
+      // Revert on failure
+      set({ groups: originalGroups });
+    });
+  },
+
+  updateGroup: async (groupId, updates) => {
+    const group = get().groups.find((g) => g.id === groupId);
+    if (!group) throw new Error('Group not found');
+    const original = { ...group };
+
+    // Optimistic: apply updates
+    set((state) => ({
+      groups: state.groups.map((g) =>
+        g.id === groupId ? { ...g, ...updates } : g,
+      ),
+    }));
+
+    try {
+      const updated = await groupsRepository.updateGroup(groupId, updates);
+      set((state) => ({
+        groups: state.groups.map((g) => (g.id === groupId ? { ...g, ...updated } : g)),
+      }));
+      return updated;
+    } catch (err) {
+      // Revert on failure
+      set((state) => ({
+        groups: state.groups.map((g) => (g.id === groupId ? original : g)),
+      }));
+      throw err;
+    }
+  },
+
+  toggleAdmin: (groupId, memberId) => {
+    const group = get().groups.find((g) => g.id === groupId);
+    if (!group) return;
+    const originalAdmins = [...group.admins];
+
+    const isAdmin = group.admins.includes(memberId);
+    set((state) => ({
+      groups: state.groups.map((g) =>
+        g.id === groupId
+          ? {
+              ...g,
+              admins: isAdmin
+                ? g.admins.filter((id) => id !== memberId)
+                : [...g.admins, memberId],
+            }
+          : g,
+      ),
+    }));
+
+    groupsRepository.toggleAdmin(groupId, memberId).catch(() => {
+      set((state) => ({
+        groups: state.groups.map((g) =>
+          g.id === groupId ? { ...g, admins: originalAdmins } : g,
+        ),
+      }));
     });
   },
 }));
