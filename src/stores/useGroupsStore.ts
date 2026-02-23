@@ -50,6 +50,16 @@ interface GroupsState {
   leaveGroup: (groupId: string) => void;
   updateGroup: (groupId: string, updates: UpdateGroupInput) => Promise<Group>;
   toggleAdmin: (groupId: string, memberId: string) => void;
+  addItineraryItem: (groupId: string, item: import('../types').ItineraryItem) => void;
+  editItineraryItem: (groupId: string, itemId: string, updates: Partial<import('../types').ItineraryItem>) => void;
+  deleteItineraryItem: (groupId: string, itemId: string) => void;
+  createEvent: (groupId: string, event: Omit<import('../types').GroupEvent, 'id' | 'groupId' | 'createdBy' | 'attendees'>) => void;
+
+  // Event Spaces
+  eventSpaceMessages: Record<string, Message[]>;
+  getEventSpaceMessages: (eventId: string) => Message[];
+  createEventSpace: (groupId: string, eventId: string) => void;
+  sendEventSpaceMessage: (eventId: string, content: string, senderId: string) => void;
 }
 
 export const useGroupsStore = create<GroupsState>((set, get) => ({
@@ -61,6 +71,7 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
   loadingMessages: new Set(),
   replyingTo: {},
   _channel: null,
+  eventSpaceMessages: {},
 
   init: async () => {
     set({ isLoading: true, error: null });
@@ -615,5 +626,111 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         ),
       }));
     });
+  },
+
+  addItineraryItem: (groupId, item) => {
+    set((state) => ({
+      groups: state.groups.map((g) => {
+        if (g.id !== groupId || !g.trip) return g;
+        const itinerary = [...g.trip.itinerary, item].sort((a, b) => {
+          if (a.day !== b.day) return a.day - b.day;
+          return (a.time ?? '').localeCompare(b.time ?? '');
+        });
+        return { ...g, trip: { ...g.trip, itinerary } };
+      }),
+    }));
+  },
+
+  editItineraryItem: (groupId, itemId, updates) => {
+    set((state) => ({
+      groups: state.groups.map((g) => {
+        if (g.id !== groupId || !g.trip) return g;
+        const itinerary = g.trip.itinerary
+          .map((i) => (i.id === itemId ? { ...i, ...updates } : i))
+          .sort((a, b) => {
+            if (a.day !== b.day) return a.day - b.day;
+            return (a.time ?? '').localeCompare(b.time ?? '');
+          });
+        return { ...g, trip: { ...g.trip, itinerary } };
+      }),
+    }));
+  },
+
+  deleteItineraryItem: (groupId, itemId) => {
+    set((state) => ({
+      groups: state.groups.map((g) => {
+        if (g.id !== groupId || !g.trip) return g;
+        return {
+          ...g,
+          trip: {
+            ...g.trip,
+            itinerary: g.trip.itinerary.filter((i) => i.id !== itemId),
+          },
+        };
+      }),
+    }));
+  },
+
+  createEvent: (groupId, eventData) => {
+    const userId = get().groups.find((g) => g.id === groupId)?.members[0] ?? '';
+    const newEvent = {
+      ...eventData,
+      id: `evt_${Date.now()}`,
+      groupId,
+      createdBy: userId,
+      attendees: [{ userId, status: 'going' as const, respondedAt: new Date() }],
+    };
+    set((state) => ({
+      groups: state.groups.map((g) => {
+        if (g.id !== groupId) return g;
+        return { ...g, events: [...(g.events ?? []), newEvent] };
+      }),
+    }));
+  },
+
+  // ─── Event Spaces ──────────────────────────────
+
+  getEventSpaceMessages: (eventId) => {
+    return get().eventSpaceMessages[eventId] ?? [];
+  },
+
+  createEventSpace: (groupId, eventId) => {
+    const spaceId = `es_${Date.now()}`;
+    // Tag the event with its space ID
+    set((state) => ({
+      groups: state.groups.map((g) => {
+        if (g.id !== groupId) return g;
+        return {
+          ...g,
+          events: (g.events ?? []).map((e) =>
+            e.id === eventId ? { ...e, eventSpaceId: spaceId } : e,
+          ),
+        };
+      }),
+      // Initialise the message list for the space
+      eventSpaceMessages: {
+        ...state.eventSpaceMessages,
+        [eventId]: state.eventSpaceMessages[eventId] ?? [],
+      },
+    }));
+  },
+
+  sendEventSpaceMessage: (eventId, content, senderId) => {
+    const newMessage: Message = {
+      id: `esm_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      conversationId: eventId,
+      senderId,
+      content,
+      timestamp: new Date(),
+      type: 'text',
+      isRead: false,
+      sendStatus: 'sent',
+    };
+    set((state) => ({
+      eventSpaceMessages: {
+        ...state.eventSpaceMessages,
+        [eventId]: [...(state.eventSpaceMessages[eventId] ?? []), newMessage],
+      },
+    }));
   },
 }));

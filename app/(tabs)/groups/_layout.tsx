@@ -11,6 +11,7 @@ export default function GroupsLayout() {
     >
       <Stack.Screen name="index" />
       <Stack.Screen name="[id]" />
+      <Stack.Screen name="event-space" />
     </Stack>
   );
 }

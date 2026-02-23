@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, FlatList, Pressable } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { format } from 'date-fns';
@@ -8,7 +9,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { EmptyState } from '../ui/EmptyState';
 import { ShareLinkModal } from './ShareLinkModal';
 import { useMessagesStore } from '../../stores/useMessagesStore';
-import type { SharedObject, SharedObjectType } from '../../types';
+import type { SharedObject, SharedObjectType, PlaceMetadata } from '../../types';
 
 // ─── Filter chips ────────────────────────────
 
@@ -76,14 +77,16 @@ const typeColors: Record<SharedObjectType, string> = {
   file: '#A8937F',
 };
 
-function SharedItemCard({ item }: { item: SharedObject }) {
+function SharedItemCard({ item, onPress }: { item: SharedObject; onPress?: () => void }) {
   const color = typeColors[item.type];
   const icon = typeIcons[item.type];
+  const isPlace = item.type === 'place';
+  const placeMetadata = isPlace ? (item.metadata as PlaceMetadata) : null;
 
   return (
-    <View className="bg-surface rounded-2xl overflow-hidden mb-3 mx-4">
-      {/* Thumbnail row */}
-      {item.thumbnail && (
+    <Pressable onPress={onPress} className="bg-surface rounded-2xl overflow-hidden mb-3 mx-4">
+      {/* Thumbnail row — skip for places */}
+      {item.thumbnail && !isPlace && (
         <Image
           source={{ uri: item.thumbnail }}
           style={{ width: '100%', height: 140 }}
@@ -92,19 +95,45 @@ function SharedItemCard({ item }: { item: SharedObject }) {
         />
       )}
 
+      {/* Place-specific header */}
+      {isPlace && (
+        <View className="px-3.5 pt-3.5">
+          <View
+            className="rounded-xl p-3 flex-row items-center"
+            style={{ backgroundColor: '#2D9F6F15' }}
+          >
+            <View className="w-10 h-10 rounded-full items-center justify-center bg-status-success/20">
+              <Ionicons name="location" size={20} color="#2D9F6F" />
+            </View>
+            <View className="ml-3 flex-1">
+              <Text className="text-text-primary font-semibold text-[15px]" numberOfLines={1}>
+                {item.title}
+              </Text>
+              {placeMetadata?.address && (
+                <Text className="text-text-tertiary text-xs mt-0.5" numberOfLines={2}>
+                  {placeMetadata.address}
+                </Text>
+              )}
+            </View>
+          </View>
+        </View>
+      )}
+
       {/* Content */}
       <View className="p-3.5">
-        <View className="flex-row items-center mb-1.5">
-          <View
-            className="w-6 h-6 rounded-full items-center justify-center mr-2"
-            style={{ backgroundColor: `${color}25` }}
-          >
-            <Ionicons name={icon} size={13} color={color} />
+        {!isPlace && (
+          <View className="flex-row items-center mb-1.5">
+            <View
+              className="w-6 h-6 rounded-full items-center justify-center mr-2"
+              style={{ backgroundColor: `${color}25` }}
+            >
+              <Ionicons name={icon} size={13} color={color} />
+            </View>
+            <Text className="text-text-primary font-semibold text-[15px] flex-1" numberOfLines={1}>
+              {item.title}
+            </Text>
           </View>
-          <Text className="text-text-primary font-semibold text-[15px] flex-1" numberOfLines={1}>
-            {item.title}
-          </Text>
-        </View>
+        )}
 
         {item.description && (
           <Text className="text-text-tertiary text-xs mb-2" numberOfLines={1}>
@@ -112,11 +141,21 @@ function SharedItemCard({ item }: { item: SharedObject }) {
           </Text>
         )}
 
-        <Text className="text-text-tertiary text-[10px]">
-          {format(item.sharedAt, 'MMM d, yyyy')}
-        </Text>
+        <View className="flex-row items-center justify-between">
+          <Text className="text-text-tertiary text-[10px]">
+            {format(item.sharedAt, 'MMM d, yyyy')}
+          </Text>
+          {isPlace && (
+            <View className="flex-row items-center">
+              <Ionicons name="navigate-outline" size={12} color="#2D9F6F" />
+              <Text className="text-status-success text-[11px] font-medium ml-1">
+                Open in Maps
+              </Text>
+            </View>
+          )}
+        </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -128,6 +167,7 @@ interface SharedTabProps {
 }
 
 export function SharedTab({ conversationId, sharedObjects: directObjects }: SharedTabProps) {
+  const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
   const [isModalVisible, setIsModalVisible] = useState(false);
 
@@ -177,7 +217,18 @@ export function SharedTab({ conversationId, sharedObjects: directObjects }: Shar
               />
             </View>
           }
-          renderItem={({ item }) => <SharedItemCard item={item} />}
+          renderItem={({ item }) => (
+            <SharedItemCard
+              item={item}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push({
+                  pathname: '/(tabs)/messages/shared-detail',
+                  params: { data: JSON.stringify(item) },
+                });
+              }}
+            />
+          )}
           ListEmptyComponent={
             <View className="px-4 py-12 items-center">
               <Ionicons name="search-outline" size={28} color="#A8937F" />

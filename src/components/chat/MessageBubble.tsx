@@ -14,7 +14,10 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { ReactionPicker } from './ReactionPicker';
+import { LinkPreviewCard } from './LinkPreviewCard';
+import { PhotoGrid } from './PhotoGrid';
 import { renderHighlightedText } from '../../utils/highlightText';
+import { extractUrls } from '../../utils/urlDetection';
 import { Message, Reaction } from '../../types';
 import { useUserStore } from '../../stores/useUserStore';
 
@@ -31,6 +34,14 @@ interface Props {
   onEdit?: (messageId: string, currentContent: string) => void;
   highlightText?: string;
   isSearchMatch?: boolean;
+  /** Lifted reaction picker state — which message has the picker open (null = none) */
+  activePickerMessageId?: string | null;
+  /** Called when this bubble's long-press opens the reaction picker */
+  onOpenPicker?: (messageId: string) => void;
+  /** Called when the reaction picker should close */
+  onClosePicker?: () => void;
+  /** Grouped image messages for photo grid rendering */
+  imageGroup?: Message[];
 }
 
 // ─── Date Divider ────────────────────────────
@@ -185,12 +196,22 @@ export function MessageBubble({
   onEdit,
   highlightText,
   isSearchMatch,
+  activePickerMessageId,
+  onOpenPicker,
+  onClosePicker,
+  imageGroup,
 }: Props) {
   const currentUserId = useUserStore((s) => s.currentUser?.id);
   const getUserById = useUserStore((s) => s.getUserById);
   const isMine = message.senderId === currentUserId;
   const isFailed = message.sendStatus === 'failed';
-  const [showReactionPicker, setShowReactionPicker] = useState(false);
+
+  // Reaction picker: use lifted state if provided, otherwise fall back to local state
+  const [localShowPicker, setLocalShowPicker] = useState(false);
+  const showReactionPicker = onOpenPicker ? activePickerMessageId === message.id : localShowPicker;
+  const setShowReactionPicker = onOpenPicker
+    ? (show: boolean) => { if (show) onOpenPicker(message.id); else onClosePicker?.(); }
+    : setLocalShowPicker;
 
   const sender = !isMine ? getUserById(message.senderId) : null;
 
@@ -404,23 +425,27 @@ export function MessageBubble({
                   </Text>
                 )}
                 {message.type === 'image' ? (
-                  <View
-                    style={getBubbleRadius()}
-                    className={`overflow-hidden ${isFailed ? 'opacity-60' : ''}`}
-                  >
-                    <Image
-                      source={{ uri: message.content }}
-                      style={{
-                        width: 220,
-                        aspectRatio:
-                          (message.metadata?.width as number) && (message.metadata?.height as number)
-                            ? (message.metadata!.width as number) / (message.metadata!.height as number)
-                            : 4 / 3,
-                      }}
-                      contentFit="cover"
-                      transition={200}
-                    />
-                  </View>
+                  imageGroup && imageGroup.length > 1 ? (
+                    <PhotoGrid images={imageGroup} isMine={isMine} />
+                  ) : (
+                    <View
+                      style={getBubbleRadius()}
+                      className={`overflow-hidden ${isFailed ? 'opacity-60' : ''}`}
+                    >
+                      <Image
+                        source={{ uri: message.content }}
+                        style={{
+                          width: 220,
+                          aspectRatio:
+                            (message.metadata?.width as number) && (message.metadata?.height as number)
+                              ? (message.metadata!.width as number) / (message.metadata!.height as number)
+                              : 4 / 3,
+                        }}
+                        contentFit="cover"
+                        transition={200}
+                      />
+                    </View>
+                  )
                 ) : (
                   <View
                     style={getBubbleRadius()}
@@ -470,6 +495,11 @@ export function MessageBubble({
                       </Text>
                     )}
 
+                    {/* Link preview card */}
+                    {message.type === 'text' && extractUrls(message.content).length > 0 && (
+                      <LinkPreviewCard url={extractUrls(message.content)[0]} isMine={isMine} />
+                    )}
+
                     {/* Inline timestamp + status */}
                     {isLastInGroup && (
                       <View className={`flex-row items-center mt-1 ${isMine ? 'justify-end' : 'justify-start'}`}>
@@ -508,20 +538,6 @@ export function MessageBubble({
         )}
       </View>
 
-      {/* Dismiss reaction picker on tap outside */}
-      {showReactionPicker && (
-        <Pressable
-          onPress={() => setShowReactionPicker(false)}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: -1,
-          }}
-        />
-      )}
     </>
   );
 }

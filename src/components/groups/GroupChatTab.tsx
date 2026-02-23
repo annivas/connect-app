@@ -1,15 +1,34 @@
 import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, View, ActivityIndicator, Alert } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Platform, View, Text, Pressable, ActivityIndicator, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
-import { isSameDay, differenceInMinutes } from 'date-fns';
+import { isSameDay, isToday, differenceInMinutes } from 'date-fns';
 import * as ImagePicker from 'expo-image-picker';
 import { MessageBubble } from '../chat/MessageBubble';
 import { MessageInput } from '../chat/MessageInput';
 import { TypingIndicator } from '../chat/TypingIndicator';
+import { EventSuggestionChip } from './EventSuggestionChip';
+import { CreateEventModal } from './CreateEventModal';
 import { useGroupsStore } from '../../stores/useGroupsStore';
 import { useUserStore } from '../../stores/useUserStore';
-import type { Message } from '../../types';
+import { getImageGroup } from '../../utils/imageGrouping';
+import { detectEventHint } from '../../utils/eventDetection';
+import type { Message, GroupEvent } from '../../types';
+
+/**
+ * Standalone "Today" divider — rendered at the visual top of the inverted list.
+ */
+function TodayDivider() {
+  return (
+    <View className="flex-row items-center my-4 px-2">
+      <View className="flex-1 h-px bg-border-subtle" />
+      <Text className="text-text-tertiary text-[11px] mx-3 font-medium tracking-wide uppercase">
+        Today
+      </Text>
+      <View className="flex-1 h-px bg-border-subtle" />
+    </View>
+  );
+}
 
 /**
  * Dynamically measure the Y position of the GroupChatTab container to get an
@@ -50,8 +69,23 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
   const isLoadingMore = useGroupsStore((s) => s.loadingMessages.has(groupId));
   const replyingTo = useGroupsStore((s) => s.replyingTo[groupId] ?? null);
 
+  // Lifted reaction picker state
+  const [activePickerMessageId, setActivePickerMessageId] = useState<string | null>(null);
+
+  // Event suggestion state
+  const [dismissedHintIds, setDismissedHintIds] = useState<Set<string>>(new Set());
+  const [showCreateEvent, setShowCreateEvent] = useState(false);
+  const [suggestedEventTitle, setSuggestedEventTitle] = useState<string | undefined>();
+
   // Inverted FlatList needs newest-first order
   const invertedMessages = useMemo(() => [...messages].reverse(), [messages]);
+
+  // Detect event suggestions from recent messages
+  const currentUserId = useUserStore((s) => s.currentUser?.id) ?? '';
+  const eventHint = useMemo(
+    () => detectEventHint(messages, currentUserId, dismissedHintIds),
+    [messages, currentUserId, dismissedHintIds],
+  );
 
   // Load messages when entering the group chat
   useEffect(() => {
@@ -133,6 +167,24 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
     }
   }, [groupId, hasMore, isLoadingMore]);
 
+  const handleDismissHint = useCallback(() => {
+    if (eventHint) {
+      setDismissedHintIds((prev) => new Set(prev).add(eventHint.messageId));
+    }
+  }, [eventHint]);
+
+  const handleOpenCreateEvent = useCallback(() => {
+    if (eventHint) {
+      setSuggestedEventTitle(eventHint.matchedText);
+      setDismissedHintIds((prev) => new Set(prev).add(eventHint.messageId));
+    }
+    setShowCreateEvent(true);
+  }, [eventHint]);
+
+  const handleSaveEvent = useCallback((eventData: Omit<GroupEvent, 'id' | 'groupId' | 'createdBy' | 'attendees'>) => {
+    useGroupsStore.getState().createEvent(groupId, eventData);
+  }, [groupId]);
+
   return (
     <View ref={containerRef} onLayout={onLayout} className="flex-1 bg-background-primary">
     <KeyboardAvoidingView
@@ -167,6 +219,10 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
             newerMsg.senderId !== item.senderId ||
             differenceInMinutes(newerMsg.timestamp, item.timestamp) > GROUP_THRESHOLD_MINUTES;
 
+          // Photo grid: group consecutive images from same sender
+          const imgGroup = getImageGroup(invertedMessages, index);
+          if (imgGroup && !imgGroup.isLeader) return null;
+
           return (
             <MessageBubble
               message={item}
@@ -181,6 +237,10 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
               onEdit={handleEdit}
               highlightText={highlightText}
               isSearchMatch={matchingMessageIds?.has(item.id)}
+              activePickerMessageId={activePickerMessageId}
+              onOpenPicker={setActivePickerMessageId}
+              onClosePicker={() => setActivePickerMessageId(null)}
+              imageGroup={imgGroup?.isLeader ? imgGroup.images : undefined}
             />
           );
         }}
@@ -191,6 +251,16 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
         }}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="interactive"
+        onScrollBeginDrag={() => setActivePickerMessageId(null)}
+        ListHeaderComponent={
+          eventHint ? (
+            <EventSuggestionChip
+              hint={eventHint}
+              onCreateEvent={handleOpenCreateEvent}
+              onDismiss={handleDismissHint}
+            />
+          ) : null
+        }
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.3}
         ListFooterComponent={
@@ -198,6 +268,8 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
             <View className="py-3 items-center">
               <ActivityIndicator color="#D4764E" />
             </View>
+          ) : invertedMessages.length > 0 && isToday(invertedMessages[invertedMessages.length - 1].timestamp) && !hasMore ? (
+            <TodayDivider />
           ) : null
         }
       />
@@ -221,6 +293,27 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
       {/* Safe area bottom padding so input sits above the home indicator */}
       <View style={{ height: insets.bottom }} className="bg-background-secondary" />
     </KeyboardAvoidingView>
+
+    {/* Reaction picker backdrop — fullscreen dismiss overlay */}
+    {activePickerMessageId && (
+      <Pressable
+        onPress={() => setActivePickerMessageId(null)}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+        }}
+      />
+    )}
+
+    <CreateEventModal
+      visible={showCreateEvent}
+      onClose={() => setShowCreateEvent(false)}
+      onSave={handleSaveEvent}
+      suggestedTitle={suggestedEventTitle}
+    />
     </View>
   );
 }
