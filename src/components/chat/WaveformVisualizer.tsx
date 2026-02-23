@@ -26,8 +26,8 @@ export function WaveformVisualizer({
   progress = 0,
   height = 28,
   barCount = 40,
-  activeColor = '#6366F1',
-  inactiveColor = 'rgba(160, 160, 171, 0.4)',
+  activeColor = '#D4764E',
+  inactiveColor = 'rgba(168, 147, 127, 0.4)',
 }: Props) {
   // Resample the waveform data to fit the target bar count
   const bars = useMemo(() => {

@@ -76,10 +76,10 @@ export function VoiceMessageBubble({ messageId, metadata, isMine }: Props) {
   const currentTime = Math.floor(progress * metadata.duration);
   const remaining = metadata.duration - currentTime;
 
-  const accentColor = isMine ? '#FFFFFF' : '#6366F1';
-  const secondaryColor = isMine ? 'rgba(255,255,255,0.6)' : '#A0A0AB';
-  const waveActiveColor = isMine ? '#FFFFFF' : '#6366F1';
-  const waveInactiveColor = isMine ? 'rgba(255,255,255,0.3)' : 'rgba(99,102,241,0.25)';
+  const accentColor = isMine ? '#FFFFFF' : '#D4764E';
+  const secondaryColor = isMine ? 'rgba(255,255,255,0.6)' : '#A8937F';
+  const waveActiveColor = isMine ? '#FFFFFF' : '#D4764E';
+  const waveInactiveColor = isMine ? 'rgba(255,255,255,0.3)' : 'rgba(212,118,78,0.25)';
 
   return (
     <View className="flex-row items-center py-1" style={{ minWidth: 200 }}>
@@ -88,7 +88,7 @@ export function VoiceMessageBubble({ messageId, metadata, isMine }: Props) {
         onPress={handlePlayPause}
         className="w-10 h-10 rounded-full items-center justify-center mr-2.5"
         style={{
-          backgroundColor: isMine ? 'rgba(255,255,255,0.2)' : 'rgba(99,102,241,0.15)',
+          backgroundColor: isMine ? 'rgba(255,255,255,0.2)' : 'rgba(212,118,78,0.15)',
         }}
       >
         <Ionicons
@@ -123,7 +123,7 @@ export function VoiceMessageBubble({ messageId, metadata, isMine }: Props) {
               onPress={handleSpeedToggle}
               className="px-1.5 py-0.5 rounded"
               style={{
-                backgroundColor: isMine ? 'rgba(255,255,255,0.2)' : 'rgba(99,102,241,0.15)',
+                backgroundColor: isMine ? 'rgba(255,255,255,0.2)' : 'rgba(212,118,78,0.15)',
               }}
             >
               <Text style={{ fontSize: 10, fontWeight: '700', color: accentColor }}>

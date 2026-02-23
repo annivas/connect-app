@@ -46,7 +46,7 @@ function FilterChip({
       <Ionicons
         name={icon}
         size={14}
-        color={active ? '#FFFFFF' : '#A0A0AB'}
+        color={active ? '#FFFFFF' : '#A8937F'}
       />
       <Text
         className={`text-xs font-semibold ml-1.5 ${
@@ -78,7 +78,7 @@ function PinnedMessageCard({
       style={{ width: 220 }}
     >
       <View className="flex-row items-center mb-2">
-        <Ionicons name="pin" size={12} color="#6366F1" />
+        <Ionicons name="pin" size={12} color="#D4764E" />
         <Text className="text-accent-primary text-[11px] font-semibold ml-1">
           Pinned
         </Text>
@@ -111,12 +111,12 @@ const typeIcons: Record<SharedObjectType, keyof typeof Ionicons.glyphMap> = {
 };
 
 const typeColors: Record<SharedObjectType, string> = {
-  link: '#3B82F6',
-  place: '#10B981',
-  song: '#8B5CF6',
+  link: '#5B8EC9',
+  place: '#2D9F6F',
+  song: '#C2956B',
   photo: '#F59E0B',
-  video: '#EF4444',
-  file: '#6B6B76',
+  video: '#C94F4F',
+  file: '#A8937F',
 };
 
 function SharedItemCard({ item, onPress }: { item: SharedObject; onPress?: () => void }) {
@@ -140,10 +140,10 @@ function SharedItemCard({ item, onPress }: { item: SharedObject; onPress?: () =>
         <View className="px-3.5 pt-3.5">
           <View
             className="rounded-xl p-3 flex-row items-center"
-            style={{ backgroundColor: '#10B98115' }}
+            style={{ backgroundColor: '#2D9F6F15' }}
           >
             <View className="w-10 h-10 rounded-full items-center justify-center bg-status-success/20">
-              <Ionicons name="location" size={20} color="#10B981" />
+              <Ionicons name="location" size={20} color="#2D9F6F" />
             </View>
             <View className="ml-3 flex-1">
               <Text className="text-text-primary font-semibold text-[15px]" numberOfLines={1}>
@@ -186,7 +186,7 @@ function SharedItemCard({ item, onPress }: { item: SharedObject; onPress?: () =>
           </Text>
           {isPlace && (
             <View className="flex-row items-center">
-              <Ionicons name="navigate-outline" size={12} color="#10B981" />
+              <Ionicons name="navigate-outline" size={12} color="#2D9F6F" />
               <Text className="text-status-success text-[11px] font-medium ml-1">
                 Open in Maps
               </Text>
@@ -272,7 +272,7 @@ export function MediaPinsTab({ conversationId }: MediaPinsTabProps) {
             {pinnedMessages.length > 0 && (
               <View className="pt-4 pb-2">
                 <View className="flex-row items-center px-4 mb-3">
-                  <Ionicons name="pin" size={16} color="#6366F1" />
+                  <Ionicons name="pin" size={16} color="#D4764E" />
                   <Text className="text-text-primary font-semibold text-[15px] ml-2">
                     Pinned Messages
                   </Text>
@@ -309,7 +309,7 @@ export function MediaPinsTab({ conversationId }: MediaPinsTabProps) {
             {sharedObjects.length > 0 && (
               <View>
                 <View className="flex-row items-center px-4 pt-3 mb-3">
-                  <Ionicons name="images-outline" size={16} color="#A0A0AB" />
+                  <Ionicons name="images-outline" size={16} color="#A8937F" />
                   <Text className="text-text-primary font-semibold text-[15px] ml-2">
                     Shared Media
                   </Text>
@@ -346,7 +346,7 @@ export function MediaPinsTab({ conversationId }: MediaPinsTabProps) {
         ListEmptyComponent={
           sharedObjects.length > 0 ? (
             <View className="px-4 py-12 items-center">
-              <Ionicons name="search-outline" size={28} color="#6B6B76" />
+              <Ionicons name="search-outline" size={28} color="#A8937F" />
               <Text className="text-text-tertiary text-sm mt-2">
                 No {activeFilter === 'all' ? 'items' : activeFilter + 's'} found
               </Text>

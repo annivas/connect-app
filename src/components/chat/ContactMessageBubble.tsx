@@ -33,10 +33,10 @@ export function ContactMessageBubble({ metadata, isMine }: Props) {
           <View
             className="w-10 h-10 rounded-full items-center justify-center"
             style={{
-              backgroundColor: isMine ? 'rgba(255,255,255,0.2)' : 'rgba(99,102,241,0.15)',
+              backgroundColor: isMine ? 'rgba(255,255,255,0.2)' : 'rgba(212,118,78,0.15)',
             }}
           >
-            <Ionicons name="person" size={20} color={isMine ? '#FFFFFF' : '#6366F1'} />
+            <Ionicons name="person" size={20} color={isMine ? '#FFFFFF' : '#D4764E'} />
           </View>
         )}
 
@@ -65,7 +65,7 @@ export function ContactMessageBubble({ metadata, isMine }: Props) {
           isMine ? 'bg-white/15' : 'bg-surface-hover'
         }`}
       >
-        <Ionicons name="person-add-outline" size={14} color={isMine ? '#FFFFFF' : '#6366F1'} />
+        <Ionicons name="person-add-outline" size={14} color={isMine ? '#FFFFFF' : '#D4764E'} />
         <Text
           className={`text-[13px] font-medium ml-1.5 ${
             isMine ? 'text-white' : 'text-accent-primary'

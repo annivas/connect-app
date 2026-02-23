@@ -98,7 +98,7 @@ export function RemindersTab({ conversationId }: Props) {
                 </Text>
                 {item.linkedMessageId && (
                   <View className="flex-row items-center mt-1.5">
-                    <Ionicons name="chatbubble-outline" size={11} color="#6366F1" />
+                    <Ionicons name="chatbubble-outline" size={11} color="#D4764E" />
                     <Text className="text-accent-primary text-[11px] font-medium ml-1">
                       From message
                     </Text>

@@ -34,7 +34,7 @@ export function PinnedMessageBanner({ pinnedMessages, onJumpToMessage, onDismiss
         onPress={handleTap}
         className="flex-row items-center px-4 py-2.5 bg-surface border-b border-border-subtle"
       >
-        <Ionicons name="pin" size={14} color="#6366F1" />
+        <Ionicons name="pin" size={14} color="#D4764E" />
         <View className="flex-1 ml-2.5">
           <Text className="text-text-primary text-[13px]" numberOfLines={1}>
             {latestPinned.content || 'Pinned media'}
@@ -50,7 +50,7 @@ export function PinnedMessageBanner({ pinnedMessages, onJumpToMessage, onDismiss
         <Ionicons
           name={expanded ? 'chevron-up' : 'chevron-down'}
           size={16}
-          color="#A0A0AB"
+          color="#A8937F"
         />
       </Pressable>
 
@@ -70,11 +70,11 @@ export function PinnedMessageBanner({ pinnedMessages, onJumpToMessage, onDismiss
               }}
               className="flex-row items-center px-4 py-2.5 border-b border-border-subtle/50"
             >
-              <Ionicons name="pin-outline" size={12} color="#6366F1" />
+              <Ionicons name="pin-outline" size={12} color="#D4764E" />
               <Text className="text-text-primary text-[13px] flex-1 ml-2" numberOfLines={1}>
                 {msg.content || 'Pinned media'}
               </Text>
-              <Ionicons name="chevron-forward" size={14} color="#6B6B76" />
+              <Ionicons name="chevron-forward" size={14} color="#A8937F" />
             </Pressable>
           ))}
         </Animated.View>

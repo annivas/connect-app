@@ -82,7 +82,7 @@ export function CreatePollModal({ visible, onClose, onCreatePoll }: Props) {
             value={question}
             onChangeText={setQuestion}
             placeholder="Ask a question..."
-            placeholderTextColor="#6B6B76"
+            placeholderTextColor="#A8937F"
             className="bg-surface rounded-xl px-4 py-3 text-text-primary text-[15px] mb-6"
             multiline
             maxLength={200}
@@ -104,7 +104,7 @@ export function CreatePollModal({ visible, onClose, onCreatePoll }: Props) {
                   value={option}
                   onChangeText={(text) => handleUpdateOption(index, text)}
                   placeholder={`Option ${index + 1}`}
-                  placeholderTextColor="#6B6B76"
+                  placeholderTextColor="#A8937F"
                   className="flex-1 text-text-primary text-[15px]"
                   maxLength={100}
                 />
@@ -114,7 +114,7 @@ export function CreatePollModal({ visible, onClose, onCreatePoll }: Props) {
                   onPress={() => handleRemoveOption(index)}
                   className="ml-2 w-8 h-8 items-center justify-center"
                 >
-                  <Ionicons name="close-circle" size={22} color="#EF4444" />
+                  <Ionicons name="close-circle" size={22} color="#C94F4F" />
                 </Pressable>
               )}
             </View>
@@ -126,7 +126,7 @@ export function CreatePollModal({ visible, onClose, onCreatePoll }: Props) {
               onPress={handleAddOption}
               className="flex-row items-center py-3"
             >
-              <Ionicons name="add-circle-outline" size={22} color="#6366F1" />
+              <Ionicons name="add-circle-outline" size={22} color="#D4764E" />
               <Text className="text-accent-primary text-[14px] font-medium ml-2">
                 Add Option
               </Text>
@@ -149,7 +149,7 @@ export function CreatePollModal({ visible, onClose, onCreatePoll }: Props) {
                 Haptics.selectionAsync();
                 setIsMultipleChoice(val);
               }}
-              trackColor={{ true: '#6366F1', false: '#2D2D40' }}
+              trackColor={{ true: '#D4764E', false: '#E8D5C4' }}
               thumbColor="#FFFFFF"
             />
           </View>

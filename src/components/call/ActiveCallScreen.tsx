@@ -55,9 +55,10 @@ export function ActiveCallScreen() {
     return () => clearInterval(interval);
   }, [isInCall, activeCall]);
 
-  if (!isInCall || !activeCall || activeCall.type === 'video') return null;
+  if (!isInCall || !activeCall) return null;
 
   const otherUser = getUserById(activeCall.participants[0] ?? '');
+  const isVideo = activeCall.type === 'video';
 
   const handleEndCall = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -86,7 +87,7 @@ export function ActiveCallScreen() {
               width: 160,
               height: 160,
               borderRadius: 80,
-              backgroundColor: '#6366F1',
+              backgroundColor: '#D4764E',
             },
             pulseStyle,
           ]}
@@ -119,7 +120,7 @@ export function ActiveCallScreen() {
             <Ionicons
               name={activeCall.isMuted ? 'mic-off' : 'mic'}
               size={26}
-              color={activeCall.isMuted ? '#EF4444' : '#F5F5F7'}
+              color={activeCall.isMuted ? '#C94F4F' : '#FFFFFF'}
             />
           </Pressable>
 
@@ -133,7 +134,7 @@ export function ActiveCallScreen() {
             <Ionicons
               name={activeCall.isSpeakerOn ? 'volume-high' : 'volume-medium'}
               size={26}
-              color="#F5F5F7"
+              color="#FFFFFF"
             />
           </Pressable>
         </View>
@@ -143,7 +144,7 @@ export function ActiveCallScreen() {
           onPress={handleEndCall}
           className="w-20 h-20 rounded-full bg-status-error items-center justify-center mt-12"
           style={{
-            shadowColor: '#EF4444',
+            shadowColor: '#C94F4F',
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.4,
             shadowRadius: 8,
@@ -153,7 +154,7 @@ export function ActiveCallScreen() {
         </Pressable>
 
         <Text className="text-text-tertiary text-[12px] mt-4">
-          Voice Call
+          {isVideo ? 'Video Call' : 'Voice Call'}
         </Text>
       </View>
     </Modal>

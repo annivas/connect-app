@@ -107,7 +107,7 @@ export function CreateEventModal({ visible, onClose, onSave, suggestedTitle }: P
             value={title}
             onChangeText={setTitle}
             placeholder="Event name"
-            placeholderTextColor="#6B6B76"
+            placeholderTextColor="#A8937F"
             autoFocus
           />
 
@@ -219,7 +219,7 @@ export function CreateEventModal({ visible, onClose, onSave, suggestedTitle }: P
             value={description}
             onChangeText={setDescription}
             placeholder="What's the plan?"
-            placeholderTextColor="#6B6B76"
+            placeholderTextColor="#A8937F"
             multiline
             numberOfLines={3}
             textAlignVertical="top"

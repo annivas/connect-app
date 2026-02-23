@@ -151,7 +151,7 @@ export function MessageContextMenu({
                   }`}
                   numberOfLines={4}
                 >
-                  {message.content || '🎤 Voice message'}
+                  {message.content || 'Voice message'}
                 </Text>
               </View>
 
@@ -181,7 +181,7 @@ export function MessageContextMenu({
                         <Ionicons
                           name={action.icon}
                           size={20}
-                          color={action.destructive ? '#EF4444' : '#A0A0AB'}
+                          color={action.destructive ? '#C94F4F' : '#A8937F'}
                         />
                       </View>
                       <Text
@@ -199,7 +199,7 @@ export function MessageContextMenu({
                       )}
                       {action.id === 'pin' && message.isPinned && (
                         <View className="ml-auto">
-                          <Ionicons name="pin" size={14} color="#6366F1" />
+                          <Ionicons name="pin" size={14} color="#D4764E" />
                         </View>
                       )}
                     </Pressable>

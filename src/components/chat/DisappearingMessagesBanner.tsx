@@ -27,11 +27,11 @@ export function DisappearingMessagesBanner({ duration, onPress }: Props) {
         onPress={onPress}
         className="flex-row items-center justify-center py-2 px-4 bg-accent-primary/10 border-b border-border-subtle"
       >
-        <Ionicons name="timer-outline" size={14} color="#6366F1" />
+        <Ionicons name="timer-outline" size={14} color="#D4764E" />
         <Text className="text-accent-primary text-[12px] font-medium ml-1.5">
           Disappearing messages: {DURATION_LABELS[duration]}
         </Text>
-        <Ionicons name="chevron-forward" size={12} color="#6366F1" style={{ marginLeft: 4 }} />
+        <Ionicons name="chevron-forward" size={12} color="#D4764E" style={{ marginLeft: 4 }} />
       </Pressable>
     </Animated.View>
   );

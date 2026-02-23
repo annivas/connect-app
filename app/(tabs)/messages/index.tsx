@@ -39,7 +39,7 @@ function GlobalSearchResult({
       className="mx-4 mb-3 bg-surface rounded-xl p-3"
     >
       <View className="flex-row items-center mb-2">
-        <Ionicons name="chatbubble-outline" size={14} color="#6366F1" />
+        <Ionicons name="chatbubble-outline" size={14} color="#D4764E" />
         <Text className="text-text-primary text-[14px] font-semibold ml-2">
           {otherUser?.name ?? 'Unknown'}
         </Text>
@@ -180,7 +180,7 @@ export default function MessagesScreen() {
       {isGlobalSearchActive && (
         <View className="pb-2">
           <View className="flex-row items-center px-4 py-2">
-            <Ionicons name="search" size={14} color="#A0A0AB" />
+            <Ionicons name="search" size={14} color="#A8937F" />
             <Text className="text-text-secondary text-[13px] font-medium ml-2">
               Messages matching "{searchQuery}"
             </Text>
@@ -216,7 +216,7 @@ export default function MessagesScreen() {
         contentContainerStyle={filtered.length === 0 ? { flex: 1 } : { paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6366F1" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#D4764E" />
         }
         ListEmptyComponent={
           <EmptyState

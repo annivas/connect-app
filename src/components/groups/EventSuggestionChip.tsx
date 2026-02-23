@@ -30,7 +30,7 @@ export function EventSuggestionChip({ hint, onCreateEvent, onDismiss }: Props) {
           }}
           hitSlop={8}
         >
-          <Ionicons name="close" size={16} color="#6B6B76" />
+          <Ionicons name="close" size={16} color="#A8937F" />
         </Pressable>
       </View>
 

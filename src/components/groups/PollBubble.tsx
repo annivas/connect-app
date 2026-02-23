@@ -29,7 +29,7 @@ export function PollBubble({ poll, onVote, onClose }: Props) {
       {/* Header */}
       <View className="px-4 pt-3.5 pb-2">
         <View className="flex-row items-center mb-1">
-          <Ionicons name="bar-chart-outline" size={16} color="#6366F1" />
+          <Ionicons name="bar-chart-outline" size={16} color="#D4764E" />
           <Text className="text-accent-primary text-[12px] font-semibold ml-1.5 uppercase tracking-wide">
             Poll
           </Text>
@@ -69,7 +69,7 @@ export function PollBubble({ poll, onVote, onClose }: Props) {
                   className="absolute inset-y-0 left-0 rounded-xl"
                   style={{
                     width: `${percentage}%`,
-                    backgroundColor: hasVoted ? 'rgba(99, 102, 241, 0.2)' : 'rgba(160, 160, 171, 0.1)',
+                    backgroundColor: hasVoted ? 'rgba(212, 118, 78, 0.2)' : 'rgba(168, 147, 127, 0.1)',
                   }}
                 />
 
@@ -80,8 +80,8 @@ export function PollBubble({ poll, onVote, onClose }: Props) {
                     className="w-5 h-5 rounded-full items-center justify-center mr-2.5"
                     style={{
                       borderWidth: hasVoted ? 0 : 1.5,
-                      borderColor: '#6B6B76',
-                      backgroundColor: hasVoted ? '#6366F1' : 'transparent',
+                      borderColor: '#A8937F',
+                      backgroundColor: hasVoted ? '#D4764E' : 'transparent',
                     }}
                   >
                     {hasVoted && (

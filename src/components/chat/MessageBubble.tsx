@@ -219,7 +219,7 @@ export function MessageBubble({
 
   const triggerDoubleTapLike = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onReact?.(message.id, '❤️');
+    onReact?.(message.id, '\u2764\uFE0F');
   }, [message.id, onReact]);
 
   const playHeartAnimation = useCallback(() => {
@@ -280,7 +280,7 @@ export function MessageBubble({
       runOnJS(openContextMenu)();
     });
 
-  // Double-tap gesture — toggles ❤️ reaction with heart animation
+  // Double-tap gesture — toggles reaction with heart animation
   const doubleTapGesture = Gesture.Tap()
     .numberOfTaps(2)
     .onStart(() => {
@@ -444,8 +444,8 @@ export function MessageBubble({
                         style={{
                           width: 220,
                           aspectRatio:
-                            (message.metadata?.width as number) && (message.metadata?.height as number)
-                              ? (message.metadata!.width as number) / (message.metadata!.height as number)
+                            message.metadata?.width && message.metadata?.height && (message.metadata.height as number) > 0
+                              ? (message.metadata.width as number) / (message.metadata.height as number)
                               : 4 / 3,
                         }}
                         contentFit="cover"
@@ -512,7 +512,7 @@ export function MessageBubble({
                           <Ionicons name="star" size={10} color="#F59E0B" style={{ marginRight: 3 }} />
                         )}
                         {message.isPinned && (
-                          <Ionicons name="pin" size={10} color="#6366F1" style={{ marginRight: 3 }} />
+                          <Ionicons name="pin" size={10} color="#D4764E" style={{ marginRight: 3 }} />
                         )}
                         {message.isEdited && (
                           <Text className={`text-[10px] mr-1 ${isMine ? 'text-white/50' : 'text-text-tertiary'}`}>
@@ -555,7 +555,7 @@ export function MessageBubble({
             },
           ]}
         >
-          <Text style={{ fontSize: 44 }}>❤️</Text>
+          <Text style={{ fontSize: 44 }}>{'\u2764\uFE0F'}</Text>
         </Animated.View>
 
         {/* Reaction pills (slightly overlapping the bubble bottom) */}

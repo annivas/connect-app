@@ -36,7 +36,7 @@ export function LocationMessageBubble({ metadata, isMine }: Props) {
         <View className="absolute inset-0 items-center justify-center">
           <View className="w-8 h-8 rounded-full bg-status-error items-center justify-center"
             style={{
-              shadowColor: '#EF4444',
+              shadowColor: '#C94F4F',
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.4,
               shadowRadius: 4,
@@ -74,7 +74,7 @@ export function LocationMessageBubble({ metadata, isMine }: Props) {
           isMine ? 'bg-white/15' : 'bg-surface-hover'
         }`}
       >
-        <Ionicons name="navigate-outline" size={14} color={isMine ? '#FFFFFF' : '#6366F1'} />
+        <Ionicons name="navigate-outline" size={14} color={isMine ? '#FFFFFF' : '#D4764E'} />
         <Text
           className={`text-[13px] font-medium ml-1.5 ${
             isMine ? 'text-white' : 'text-accent-primary'

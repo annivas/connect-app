@@ -48,7 +48,7 @@ export function ConversationFilterBar({ activeFilter, onFilterChange, counts }: 
             <Ionicons
               name={filter.icon}
               size={14}
-              color={isActive ? '#FFFFFF' : '#A0A0AB'}
+              color={isActive ? '#FFFFFF' : '#A8937F'}
             />
             <Text
               className={`text-xs font-semibold ml-1.5 ${

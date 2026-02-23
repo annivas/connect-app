@@ -10,17 +10,17 @@ interface Props {
 }
 
 const FILE_ICONS: Record<string, { icon: keyof typeof Ionicons.glyphMap; color: string }> = {
-  'application/pdf': { icon: 'document-text', color: '#EF4444' },
-  'application/msword': { icon: 'document-text', color: '#3B82F6' },
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { icon: 'document-text', color: '#3B82F6' },
-  'application/vnd.ms-excel': { icon: 'grid', color: '#10B981' },
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { icon: 'grid', color: '#10B981' },
-  'text/plain': { icon: 'document-outline', color: '#6B6B76' },
+  'application/pdf': { icon: 'document-text', color: '#C94F4F' },
+  'application/msword': { icon: 'document-text', color: '#5B8EC9' },
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { icon: 'document-text', color: '#5B8EC9' },
+  'application/vnd.ms-excel': { icon: 'grid', color: '#2D9F6F' },
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { icon: 'grid', color: '#2D9F6F' },
+  'text/plain': { icon: 'document-outline', color: '#A8937F' },
   'application/zip': { icon: 'file-tray-stacked', color: '#F59E0B' },
 };
 
 function getFileIcon(mimeType: string): { icon: keyof typeof Ionicons.glyphMap; color: string } {
-  return FILE_ICONS[mimeType] || { icon: 'document-outline', color: '#6B6B76' };
+  return FILE_ICONS[mimeType] || { icon: 'document-outline', color: '#A8937F' };
 }
 
 function formatFileSize(bytes: number): string {
@@ -64,7 +64,7 @@ export function DocumentMessageBubble({ metadata, isMine }: Props) {
       <Ionicons
         name="download-outline"
         size={18}
-        color={isMine ? 'rgba(255,255,255,0.6)' : '#A0A0AB'}
+        color={isMine ? 'rgba(255,255,255,0.6)' : '#A8937F'}
       />
     </Pressable>
   );

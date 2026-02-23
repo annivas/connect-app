@@ -18,7 +18,7 @@ export function UnreadJumpButton({ unreadCount, onPress }: Props) {
       exiting={FadeOut.duration(150)}
       className="absolute bottom-24 right-4"
       style={{
-        shadowColor: '#6366F1',
+        shadowColor: '#D4764E',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.3,
         shadowRadius: 6,

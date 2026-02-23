@@ -274,10 +274,10 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         limit: PAGE_SIZE,
         before: oldest.timestamp.toISOString(),
       });
-      set({
-        groupMessages: [...older, ...get().groupMessages],
-        hasMoreMessages: { ...get().hasMoreMessages, [groupId]: older.length >= PAGE_SIZE },
-      });
+      set((state) => ({
+        groupMessages: [...older, ...state.groupMessages],
+        hasMoreMessages: { ...state.hasMoreMessages, [groupId]: older.length >= PAGE_SIZE },
+      }));
     } finally {
       const done = new Set(get().loadingMessages);
       done.delete(groupId);

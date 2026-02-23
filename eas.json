@@ -12,7 +12,11 @@
       }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "USE_MOCKS": "true"
+      },
+      "channel": "preview"
     },
     "production": {
       "autoIncrement": true

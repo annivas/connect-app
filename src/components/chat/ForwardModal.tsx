@@ -157,7 +157,7 @@ export function ForwardModal({ visible, message, onClose, sourceConversationId }
         {/* Header */}
         <View className="flex-row items-center px-4 pt-4 pb-3 border-b border-border-subtle">
           <Pressable onPress={handleClose} className="mr-3">
-            <Ionicons name="close" size={24} color="#A0A0AB" />
+            <Ionicons name="close" size={24} color="#A8937F" />
           </Pressable>
           <Text className="text-text-primary text-lg font-semibold flex-1">Forward Message</Text>
           {selectedIds.size > 0 && (

@@ -14,7 +14,7 @@ export function ForwardedLabel({ forwardedFrom, isMine }: Props) {
       <Ionicons
         name="arrow-redo"
         size={11}
-        color={isMine ? 'rgba(255,255,255,0.5)' : '#6B6B76'}
+        color={isMine ? 'rgba(255,255,255,0.5)' : '#A8937F'}
       />
       <Text
         className={`text-[11px] ml-1 italic ${

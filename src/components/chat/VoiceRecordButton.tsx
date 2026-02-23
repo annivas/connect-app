@@ -176,8 +176,8 @@ export function VoiceRecordButton({ onSendVoice }: Props) {
                   samples={waveformSamples}
                   height={20}
                   barCount={24}
-                  activeColor="#EF4444"
-                  inactiveColor="rgba(239, 68, 68, 0.3)"
+                  activeColor="#C94F4F"
+                  inactiveColor="rgba(201, 79, 79, 0.3)"
                 />
               </View>
 

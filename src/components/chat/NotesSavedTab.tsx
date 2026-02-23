@@ -94,7 +94,7 @@ function SavedMessageCard({
         onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onJump(); }}
         className="flex-row items-center mt-2.5 pt-2 border-t border-border-subtle"
       >
-        <Ionicons name="return-down-forward-outline" size={14} color="#6366F1" />
+        <Ionicons name="return-down-forward-outline" size={14} color="#D4764E" />
         <Text className="text-accent-primary text-[12px] font-medium ml-1.5">
           Jump to message
         </Text>
@@ -269,7 +269,7 @@ function FAB({ onPress }: { onPress: () => void }) {
       onPress={onPress}
       className="absolute bottom-4 right-4 w-14 h-14 rounded-full bg-accent-primary items-center justify-center"
       style={{
-        shadowColor: '#6366F1',
+        shadowColor: '#D4764E',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,

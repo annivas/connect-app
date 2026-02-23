@@ -83,7 +83,7 @@ export function ScheduleMessageSheet({ visible, onSchedule, onClose }: Props) {
         {/* Header */}
         <View className="flex-row items-center px-4 pt-4 pb-3 border-b border-border-subtle">
           <Pressable onPress={onClose} className="mr-3">
-            <Ionicons name="close" size={24} color="#A0A0AB" />
+            <Ionicons name="close" size={24} color="#A8937F" />
           </Pressable>
           <Text className="text-text-primary text-lg font-semibold flex-1">
             Schedule Message
@@ -107,7 +107,7 @@ export function ScheduleMessageSheet({ visible, onSchedule, onClose }: Props) {
                     } active:bg-surface-hover`}
                   >
                     <View className="w-8 h-8 rounded-full bg-accent-primary/15 items-center justify-center mr-3">
-                      <Ionicons name={option.icon} size={18} color="#6366F1" />
+                      <Ionicons name={option.icon} size={18} color="#D4764E" />
                     </View>
                     <View className="flex-1">
                       <Text className="text-text-primary text-[15px] font-medium">
@@ -117,7 +117,7 @@ export function ScheduleMessageSheet({ visible, onSchedule, onClose }: Props) {
                         {option.sublabel}
                       </Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={16} color="#6B6B76" />
+                    <Ionicons name="chevron-forward" size={16} color="#A8937F" />
                   </Pressable>
                 ))}
               </View>
@@ -134,7 +134,7 @@ export function ScheduleMessageSheet({ visible, onSchedule, onClose }: Props) {
                 className="flex-row items-center px-4 py-3.5 bg-surface rounded-2xl border border-border-subtle active:bg-surface-hover"
               >
                 <View className="w-8 h-8 rounded-full bg-accent-secondary/15 items-center justify-center mr-3">
-                  <Ionicons name="time-outline" size={18} color="#8B5CF6" />
+                  <Ionicons name="time-outline" size={18} color="#C2956B" />
                 </View>
                 <View className="flex-1">
                   <Text className="text-text-primary text-[15px] font-medium">
@@ -144,7 +144,7 @@ export function ScheduleMessageSheet({ visible, onSchedule, onClose }: Props) {
                     Pick a specific date and time
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={16} color="#6B6B76" />
+                <Ionicons name="chevron-forward" size={16} color="#A8937F" />
               </Pressable>
             </View>
 

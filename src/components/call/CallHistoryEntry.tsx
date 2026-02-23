@@ -37,7 +37,7 @@ export function CallHistoryEntry({ entry, conversationId }: Props) {
 
   // Icon and color based on call status
   const iconName = isVideo ? 'videocam' : 'call';
-  const statusColor = isMissed ? '#EF4444' : isDeclined ? '#A0A0AB' : '#10B981';
+  const statusColor = isMissed ? '#C94F4F' : isDeclined ? '#A8937F' : '#2D9F6F';
   const directionIcon = isOutgoing ? 'arrow-up-outline' : 'arrow-down-outline';
 
   // Status text
@@ -91,9 +91,9 @@ export function CallHistoryEntry({ entry, conversationId }: Props) {
 
         <View
           className="w-8 h-8 rounded-full items-center justify-center ml-2.5"
-          style={{ backgroundColor: 'rgba(99, 102, 241, 0.15)' }}
+          style={{ backgroundColor: 'rgba(212, 118, 78, 0.15)' }}
         >
-          <Ionicons name={iconName} size={14} color="#6366F1" />
+          <Ionicons name={iconName} size={14} color="#D4764E" />
         </View>
       </View>
     </Pressable>

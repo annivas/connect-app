@@ -65,7 +65,7 @@ export function IncomingCallScreen() {
               height: 180,
               borderRadius: 90,
               borderWidth: 2,
-              borderColor: isVideo ? '#3B82F6' : '#10B981',
+              borderColor: isVideo ? '#5B8EC9' : '#2D9F6F',
             },
             ringStyle,
           ]}
@@ -94,7 +94,7 @@ export function IncomingCallScreen() {
               style={{
                 width: 72,
                 height: 72,
-                shadowColor: '#EF4444',
+                shadowColor: '#C94F4F',
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.4,
                 shadowRadius: 8,
@@ -114,8 +114,8 @@ export function IncomingCallScreen() {
                 width: 72,
                 height: 72,
                 borderRadius: 36,
-                backgroundColor: '#10B981',
-                shadowColor: '#10B981',
+                backgroundColor: '#2D9F6F',
+                shadowColor: '#2D9F6F',
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.4,
                 shadowRadius: 8,

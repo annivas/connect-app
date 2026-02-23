@@ -172,12 +172,14 @@ export default function ConversationDetailScreen() {
         </Pressable>
 
         <IconButton icon="call-outline" onPress={() => {
+          if (!otherUserId) return;
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          useCallStore.getState().initiateCall(id!, [otherUserId!], 'voice');
+          useCallStore.getState().initiateCall(id!, [otherUserId], 'voice');
         }} />
         <IconButton icon="videocam-outline" onPress={() => {
+          if (!otherUserId) return;
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          useCallStore.getState().initiateCall(id!, [otherUserId!], 'video');
+          useCallStore.getState().initiateCall(id!, [otherUserId], 'video');
         }} />
         <IconButton icon="search" onPress={openSearch} />
         <IconButton

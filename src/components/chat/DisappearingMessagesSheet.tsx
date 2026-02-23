@@ -38,7 +38,7 @@ export function DisappearingMessagesSheet({ visible, currentDuration, onSelect, 
         {/* Header */}
         <View className="flex-row items-center px-4 pt-4 pb-3 border-b border-border-subtle">
           <Pressable onPress={onClose} className="mr-3">
-            <Ionicons name="close" size={24} color="#A0A0AB" />
+            <Ionicons name="close" size={24} color="#A8937F" />
           </Pressable>
           <Text className="text-text-primary text-lg font-semibold flex-1">
             Disappearing Messages
@@ -48,7 +48,7 @@ export function DisappearingMessagesSheet({ visible, currentDuration, onSelect, 
         {/* Info */}
         <View className="px-4 py-3 mx-4 mt-4 bg-surface-elevated rounded-xl">
           <View className="flex-row items-center mb-1.5">
-            <Ionicons name="timer-outline" size={16} color="#6366F1" />
+            <Ionicons name="timer-outline" size={16} color="#D4764E" />
             <Text className="text-accent-primary text-[13px] font-semibold ml-1.5">
               How it works
             </Text>
@@ -82,7 +82,7 @@ export function DisappearingMessagesSheet({ visible, currentDuration, onSelect, 
                   </Text>
                 </View>
                 {currentDuration === option.value && (
-                  <Ionicons name="checkmark-circle" size={22} color="#6366F1" />
+                  <Ionicons name="checkmark-circle" size={22} color="#D4764E" />
                 )}
               </Pressable>
             ))}

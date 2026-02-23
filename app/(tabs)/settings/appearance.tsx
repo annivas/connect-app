@@ -23,7 +23,7 @@ function AccentColor({
         onPress();
       }}
       className={`w-11 h-11 rounded-full items-center justify-center mr-3 ${
-        active ? 'border-2 border-white' : ''
+        active ? 'border-2 border-text-primary' : ''
       }`}
       style={{ backgroundColor: color }}
     >
@@ -33,12 +33,12 @@ function AccentColor({
 }
 
 const ACCENT_COLORS = [
-  '#D4764E', // Indigo (current)
-  '#C2956B', // Purple
-  '#5B8EC9', // Blue
-  '#2D9F6F', // Emerald
-  '#D4964E', // Amber
-  '#C94F4F', // Red
+  '#D4764E', // Terracotta (default)
+  '#C2956B', // Gold-Brown
+  '#5B8EC9', // Muted Blue
+  '#2D9F6F', // Warm Emerald
+  '#D4964E', // Warm Amber
+  '#C94F4F', // Warm Red
 ];
 
 export default function AppearanceScreen() {

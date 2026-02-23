@@ -67,11 +67,11 @@ export function VideoCallScreen() {
           className="absolute top-14 right-4 bg-surface-elevated rounded-2xl items-center justify-center"
           style={{ width: 100, height: 140 }}
         >
-          <Ionicons name="person" size={36} color="#6B6B76" />
+          <Ionicons name="person" size={36} color="#A8937F" />
           <Text className="text-text-tertiary text-[10px] mt-1">You</Text>
           {!activeCall.isVideoEnabled && (
             <View className="absolute inset-0 bg-background-primary/80 rounded-2xl items-center justify-center">
-              <Ionicons name="videocam-off" size={24} color="#EF4444" />
+              <Ionicons name="videocam-off" size={24} color="#C94F4F" />
             </View>
           )}
         </View>
@@ -89,7 +89,7 @@ export function VideoCallScreen() {
               <Ionicons
                 name={activeCall.isMuted ? 'mic-off' : 'mic'}
                 size={24}
-                color={activeCall.isMuted ? '#EF4444' : '#F5F5F7'}
+                color={activeCall.isMuted ? '#C94F4F' : '#FFFFFF'}
               />
             </Pressable>
 
@@ -103,7 +103,7 @@ export function VideoCallScreen() {
               <Ionicons
                 name={activeCall.isVideoEnabled ? 'videocam' : 'videocam-off'}
                 size={24}
-                color={!activeCall.isVideoEnabled ? '#EF4444' : '#F5F5F7'}
+                color={!activeCall.isVideoEnabled ? '#C94F4F' : '#FFFFFF'}
               />
             </Pressable>
 
@@ -112,7 +112,7 @@ export function VideoCallScreen() {
               onPress={handleEndCall}
               className="w-16 h-16 rounded-full bg-status-error items-center justify-center"
               style={{
-                shadowColor: '#EF4444',
+                shadowColor: '#C94F4F',
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.4,
                 shadowRadius: 8,

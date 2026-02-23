@@ -308,10 +308,10 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
         limit: PAGE_SIZE,
         before: oldest.timestamp.toISOString(),
       });
-      set({
-        messages: [...older, ...get().messages],
-        hasMoreMessages: { ...get().hasMoreMessages, [conversationId]: older.length >= PAGE_SIZE },
-      });
+      set((state) => ({
+        messages: [...older, ...state.messages],
+        hasMoreMessages: { ...state.hasMoreMessages, [conversationId]: older.length >= PAGE_SIZE },
+      }));
     } finally {
       const done = new Set(get().loadingMessages);
       done.delete(conversationId);

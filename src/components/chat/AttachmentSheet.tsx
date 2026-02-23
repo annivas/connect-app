@@ -14,10 +14,10 @@ interface Props {
 }
 
 const ACTIONS = [
-  { id: 'camera', label: 'Camera', icon: 'camera' as const, color: '#EF4444', bg: 'bg-red-500/15' },
-  { id: 'photo', label: 'Photo Library', icon: 'images' as const, color: '#8B5CF6', bg: 'bg-purple-500/15' },
-  { id: 'document', label: 'Document', icon: 'document-text' as const, color: '#3B82F6', bg: 'bg-blue-500/15' },
-  { id: 'location', label: 'Location', icon: 'location' as const, color: '#10B981', bg: 'bg-green-500/15' },
+  { id: 'camera', label: 'Camera', icon: 'camera' as const, color: '#C94F4F', bg: 'bg-red-500/15' },
+  { id: 'photo', label: 'Photo Library', icon: 'images' as const, color: '#C2956B', bg: 'bg-purple-500/15' },
+  { id: 'document', label: 'Document', icon: 'document-text' as const, color: '#5B8EC9', bg: 'bg-blue-500/15' },
+  { id: 'location', label: 'Location', icon: 'location' as const, color: '#2D9F6F', bg: 'bg-green-500/15' },
   { id: 'contact', label: 'Contact', icon: 'person' as const, color: '#F59E0B', bg: 'bg-yellow-500/15' },
 ];
 
