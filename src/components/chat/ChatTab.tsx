@@ -15,10 +15,12 @@ import { ScheduleMessageSheet } from './ScheduleMessageSheet';
 import { AttachmentSheet } from './AttachmentSheet';
 import { UnreadJumpButton } from './UnreadJumpButton';
 import { TypingIndicator } from './TypingIndicator';
+import { CallHistoryEntry } from '../call/CallHistoryEntry';
 import { useMessagesStore } from '../../stores/useMessagesStore';
 import { useUserStore } from '../../stores/useUserStore';
+import { useCallStore } from '../../stores/useCallStore';
 import { getImageGroup } from '../../utils/imageGrouping';
-import type { Message, DisappearingDuration } from '../../types';
+import type { Message, CallEntry, DisappearingDuration } from '../../types';
 
 /**
  * Standalone "Today" divider — rendered at the visual top of the inverted list
@@ -116,7 +118,37 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
     [messages],
   );
 
-  // Inverted FlatList needs newest-first order
+  // Call history for this conversation
+  const callHistory = useCallStore(
+    useShallow((s) => s.callHistory.filter((c) => c.conversationId === conversationId)),
+  );
+
+  // Merge messages and call history into a unified timeline
+  type TimelineItem =
+    | { kind: 'message'; data: Message }
+    | { kind: 'call'; data: CallEntry };
+
+  const invertedTimeline = useMemo(() => {
+    const timeline: TimelineItem[] = [
+      ...messages.map((m): TimelineItem => ({ kind: 'message', data: m })),
+      ...callHistory
+        .filter((c) => c.status !== 'ongoing') // Don't show ongoing calls in history
+        .map((c): TimelineItem => ({ kind: 'call', data: c })),
+    ];
+    // Sort chronologically then reverse for inverted FlatList (newest first)
+    timeline.sort(
+      (a, b) =>
+        new Date(
+          a.kind === 'message' ? a.data.timestamp : a.data.startedAt,
+        ).getTime() -
+        new Date(
+          b.kind === 'message' ? b.data.timestamp : b.data.startedAt,
+        ).getTime(),
+    );
+    return timeline.reverse();
+  }, [messages, callHistory]);
+
+  // Keep a messages-only inverted list for grouping logic
   const invertedMessages = useMemo(() => [...messages].reverse(), [messages]);
 
   // Load messages when entering the conversation
@@ -435,48 +467,71 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
       <PinnedMessageBanner
         pinnedMessages={pinnedMessages}
         onJumpToMessage={(messageId) => {
-          const index = invertedMessages.findIndex((m) => m.id === messageId);
+          const index = invertedTimeline.findIndex(
+            (item) => item.kind === 'message' && item.data.id === messageId,
+          );
           if (index >= 0) {
             listRef.current?.scrollToIndex({ index, animated: true });
           }
         }}
       />
 
-      <FlatList
-        ref={listRef}
-        data={invertedMessages}
-        keyExtractor={(item) => item.id}
+      <FlatList<TimelineItem>
+        ref={listRef as React.RefObject<FlatList<TimelineItem>>}
+        data={invertedTimeline}
+        keyExtractor={(item) =>
+          item.kind === 'message' ? item.data.id : `call-${item.data.id}`
+        }
         inverted
         renderItem={({ item, index }) => {
-          // In inverted list, index 0 = newest. We look at index+1 for the "next older" message.
-          // For grouping logic, we think in chronological order:
-          // "previous" = the message that came BEFORE this one in time = invertedMessages[index + 1]
-          // "next" = the message that came AFTER this one in time = invertedMessages[index - 1]
-          const olderMsg = index < invertedMessages.length - 1 ? invertedMessages[index + 1] : null;
-          const newerMsg = index > 0 ? invertedMessages[index - 1] : null;
+          // ── Call history entry ──
+          if (item.kind === 'call') {
+            return (
+              <CallHistoryEntry
+                entry={item.data}
+                conversationId={conversationId}
+              />
+            );
+          }
+
+          // ── Message bubble ──
+          const msg = item.data;
+
+          // Find neighboring messages (skip call entries for grouping)
+          const findNeighborMsg = (dir: -1 | 1): Message | null => {
+            for (let i = index + dir; i >= 0 && i < invertedTimeline.length; i += dir) {
+              const neighbor = invertedTimeline[i];
+              if (neighbor.kind === 'message') return neighbor.data;
+            }
+            return null;
+          };
+          const olderMsg = findNeighborMsg(1);
+          const newerMsg = findNeighborMsg(-1);
 
           // Show date divider if this is the first message of the day
-          const showDateDivider = !olderMsg || !isSameDay(olderMsg.timestamp, item.timestamp);
+          const showDateDivider = !olderMsg || !isSameDay(olderMsg.timestamp, msg.timestamp);
 
           // Group consecutive messages from same sender within threshold
           const isFirstInGroup =
             !olderMsg ||
-            olderMsg.senderId !== item.senderId ||
-            differenceInMinutes(item.timestamp, olderMsg.timestamp) > GROUP_THRESHOLD_MINUTES ||
+            olderMsg.senderId !== msg.senderId ||
+            differenceInMinutes(msg.timestamp, olderMsg.timestamp) > GROUP_THRESHOLD_MINUTES ||
             showDateDivider;
 
           const isLastInGroup =
             !newerMsg ||
-            newerMsg.senderId !== item.senderId ||
-            differenceInMinutes(newerMsg.timestamp, item.timestamp) > GROUP_THRESHOLD_MINUTES;
+            newerMsg.senderId !== msg.senderId ||
+            differenceInMinutes(newerMsg.timestamp, msg.timestamp) > GROUP_THRESHOLD_MINUTES;
 
           // Photo grid: group consecutive images from same sender
-          const imgGroup = getImageGroup(invertedMessages, index);
+          // We need the index in the messages-only list for imageGrouping
+          const msgIndex = invertedMessages.indexOf(msg);
+          const imgGroup = msgIndex >= 0 ? getImageGroup(invertedMessages, msgIndex) : undefined;
           if (imgGroup && !imgGroup.isLeader) return null;
 
           return (
             <MessageBubble
-              message={item}
+              message={msg}
               showDateDivider={showDateDivider}
               isFirstInGroup={isFirstInGroup}
               isLastInGroup={isLastInGroup}
@@ -486,7 +541,7 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
               onReply={handleReply}
               onEdit={handleEdit}
               highlightText={highlightText}
-              isSearchMatch={matchingMessageIds?.has(item.id)}
+              isSearchMatch={matchingMessageIds?.has(msg.id)}
               onContextMenu={handleContextMenu}
               imageGroup={imgGroup?.isLeader ? imgGroup.images : undefined}
             />

@@ -18,6 +18,7 @@ import { DisappearingMessagesSheet } from '../../../src/components/chat/Disappea
 import { useMessageSearch } from '../../../src/hooks/useMessageSearch';
 import { useMessagesStore } from '../../../src/stores/useMessagesStore';
 import { useUserStore } from '../../../src/stores/useUserStore';
+import { useCallStore } from '../../../src/stores/useCallStore';
 import type { DisappearingDuration } from '../../../src/types';
 
 type Route = { key: string; title: string };
@@ -172,11 +173,11 @@ export default function ConversationDetailScreen() {
 
         <IconButton icon="call-outline" onPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          Alert.alert('Voice Call', `Calling ${otherUser.name}...`, [{ text: 'End', style: 'cancel' }]);
+          useCallStore.getState().initiateCall(id!, [otherUserId!], 'voice');
         }} />
         <IconButton icon="videocam-outline" onPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          Alert.alert('Video Call', `Video calling ${otherUser.name}...`, [{ text: 'End', style: 'cancel' }]);
+          useCallStore.getState().initiateCall(id!, [otherUserId!], 'video');
         }} />
         <IconButton icon="search" onPress={openSearch} />
         <IconButton

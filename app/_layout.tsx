@@ -4,6 +4,9 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View, Text, Pressable } from 'react-native';
 import { useAppInit } from '../src/hooks/useAppInit';
 import { LoadingScreen } from '../src/components/ui/LoadingScreen';
+import { ActiveCallScreen } from '../src/components/call/ActiveCallScreen';
+import { VideoCallScreen } from '../src/components/call/VideoCallScreen';
+import { IncomingCallScreen } from '../src/components/call/IncomingCallScreen';
 import '../global.css';
 
 export default function RootLayout() {
@@ -71,6 +74,10 @@ export default function RootLayout() {
         <Stack.Screen name="index" />
         <Stack.Screen name="(tabs)" />
       </Stack>
+      {/* Call screen overlays — rendered at root level to overlay entire app */}
+      <ActiveCallScreen />
+      <VideoCallScreen />
+      <IncomingCallScreen />
     </GestureHandlerRootView>
   );
 }
