@@ -3,7 +3,7 @@ import { View, Text, Pressable, ScrollView, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
-import Animated, { FadeIn, FadeOut, SlideInDown } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut, FadeInUp } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
 import { ReactionPicker } from './ReactionPicker';
 import type { Message } from '../../types';
@@ -130,7 +130,7 @@ export function MessageContextMenu({
             <Pressable onPress={(e) => e.stopPropagation()}>
               {/* Reaction bar */}
               <Animated.View
-                entering={SlideInDown.duration(250).springify().damping(18)}
+                entering={FadeInUp.duration(200).delay(50)}
                 className={`mb-3 ${isMine ? 'items-end' : 'items-start'}`}
               >
                 <ReactionPicker
@@ -157,7 +157,7 @@ export function MessageContextMenu({
 
               {/* Action list */}
               <Animated.View
-                entering={SlideInDown.duration(300).springify().damping(18)}
+                entering={FadeInUp.duration(250).delay(100)}
                 className="bg-surface rounded-2xl overflow-hidden border border-border-subtle"
                 style={{
                   shadowColor: '#000',

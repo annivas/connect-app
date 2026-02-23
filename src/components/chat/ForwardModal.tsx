@@ -81,14 +81,59 @@ export function ForwardModal({ visible, message, onClose, sourceConversationId }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     const userId = currentUserId ?? 'unknown';
-    const targetConvIds = Array.from(selectedIds);
 
-    useMessagesStore.getState().forwardMessage(
-      sourceConversationId,
-      message.id,
-      targetConvIds,
-      userId,
-    );
+    // Partition targets by type — conversations go to useMessagesStore,
+    // groups go to useGroupsStore
+    const convTargetIds: string[] = [];
+    const groupTargetIds: string[] = [];
+
+    for (const id of selectedIds) {
+      const target = targets.find((t) => t.id === id);
+      if (target?.type === 'group') {
+        groupTargetIds.push(id);
+      } else {
+        convTargetIds.push(id);
+      }
+    }
+
+    // Forward to DM conversations
+    if (convTargetIds.length > 0) {
+      useMessagesStore.getState().forwardMessage(
+        sourceConversationId,
+        message.id,
+        convTargetIds,
+        userId,
+      );
+    }
+
+    // Forward to groups — add directly to groupMessages store
+    if (groupTargetIds.length > 0) {
+      const senderUser = useUserStore.getState().getUserById(message.senderId);
+      for (const groupId of groupTargetIds) {
+        const forwardedMsg = {
+          id: `msg-fwd-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          conversationId: groupId,
+          senderId: userId,
+          content: message.content,
+          timestamp: new Date(),
+          type: message.type,
+          metadata: message.metadata,
+          isRead: true,
+          sendStatus: 'sent' as const,
+          forwardedFrom: {
+            originalMessageId: message.id,
+            originalSenderId: message.senderId,
+            originalSenderName: senderUser?.name ?? 'Unknown',
+            originalConversationId: sourceConversationId,
+            originalTimestamp: message.timestamp,
+          },
+        };
+
+        useGroupsStore.setState((state) => ({
+          groupMessages: [...state.groupMessages, forwardedMsg],
+        }));
+      }
+    }
 
     setSelectedIds(new Set());
     setSearchQuery('');
