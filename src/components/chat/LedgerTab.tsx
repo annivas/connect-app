@@ -101,6 +101,14 @@ export function LedgerTab({ conversationId }: Props) {
                   ${item.amount.toFixed(2)}
                 </Text>
               </View>
+              {item.linkedMessageId && (
+                <View className="flex-row items-center mt-1.5 mb-1">
+                  <Ionicons name="chatbubble-outline" size={11} color="#D4764E" />
+                  <Text className="text-accent-primary text-[11px] font-medium ml-1">
+                    From message
+                  </Text>
+                </View>
+              )}
               <View className="flex-row items-center justify-between">
                 <Text className="text-text-tertiary text-xs">
                   Paid by {paidBy?.name} &middot;{' '}

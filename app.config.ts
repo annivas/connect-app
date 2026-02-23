@@ -4,6 +4,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'Connect',
   slug: 'connect',
+  owner: 'annivas',
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/icon.png',
@@ -30,6 +31,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   web: {
     favicon: './assets/favicon.png',
   },
+  updates: {
+    url: 'https://u.expo.dev/c77c992d-bdb2-410c-8091-07d0b9e5c7cb',
+  },
+  runtimeVersion: {
+    policy: 'appVersion',
+  },
   plugins: ['expo-router'],
   experiments: {
     typedRoutes: true,
@@ -40,7 +47,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     sentryDsn: process.env.SENTRY_DSN ?? '',
     useMocks: process.env.USE_MOCKS !== 'false',
     eas: {
-      projectId: process.env.EAS_PROJECT_ID ?? '',
+      projectId: 'c77c992d-bdb2-410c-8091-07d0b9e5c7cb',
     },
   },
 });

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Message, Conversation, Note, Reminder, LedgerEntry, SharedObject } from '../types';
+import { Message, Conversation, Note, Reminder, LedgerEntry, SharedObject, ScheduledMessage, DisappearingDuration } from '../types';
 import { messagesRepository } from '../services';
 import { CreateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../services/types';
 import { supabase } from '../lib/supabase';
@@ -60,6 +60,18 @@ interface MessagesState {
     conversationId: string,
     data: { type: 'link'; title: string; description?: string; url: string },
   ) => void;
+
+  // ─── New: Star, Pin, Forward, Archive, Search ──────
+  scheduledMessages: ScheduledMessage[];
+  toggleStarMessage: (conversationId: string, messageId: string) => void;
+  togglePinMessage: (conversationId: string, messageId: string) => void;
+  forwardMessage: (sourceConvId: string, messageId: string, targetConvIds: string[], senderId: string) => void;
+  toggleArchive: (conversationId: string) => void;
+  markAsUnread: (conversationId: string) => void;
+  setDisappearingDuration: (conversationId: string, duration: DisappearingDuration) => void;
+  scheduleMessage: (conversationId: string, content: string, senderId: string, scheduledFor: Date) => void;
+  cancelScheduledMessage: (messageId: string) => void;
+  searchAllConversations: (query: string) => { conversationId: string; messages: Message[] }[];
 }
 
 export const useMessagesStore = create<MessagesState>((set, get) => ({
@@ -72,6 +84,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
   replyingTo: {},
   typingUsers: {},
   _channel: null,
+  scheduledMessages: [],
 
   init: async () => {
     set({ isLoading: true, error: null });
@@ -295,10 +308,10 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
         limit: PAGE_SIZE,
         before: oldest.timestamp.toISOString(),
       });
-      set({
-        messages: [...older, ...get().messages],
-        hasMoreMessages: { ...get().hasMoreMessages, [conversationId]: older.length >= PAGE_SIZE },
-      });
+      set((state) => ({
+        messages: [...older, ...state.messages],
+        hasMoreMessages: { ...state.hasMoreMessages, [conversationId]: older.length >= PAGE_SIZE },
+      }));
     } finally {
       const done = new Set(get().loadingMessages);
       done.delete(conversationId);
@@ -689,6 +702,158 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
             }
           : c,
       ),
+    }));
+  },
+
+  // ─── Star / Pin / Forward / Archive / Search ──────
+
+  toggleStarMessage: (conversationId, messageId) => {
+    set((state) => ({
+      messages: state.messages.map((m) =>
+        m.id === messageId ? { ...m, isStarred: !m.isStarred } : m,
+      ),
+      conversations: state.conversations.map((c) => {
+        if (c.id !== conversationId || !c.metadata) return c;
+        const starred = c.metadata.starredMessages ?? [];
+        const isCurrentlyStarred = starred.includes(messageId);
+        return {
+          ...c,
+          metadata: {
+            ...c.metadata,
+            starredMessages: isCurrentlyStarred
+              ? starred.filter((id) => id !== messageId)
+              : [...starred, messageId],
+          },
+        };
+      }),
+    }));
+  },
+
+  togglePinMessage: (conversationId, messageId) => {
+    set((state) => ({
+      messages: state.messages.map((m) =>
+        m.id === messageId ? { ...m, isPinned: !m.isPinned } : m,
+      ),
+      conversations: state.conversations.map((c) => {
+        if (c.id !== conversationId || !c.metadata) return c;
+        const pinned = c.metadata.pinnedMessages ?? [];
+        const isCurrentlyPinned = pinned.includes(messageId);
+        return {
+          ...c,
+          metadata: {
+            ...c.metadata,
+            pinnedMessages: isCurrentlyPinned
+              ? pinned.filter((id) => id !== messageId)
+              : [...pinned, messageId],
+          },
+        };
+      }),
+    }));
+  },
+
+  forwardMessage: (sourceConvId, messageId, targetConvIds, senderId) => {
+    const message = get().messages.find((m) => m.id === messageId);
+    if (!message) return;
+
+    const { useUserStore } = require('./useUserStore');
+    const senderUser = useUserStore.getState().getUserById(message.senderId);
+
+    for (const targetConvId of targetConvIds) {
+      const forwardedMessage: Message = {
+        id: `msg-fwd-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        conversationId: targetConvId,
+        senderId,
+        content: message.content,
+        timestamp: new Date(),
+        type: message.type,
+        metadata: message.metadata,
+        isRead: true,
+        sendStatus: 'sent',
+        forwardedFrom: {
+          originalMessageId: message.id,
+          originalSenderId: message.senderId,
+          originalSenderName: senderUser?.name ?? 'Unknown',
+          originalConversationId: sourceConvId,
+          originalTimestamp: message.timestamp,
+        },
+      };
+
+      set((state) => ({
+        messages: [...state.messages, forwardedMessage],
+        conversations: state.conversations.map((c) =>
+          c.id === targetConvId
+            ? { ...c, lastMessage: forwardedMessage, updatedAt: new Date() }
+            : c,
+        ),
+      }));
+    }
+  },
+
+  toggleArchive: (conversationId) => {
+    set((state) => ({
+      conversations: state.conversations.map((c) =>
+        c.id === conversationId ? { ...c, isArchived: !c.isArchived } : c,
+      ),
+    }));
+  },
+
+  markAsUnread: (conversationId) => {
+    set((state) => ({
+      conversations: state.conversations.map((c) =>
+        c.id === conversationId
+          ? { ...c, isMarkedUnread: true, unreadCount: Math.max(c.unreadCount, 1) }
+          : c,
+      ),
+    }));
+  },
+
+  setDisappearingDuration: (conversationId, duration) => {
+    set((state) => ({
+      conversations: state.conversations.map((c) =>
+        c.id === conversationId ? { ...c, disappearingDuration: duration } : c,
+      ),
+    }));
+  },
+
+  scheduleMessage: (conversationId, content, senderId, scheduledFor) => {
+    const scheduled: ScheduledMessage = {
+      id: `sched-${Date.now()}`,
+      conversationId,
+      content,
+      scheduledFor,
+      createdAt: new Date(),
+      status: 'pending',
+    };
+    set((state) => ({
+      scheduledMessages: [...state.scheduledMessages, scheduled],
+    }));
+  },
+
+  cancelScheduledMessage: (messageId) => {
+    set((state) => ({
+      scheduledMessages: state.scheduledMessages.map((m) =>
+        m.id === messageId ? { ...m, status: 'cancelled' as const } : m,
+      ),
+    }));
+  },
+
+  searchAllConversations: (query) => {
+    const lowerQuery = query.toLowerCase();
+    const allMessages = get().messages;
+    const results: Record<string, Message[]> = {};
+
+    for (const msg of allMessages) {
+      if (msg.content.toLowerCase().includes(lowerQuery)) {
+        if (!results[msg.conversationId]) {
+          results[msg.conversationId] = [];
+        }
+        results[msg.conversationId].push(msg);
+      }
+    }
+
+    return Object.entries(results).map(([conversationId, messages]) => ({
+      conversationId,
+      messages,
     }));
   },
 }));

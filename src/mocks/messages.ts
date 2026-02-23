@@ -362,6 +362,134 @@ export const MOCK_MESSAGES: Message[] = [
     isRead: false,
     sendStatus: 'sent',
   },
+
+  // ─── Rich message examples ──────────────────
+
+  // Forwarded message
+  {
+    id: 'msg-fwd-1',
+    conversationId: 'conv-1',
+    senderId: CURRENT_USER_ID,
+    content: 'Check out this restaurant I found!',
+    timestamp: today(19, 0),
+    type: 'text',
+    isRead: true,
+    sendStatus: 'sent',
+    forwardedFrom: {
+      originalMessageId: 'msg-13',
+      originalSenderId: 'user-5',
+      originalSenderName: 'Jordan Blake',
+      originalConversationId: 'conv-5',
+      originalTimestamp: today(12, 0),
+    },
+  },
+
+  // Voice message
+  {
+    id: 'msg-voice-1',
+    conversationId: 'conv-2',
+    senderId: 'user-2',
+    content: '',
+    timestamp: today(11, 0),
+    type: 'audio',
+    isRead: true,
+    sendStatus: 'sent',
+    metadata: {
+      duration: 12,
+      waveformSamples: [0.2, 0.5, 0.8, 0.6, 0.9, 0.4, 0.7, 0.3, 0.6, 0.8, 0.5, 0.2, 0.4, 0.7, 0.9, 0.6, 0.3, 0.5, 0.8, 0.4],
+      uri: 'voice-mock-1.m4a',
+    },
+  },
+
+  // Location message
+  {
+    id: 'msg-loc-1',
+    conversationId: 'conv-2',
+    senderId: CURRENT_USER_ID,
+    content: 'Blue Bottle Coffee',
+    timestamp: today(11, 5),
+    type: 'location',
+    isRead: true,
+    sendStatus: 'sent',
+    metadata: {
+      latitude: 37.7956,
+      longitude: -122.3934,
+      address: '1 Ferry Building, San Francisco, CA 94111',
+      placeName: 'Blue Bottle Coffee',
+    },
+  },
+
+  // Document message
+  {
+    id: 'msg-doc-1',
+    conversationId: 'conv-3',
+    senderId: 'user-3',
+    content: 'Here are the design specs',
+    timestamp: today(10, 0),
+    type: 'file',
+    isRead: true,
+    sendStatus: 'sent',
+    metadata: {
+      fileName: 'design-specs-v2.pdf',
+      fileSize: 2457600,
+      mimeType: 'application/pdf',
+      uri: 'file-mock-1.pdf',
+    },
+  },
+
+  // Starred message
+  {
+    id: 'msg-starred-1',
+    conversationId: 'conv-1',
+    senderId: 'user-1',
+    content: 'Meeting link: https://meet.google.com/abc-defg-hij — Thursday 3pm',
+    timestamp: today(14, 0),
+    type: 'text',
+    isRead: true,
+    sendStatus: 'sent',
+    isStarred: true,
+  },
+
+  // Pinned message
+  {
+    id: 'msg-pinned-1',
+    conversationId: 'conv-1',
+    senderId: CURRENT_USER_ID,
+    content: 'Project deadline: March 15th. No excuses!',
+    timestamp: today(14, 30),
+    type: 'text',
+    isRead: true,
+    sendStatus: 'sent',
+    isPinned: true,
+  },
+
+  // Formatted text message (bold + italic markers in content)
+  {
+    id: 'msg-fmt-1',
+    conversationId: 'conv-3',
+    senderId: CURRENT_USER_ID,
+    content: 'The **key insight** is that *performance matters* more than ~~features~~ at this stage. Use `withSpring` for smooth transitions.',
+    timestamp: today(10, 30),
+    type: 'text',
+    isRead: true,
+    sendStatus: 'sent',
+  },
+
+  // Message with mentions (group message added to conv for demo)
+  {
+    id: 'msg-mention-1',
+    conversationId: 'conv-1',
+    senderId: 'user-1',
+    content: 'Hey @Alex, can you review the PR? @Jamie already approved it.',
+    timestamp: today(15, 0),
+    type: 'text',
+    isRead: true,
+    sendStatus: 'sent',
+    mentions: [
+      { userId: 'user-2', displayName: 'Alex', offset: 4, length: 5 },
+      { userId: 'user-3', displayName: 'Jamie', offset: 36, length: 6 },
+    ],
+  },
 ];
 
 // ─── Group messages ──────────────────────────

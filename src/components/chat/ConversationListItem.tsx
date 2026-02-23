@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { View, Text, Pressable, Animated } from 'react-native';
+import { View, Text, Pressable, Animated, ActionSheetIOS, Platform, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { format, isToday, isYesterday } from 'date-fns';
@@ -40,6 +40,42 @@ export function ConversationListItem({ conversation, highlightText }: Props) {
     router.push(`/(tabs)/messages/${conversation.id}` as never);
   };
 
+  const handleLongPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const { togglePin, toggleMute, toggleArchive, markAsUnread } = useMessagesStore.getState();
+    const isPinned = conversation.isPinned;
+    const isMuted = conversation.isMuted;
+    const isArchived = conversation.isArchived;
+
+    const options = [
+      isPinned ? 'Unpin' : 'Pin',
+      isMuted ? 'Unmute' : 'Mute',
+      'Mark as Unread',
+      isArchived ? 'Unarchive' : 'Archive',
+      'Cancel',
+    ];
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options, cancelButtonIndex: 4, destructiveButtonIndex: 3 },
+        (idx) => {
+          if (idx === 0) togglePin(conversation.id);
+          if (idx === 1) toggleMute(conversation.id);
+          if (idx === 2) markAsUnread(conversation.id);
+          if (idx === 3) toggleArchive(conversation.id);
+        },
+      );
+    } else {
+      Alert.alert('Options', undefined, [
+        { text: options[0], onPress: () => togglePin(conversation.id) },
+        { text: options[1], onPress: () => toggleMute(conversation.id) },
+        { text: options[2], onPress: () => markAsUnread(conversation.id) },
+        { text: options[3], onPress: () => toggleArchive(conversation.id) },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+    }
+  };
+
   const renderLeftActions = () => (
     <Pressable
       onPress={() => {
@@ -58,20 +94,36 @@ export function ConversationListItem({ conversation, highlightText }: Props) {
   );
 
   const renderRightActions = () => (
-    <Pressable
-      onPress={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        useMessagesStore.getState().toggleMute(conversation.id);
-        swipeableRef.current?.close();
-      }}
-      className="bg-surface-elevated justify-center px-5"
-    >
-      <Ionicons
-        name={conversation.isMuted ? 'notifications' : 'notifications-off'}
-        size={22}
-        color="#7A6355"
-      />
-    </Pressable>
+    <View className="flex-row">
+      <Pressable
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          useMessagesStore.getState().toggleMute(conversation.id);
+          swipeableRef.current?.close();
+        }}
+        className="bg-surface-elevated justify-center px-5"
+      >
+        <Ionicons
+          name={conversation.isMuted ? 'notifications' : 'notifications-off'}
+          size={22}
+          color="#A8937F"
+        />
+      </Pressable>
+      <Pressable
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          useMessagesStore.getState().toggleArchive(conversation.id);
+          swipeableRef.current?.close();
+        }}
+        className="bg-status-warning justify-center px-5"
+      >
+        <Ionicons
+          name={conversation.isArchived ? 'arrow-undo' : 'archive'}
+          size={22}
+          color="#FFFFFF"
+        />
+      </Pressable>
+    </View>
   );
 
   return (
@@ -84,7 +136,10 @@ export function ConversationListItem({ conversation, highlightText }: Props) {
     >
       <Pressable
         onPress={handlePress}
+        onLongPress={handleLongPress}
+        delayLongPress={500}
         className="flex-row items-center px-4 py-3 bg-background-primary active:bg-surface-hover"
+        style={conversation.isArchived ? { opacity: 0.6 } : undefined}
       >
         {conversation.isPinned && (
           <View className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-accent-primary" />

@@ -11,7 +11,7 @@ export interface User {
 }
 
 // ─── Message ─────────────────────────────────
-export type MessageType = 'text' | 'image' | 'video' | 'audio' | 'file' | 'location';
+export type MessageType = 'text' | 'image' | 'video' | 'audio' | 'file' | 'location' | 'contact';
 
 export interface Reaction {
   emoji: string;
@@ -23,6 +23,66 @@ export interface MessageReplyTo {
   messageId: string;
   content: string;
   senderName: string;
+}
+
+export interface ForwardedFrom {
+  originalMessageId: string;
+  originalSenderId: string;
+  originalSenderName: string;
+  originalConversationId: string;
+  originalTimestamp: Date;
+}
+
+export interface Mention {
+  userId: string;
+  displayName: string;
+  offset: number;
+  length: number;
+}
+
+export type TextFormatType = 'text' | 'bold' | 'italic' | 'strikethrough' | 'monospace' | 'mention';
+
+export interface TextFormatToken {
+  type: TextFormatType;
+  content: string;
+  mention?: Mention;
+}
+
+// ─── Rich Message Metadata ──────────────────
+export interface VoiceMessageMetadata {
+  duration: number;
+  waveformSamples: number[];
+  uri: string;
+}
+
+export interface LocationMessageMetadata {
+  latitude: number;
+  longitude: number;
+  address: string;
+  placeName: string;
+  staticMapUrl?: string;
+}
+
+export interface DocumentMessageMetadata {
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  uri: string;
+}
+
+export interface ContactMessageMetadata {
+  name: string;
+  phone?: string;
+  email?: string;
+  avatar?: string;
+}
+
+export interface VideoMessageMetadata {
+  uri: string;
+  duration: number;
+  width: number;
+  height: number;
+  thumbnailUri?: string;
 }
 
 export interface Message {
@@ -38,6 +98,13 @@ export interface Message {
   isEdited?: boolean;
   isRead: boolean;
   sendStatus?: 'sending' | 'sent' | 'failed';
+  isStarred?: boolean;
+  isPinned?: boolean;
+  forwardedFrom?: ForwardedFrom;
+  mentions?: Mention[];
+  expiresAt?: Date;
+  scheduledFor?: Date;
+  isScheduled?: boolean;
 }
 
 // ─── Shared Objects ──────────────────────────
@@ -108,6 +175,7 @@ export interface Reminder {
   assignedTo?: string[];
   createdAt: Date;
   priority: 'low' | 'medium' | 'high';
+  linkedMessageId?: string;
 }
 
 // ─── Ledger ──────────────────────────────────
@@ -120,6 +188,7 @@ export interface LedgerEntry {
   category?: string;
   date: Date;
   isSettled: boolean;
+  linkedMessageId?: string;
 }
 
 // ─── Conversation ────────────────────────────
@@ -129,7 +198,14 @@ export interface ConversationMetadata {
   reminders: Reminder[];
   ledgerBalance: number;
   ledgerEntries: LedgerEntry[];
+  pinnedMessages: string[];
+  starredMessages: string[];
+  polls: Poll[];
+  callHistory: CallEntry[];
 }
+
+export type DisappearingDuration = '30s' | '5m' | '1h' | '24h' | '7d' | 'off';
+export type ConversationFilter = 'all' | 'unread' | 'groups' | 'archived';
 
 export interface Conversation {
   id: string;
@@ -142,6 +218,9 @@ export interface Conversation {
   createdAt: Date;
   updatedAt: Date;
   metadata?: ConversationMetadata;
+  isArchived?: boolean;
+  isMarkedUnread?: boolean;
+  disappearingDuration?: DisappearingDuration;
 }
 
 // ─── Events ──────────────────────────────────
@@ -165,6 +244,39 @@ export interface GroupEvent {
   attendees: EventAttendee[];
   type: 'hangout' | 'trip' | 'sports' | 'other';
   eventSpaceId?: string;
+}
+
+// ─── Polls ──────────────────────────────────
+export interface PollOption {
+  id: string;
+  text: string;
+  voterIds: string[];
+}
+
+export interface Poll {
+  id: string;
+  question: string;
+  options: PollOption[];
+  createdBy: string;
+  createdAt: Date;
+  isMultipleChoice: boolean;
+  isClosed: boolean;
+}
+
+// ─── Calls ──────────────────────────────────
+export type CallType = 'voice' | 'video';
+export type CallStatus = 'missed' | 'answered' | 'declined' | 'ongoing';
+
+export interface CallEntry {
+  id: string;
+  conversationId: string;
+  callerId: string;
+  receiverIds: string[];
+  type: CallType;
+  status: CallStatus;
+  startedAt: Date;
+  endedAt?: Date;
+  duration?: number;
 }
 
 // ─── Trip ────────────────────────────────────

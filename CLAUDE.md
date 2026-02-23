@@ -68,7 +68,7 @@ Configured in `tsconfig.json`:
 
 ## Styling: NativeWind v4
 
-Dark-only theme. Three-file setup:
+Warm light theme. Three-file setup:
 
 1. `babel.config.js` — `nativewind/babel` preset + `jsxImportSource: 'nativewind'`
 2. `metro.config.js` — `withNativeWind(config, { input: './global.css' })`
@@ -77,13 +77,15 @@ Dark-only theme. Three-file setup:
 Use `className` on RN components. Custom colors mirror `src/theme/index.ts`:
 
 ```
-bg:     background-primary (#0A0A0F) | background-secondary (#12121A) | background-tertiary (#1C1C28)
-surface: bg-surface (#1C1C28) | bg-surface-elevated (#252536) | bg-surface-hover (#2D2D40)
-accent:  bg-accent-primary (#6366F1) | bg-accent-secondary (#8B5CF6) | bg-accent-tertiary (#3B82F6)
-text:    text-text-primary (#F5F5F7) | text-text-secondary (#A0A0AB) | text-text-tertiary (#6B6B76)
-border:  border-border (#2D2D40) | border-border-subtle (#1F1F2E)
-status:  text-status-success (#10B981) | text-status-error (#EF4444)
+bg:     background-primary (#FFF8F0) | background-secondary (#FFF1E6) | background-tertiary (#FFE8D6)
+surface: bg-surface (#FFE8D6) | bg-surface-elevated (#FFFFFF) | bg-surface-hover (#FFD6BA)
+accent:  bg-accent-primary (#D4764E) | bg-accent-secondary (#C2956B) | bg-accent-tertiary (#8B6F5A)
+text:    text-text-primary (#2D1F14) | text-text-secondary (#7A6355) | text-text-tertiary (#A8937F)
+border:  border-border (#E8D5C4) | border-border-subtle (#F0E2D4)
+status:  text-status-success (#2D9F6F) | text-status-error (#C94F4F) | text-status-warning (#D4964E) | text-status-info (#5B8EC9)
 ```
+
+When using hardcoded hex values in `color=` or `style=` props, always use the above tokens. Never use old dark-theme colors.
 
 ## Zustand v5 Patterns
 
@@ -142,7 +144,7 @@ Currently **mock-only** — all data comes from `src/mocks/`. No backend, no API
 - **New Architecture** enabled (`newArchEnabled: true` in `app.json`)
 - **Typed Routes** enabled (`experiments.typedRoutes: true`)
 - **Orientation** locked to portrait
-- **UI Style** forced dark (`userInterfaceStyle: "dark"`)
+- **UI Style** warm light theme (NativeWind custom tokens in `tailwind.config.js`)
 - `react-native-reanimated/plugin` must be **last** in babel plugins array
 
 ## Gotchas

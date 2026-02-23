@@ -4,25 +4,29 @@ import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TabView, TabBar, SceneRendererProps } from 'react-native-tab-view';
 import { useShallow } from 'zustand/react/shallow';
+import * as Haptics from 'expo-haptics';
 import { IconButton } from '../../../src/components/ui/IconButton';
 import { Avatar } from '../../../src/components/ui/Avatar';
 import { ChatTab } from '../../../src/components/chat/ChatTab';
-import { SharedTab } from '../../../src/components/chat/SharedTab';
-import { NotesTab } from '../../../src/components/chat/NotesTab';
+import { MediaPinsTab } from '../../../src/components/chat/MediaPinsTab';
+import { NotesSavedTab } from '../../../src/components/chat/NotesSavedTab';
 import { RemindersTab } from '../../../src/components/chat/RemindersTab';
 import { LedgerTab } from '../../../src/components/chat/LedgerTab';
 import { UserProfileSheet } from '../../../src/components/chat/UserProfileSheet';
 import { InChatSearchBar } from '../../../src/components/chat/InChatSearchBar';
+import { DisappearingMessagesSheet } from '../../../src/components/chat/DisappearingMessagesSheet';
 import { useMessageSearch } from '../../../src/hooks/useMessageSearch';
 import { useMessagesStore } from '../../../src/stores/useMessagesStore';
 import { useUserStore } from '../../../src/stores/useUserStore';
+import { useCallStore } from '../../../src/stores/useCallStore';
+import type { DisappearingDuration } from '../../../src/types';
 
 type Route = { key: string; title: string };
 
 const routes: Route[] = [
   { key: 'chat', title: 'Chat' },
-  { key: 'shared', title: 'Shared' },
-  { key: 'notes', title: 'Notes' },
+  { key: 'media-pins', title: 'Media & Pins' },
+  { key: 'notes-saved', title: 'Notes & Saved' },
   { key: 'reminders', title: 'Reminders' },
   { key: 'ledger', title: 'Ledger' },
 ];
@@ -34,6 +38,7 @@ export default function ConversationDetailScreen() {
   const layout = useWindowDimensions();
   const [tabIndex, setTabIndex] = useState(0);
   const [showProfile, setShowProfile] = useState(false);
+  const [showDisappearingSheet, setShowDisappearingSheet] = useState(false);
 
   // Hide the bottom tab bar when this screen is focused
   const parentNavigation = navigation.getParent();
@@ -76,24 +81,31 @@ export default function ConversationDetailScreen() {
     const options = [
       isPinned ? 'Unpin' : 'Pin',
       isMuted ? 'Unmute' : 'Mute',
+      'Disappearing Messages',
       'Cancel',
     ];
 
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
-        { options, cancelButtonIndex: 2 },
+        { options, cancelButtonIndex: 3 },
         (idx) => {
           if (idx === 0) togglePin(id!);
           if (idx === 1) toggleMute(id!);
+          if (idx === 2) setShowDisappearingSheet(true);
         }
       );
     } else {
       Alert.alert('Options', undefined, [
         { text: options[0], onPress: () => togglePin(id!) },
         { text: options[1], onPress: () => toggleMute(id!) },
+        { text: options[2], onPress: () => setShowDisappearingSheet(true) },
         { text: 'Cancel', style: 'cancel' },
       ]);
     }
+  };
+
+  const handleSetDisappearing = (duration: DisappearingDuration) => {
+    useMessagesStore.getState().setDisappearingDuration(id!, duration);
   };
 
   const otherUserId = conversation?.participants.find(
@@ -121,10 +133,10 @@ export default function ConversationDetailScreen() {
             matchingMessageIds={isSearching ? matchingMessageIds : undefined}
           />
         );
-      case 'shared':
-        return <SharedTab conversationId={id!} />;
-      case 'notes':
-        return <NotesTab conversationId={id!} />;
+      case 'media-pins':
+        return <MediaPinsTab conversationId={id!} />;
+      case 'notes-saved':
+        return <NotesSavedTab conversationId={id!} />;
       case 'reminders':
         return <RemindersTab conversationId={id!} />;
       case 'ledger':
@@ -159,6 +171,16 @@ export default function ConversationDetailScreen() {
           </View>
         </Pressable>
 
+        <IconButton icon="call-outline" onPress={() => {
+          if (!otherUserId) return;
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          useCallStore.getState().initiateCall(id!, [otherUserId], 'voice');
+        }} />
+        <IconButton icon="videocam-outline" onPress={() => {
+          if (!otherUserId) return;
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          useCallStore.getState().initiateCall(id!, [otherUserId], 'video');
+        }} />
         <IconButton icon="search" onPress={openSearch} />
         <IconButton
           icon="ellipsis-horizontal"
@@ -209,6 +231,13 @@ export default function ConversationDetailScreen() {
         user={otherUser}
         visible={showProfile}
         onClose={() => setShowProfile(false)}
+      />
+
+      <DisappearingMessagesSheet
+        visible={showDisappearingSheet}
+        currentDuration={conversation.disappearingDuration ?? 'off'}
+        onSelect={handleSetDisappearing}
+        onClose={() => setShowDisappearingSheet(false)}
       />
     </SafeAreaView>
   );

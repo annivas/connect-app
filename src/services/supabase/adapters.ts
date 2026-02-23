@@ -238,6 +238,10 @@ export function adaptConversation(data: ConversationAssemblyData): Conversation 
       reminders: data.reminders,
       ledgerBalance: balance,
       ledgerEntries: data.ledgerEntries,
+      pinnedMessages: [],
+      starredMessages: [],
+      polls: [],
+      callHistory: [],
     },
   };
 }

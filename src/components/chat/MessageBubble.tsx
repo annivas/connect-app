@@ -1,9 +1,8 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, Pressable, ActionSheetIOS, Platform, Alert } from 'react-native';
+import { View, Text, Pressable, Alert } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { format, isToday, isYesterday } from 'date-fns';
-import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -11,14 +10,21 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   withTiming,
+  withSequence,
+  withDelay,
   runOnJS,
 } from 'react-native-reanimated';
-import { ReactionPicker } from './ReactionPicker';
+import { FormattedText } from './FormattedText';
+import { ForwardedLabel } from './ForwardedLabel';
 import { LinkPreviewCard } from './LinkPreviewCard';
 import { PhotoGrid } from './PhotoGrid';
+import { VoiceMessageBubble } from './VoiceMessageBubble';
+import { LocationMessageBubble } from './LocationMessageBubble';
+import { DocumentMessageBubble } from './DocumentMessageBubble';
+import { ContactMessageBubble } from './ContactMessageBubble';
 import { renderHighlightedText } from '../../utils/highlightText';
 import { extractUrls } from '../../utils/urlDetection';
-import { Message, Reaction } from '../../types';
+import { Message, Reaction, VoiceMessageMetadata, LocationMessageMetadata, DocumentMessageMetadata, ContactMessageMetadata } from '../../types';
 import { useUserStore } from '../../stores/useUserStore';
 
 interface Props {
@@ -34,12 +40,8 @@ interface Props {
   onEdit?: (messageId: string, currentContent: string) => void;
   highlightText?: string;
   isSearchMatch?: boolean;
-  /** Lifted reaction picker state — which message has the picker open (null = none) */
-  activePickerMessageId?: string | null;
-  /** Called when this bubble's long-press opens the reaction picker */
-  onOpenPicker?: (messageId: string) => void;
-  /** Called when the reaction picker should close */
-  onClosePicker?: () => void;
+  /** Called when long-press opens the full context menu */
+  onContextMenu?: (message: Message) => void;
   /** Grouped image messages for photo grid rendering */
   imageGroup?: Message[];
 }
@@ -196,9 +198,7 @@ export function MessageBubble({
   onEdit,
   highlightText,
   isSearchMatch,
-  activePickerMessageId,
-  onOpenPicker,
-  onClosePicker,
+  onContextMenu,
   imageGroup,
 }: Props) {
   const currentUserId = useUserStore((s) => s.currentUser?.id);
@@ -206,14 +206,33 @@ export function MessageBubble({
   const isMine = message.senderId === currentUserId;
   const isFailed = message.sendStatus === 'failed';
 
-  // Reaction picker: use lifted state if provided, otherwise fall back to local state
-  const [localShowPicker, setLocalShowPicker] = useState(false);
-  const showReactionPicker = onOpenPicker ? activePickerMessageId === message.id : localShowPicker;
-  const setShowReactionPicker = onOpenPicker
-    ? (show: boolean) => { if (show) onOpenPicker(message.id); else onClosePicker?.(); }
-    : setLocalShowPicker;
-
   const sender = !isMine ? getUserById(message.senderId) : null;
+
+  // ─── Double-tap heart animation ───
+  const heartScale = useSharedValue(0);
+  const heartOpacity = useSharedValue(0);
+
+  const heartAnimStyle = useAnimatedStyle(() => ({
+    opacity: heartOpacity.value,
+    transform: [{ scale: heartScale.value }],
+  }));
+
+  const triggerDoubleTapLike = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onReact?.(message.id, '\u2764\uFE0F');
+  }, [message.id, onReact]);
+
+  const playHeartAnimation = useCallback(() => {
+    'worklet';
+    heartScale.value = withSequence(
+      withSpring(1.4, { damping: 8, stiffness: 400 }),
+      withDelay(400, withSpring(0, { damping: 15, stiffness: 300 })),
+    );
+    heartOpacity.value = withSequence(
+      withTiming(1, { duration: 100 }),
+      withDelay(400, withTiming(0, { duration: 300 })),
+    );
+  }, [heartScale, heartOpacity]);
 
   // ─── Swipe-to-reply gesture (Reanimated) ───
   const translateX = useSharedValue(0);
@@ -225,10 +244,10 @@ export function MessageBubble({
     onReply?.(message);
   }, [message, onReply]);
 
-  const openReactionPicker = useCallback(() => {
+  const openContextMenu = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setShowReactionPicker(true);
-  }, [setShowReactionPicker]);
+    onContextMenu?.(message);
+  }, [message, onContextMenu]);
 
   // Pan gesture for swipe-to-reply — activates on deliberate horizontal movement
   const panGesture = Gesture.Pan()
@@ -254,16 +273,24 @@ export function MessageBubble({
       hasTriggered.value = false;
     });
 
-  // Long-press gesture for reaction picker — managed at the gesture-handler level
+  // Long-press gesture — now opens full context menu instead of reaction picker
   const longPressGesture = Gesture.LongPress()
     .minDuration(300)
     .onStart(() => {
-      runOnJS(openReactionPicker)();
+      runOnJS(openContextMenu)();
     });
 
-  // Race: whichever gesture activates first wins. Pan (horizontal swipe) and
-  // LongPress (hold in place) naturally compete — the user either drags or holds.
-  const composedGesture = Gesture.Race(panGesture, longPressGesture);
+  // Double-tap gesture — toggles reaction with heart animation
+  const doubleTapGesture = Gesture.Tap()
+    .numberOfTaps(2)
+    .onStart(() => {
+      playHeartAnimation();
+      runOnJS(triggerDoubleTapLike)();
+    });
+
+  // Race: whichever gesture activates first wins. Pan (horizontal swipe),
+  // LongPress (hold in place), and DoubleTap (two quick taps) naturally compete.
+  const composedGesture = Gesture.Race(panGesture, longPressGesture, doubleTapGesture);
 
   const swipeStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
@@ -273,60 +300,6 @@ export function MessageBubble({
     opacity: replyIconOpacity.value,
     transform: [{ scale: 0.5 + replyIconOpacity.value * 0.5 }],
   }));
-
-  // ─── "More" actions (Copy, Reply, Edit, Delete via ActionSheet) ───
-
-  const confirmDelete = () => {
-    Alert.alert('Delete Message', 'Are you sure you want to delete this message?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => onDelete?.(message.id),
-      },
-    ]);
-  };
-
-  const showMoreActions = () => {
-    const actions: { label: string; handler: () => void }[] = [
-      { label: 'Copy Text', handler: () => Clipboard.setStringAsync(message.content) },
-    ];
-    if (onReply) {
-      actions.push({ label: 'Reply', handler: () => onReply(message) });
-    }
-    if (isMine && onEdit && message.type === 'text') {
-      actions.push({ label: 'Edit', handler: () => onEdit(message.id, message.content) });
-    }
-    if (isMine && onDelete) {
-      actions.push({ label: 'Delete', handler: confirmDelete });
-    }
-
-    const options = [...actions.map((a) => a.label), 'Cancel'];
-    const cancelIndex = options.length - 1;
-    const destructiveIndex = actions.findIndex((a) => a.label === 'Delete');
-
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options,
-          cancelButtonIndex: cancelIndex,
-          destructiveButtonIndex: destructiveIndex >= 0 ? destructiveIndex : undefined,
-        },
-        (idx) => {
-          if (idx < actions.length) actions[idx].handler();
-        },
-      );
-    } else {
-      Alert.alert('Message', undefined, [
-        ...actions.map((a) => ({ text: a.label, onPress: a.handler })),
-        { text: 'Cancel', style: 'cancel' as const },
-      ]);
-    }
-  };
-
-  const handleReactionSelect = (emoji: string) => {
-    onReact?.(message.id, emoji);
-  };
 
   // ─── Bubble corner radius logic (like iMessage) ───
   const getBubbleRadius = () => {
@@ -377,22 +350,7 @@ export function MessageBubble({
           </View>
         </Animated.View>
 
-        {/* Composed gesture: Pan (swipe-to-reply) races with LongPress (reaction picker) */}
-        {/* Reaction picker — positioned above the bubble, OUTSIDE GestureDetector so taps reach Pressable */}
-        {showReactionPicker && (
-          <View className={`mb-1.5 ${isMine ? 'items-end pr-0' : 'items-start pl-9'}`}>
-            <ReactionPicker
-              onSelect={handleReactionSelect}
-              onClose={() => setShowReactionPicker(false)}
-              onMore={() => {
-                setShowReactionPicker(false);
-                showMoreActions();
-              }}
-            />
-          </View>
-        )}
-
-        <GestureDetector gesture={composedGesture}>
+          <GestureDetector gesture={composedGesture}>
           <Animated.View style={swipeStyle}>
             {/* Message row — no Pressable wrapper, gestures handled above */}
             <View className={`flex-row ${isMine ? 'justify-end' : 'justify-start'}`}>
@@ -424,7 +382,56 @@ export function MessageBubble({
                     {sender.name}
                   </Text>
                 )}
-                {message.type === 'image' ? (
+                {/* Forwarded label */}
+                {message.forwardedFrom && (
+                  <ForwardedLabel forwardedFrom={message.forwardedFrom} isMine={isMine} />
+                )}
+
+                {message.type === 'audio' ? (
+                  <View
+                    style={getBubbleRadius()}
+                    className={`px-3 py-2 ${
+                      isMine ? 'bg-accent-primary' : 'bg-surface-elevated'
+                    }`}
+                  >
+                    <VoiceMessageBubble
+                      messageId={message.id}
+                      metadata={message.metadata as unknown as VoiceMessageMetadata}
+                      isMine={isMine}
+                    />
+                  </View>
+                ) : message.type === 'location' ? (
+                  <View style={getBubbleRadius()} className="overflow-hidden">
+                    <LocationMessageBubble
+                      metadata={message.metadata as unknown as LocationMessageMetadata}
+                      isMine={isMine}
+                    />
+                  </View>
+                ) : message.type === 'file' ? (
+                  <View
+                    style={getBubbleRadius()}
+                    className={`px-3 py-2 ${
+                      isMine ? 'bg-accent-primary' : 'bg-surface-elevated'
+                    }`}
+                  >
+                    <DocumentMessageBubble
+                      metadata={message.metadata as unknown as DocumentMessageMetadata}
+                      isMine={isMine}
+                    />
+                  </View>
+                ) : message.type === 'contact' ? (
+                  <View
+                    style={getBubbleRadius()}
+                    className={`px-3 py-2 ${
+                      isMine ? 'bg-accent-primary' : 'bg-surface-elevated'
+                    }`}
+                  >
+                    <ContactMessageBubble
+                      metadata={message.metadata as unknown as ContactMessageMetadata}
+                      isMine={isMine}
+                    />
+                  </View>
+                ) : message.type === 'image' ? (
                   imageGroup && imageGroup.length > 1 ? (
                     <PhotoGrid images={imageGroup} isMine={isMine} />
                   ) : (
@@ -437,8 +444,8 @@ export function MessageBubble({
                         style={{
                           width: 220,
                           aspectRatio:
-                            (message.metadata?.width as number) && (message.metadata?.height as number)
-                              ? (message.metadata!.width as number) / (message.metadata!.height as number)
+                            message.metadata?.width && message.metadata?.height && (message.metadata.height as number) > 0
+                              ? (message.metadata.width as number) / (message.metadata.height as number)
                               : 4 / 3,
                         }}
                         contentFit="cover"
@@ -486,13 +493,11 @@ export function MessageBubble({
                         `text-[15px] leading-[21px] ${isMine ? 'text-white' : 'text-text-primary'}`,
                       )
                     ) : (
-                      <Text
-                        className={`text-[15px] leading-[21px] ${
-                          isMine ? 'text-white' : 'text-text-primary'
-                        }`}
-                      >
-                        {message.content}
-                      </Text>
+                      <FormattedText
+                        text={message.content}
+                        mentions={message.mentions}
+                        isMine={isMine}
+                      />
                     )}
 
                     {/* Link preview card */}
@@ -500,9 +505,15 @@ export function MessageBubble({
                       <LinkPreviewCard url={extractUrls(message.content)[0]} isMine={isMine} />
                     )}
 
-                    {/* Inline timestamp + status */}
+                    {/* Inline timestamp + status + star/pin indicators */}
                     {isLastInGroup && (
                       <View className={`flex-row items-center mt-1 ${isMine ? 'justify-end' : 'justify-start'}`}>
+                        {message.isStarred && (
+                          <Ionicons name="star" size={10} color="#F59E0B" style={{ marginRight: 3 }} />
+                        )}
+                        {message.isPinned && (
+                          <Ionicons name="pin" size={10} color="#D4764E" style={{ marginRight: 3 }} />
+                        )}
                         {message.isEdited && (
                           <Text className={`text-[10px] mr-1 ${isMine ? 'text-white/50' : 'text-text-tertiary'}`}>
                             edited
@@ -526,6 +537,26 @@ export function MessageBubble({
             </View>
           </Animated.View>
         </GestureDetector>
+
+        {/* Double-tap heart animation overlay */}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            heartAnimStyle,
+            {
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              justifyContent: 'center',
+              alignItems: isMine ? 'flex-end' : 'flex-start',
+              paddingHorizontal: isMine ? 40 : 48,
+            },
+          ]}
+        >
+          <Text style={{ fontSize: 44 }}>{'\u2764\uFE0F'}</Text>
+        </Animated.View>
 
         {/* Reaction pills (slightly overlapping the bubble bottom) */}
         {hasReactions && (

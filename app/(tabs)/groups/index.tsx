@@ -84,7 +84,7 @@ export default function GroupsScreen() {
         onClose={() => setIsModalVisible(false)}
         onCreated={(group) => {
           setIsModalVisible(false);
-          router.push(`/groups/${group.id}` as any);
+          router.push(`/(tabs)/groups/${group.id}` as any);
         }}
       />
     </SafeAreaView>
