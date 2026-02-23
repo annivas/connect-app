@@ -1,15 +1,32 @@
 import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, View, ActivityIndicator, Alert } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Platform, View, Text, Pressable, ActivityIndicator, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
-import { isSameDay, differenceInMinutes } from 'date-fns';
+import { isSameDay, isToday, differenceInMinutes } from 'date-fns';
 import * as ImagePicker from 'expo-image-picker';
 import { MessageBubble } from './MessageBubble';
 import { MessageInput } from './MessageInput';
 import { TypingIndicator } from './TypingIndicator';
 import { useMessagesStore } from '../../stores/useMessagesStore';
 import { useUserStore } from '../../stores/useUserStore';
+import { getImageGroup } from '../../utils/imageGrouping';
 import type { Message } from '../../types';
+
+/**
+ * Standalone "Today" divider — rendered at the visual top of the inverted list
+ * (via ListFooterComponent) so the label is always visible when today's messages exist.
+ */
+function TodayDivider() {
+  return (
+    <View className="flex-row items-center my-4 px-2">
+      <View className="flex-1 h-px bg-border-subtle" />
+      <Text className="text-text-tertiary text-[11px] mx-3 font-medium tracking-wide uppercase">
+        Today
+      </Text>
+      <View className="flex-1 h-px bg-border-subtle" />
+    </View>
+  );
+}
 
 /**
  * Dynamically measure the Y position of the ChatTab container to get an accurate
@@ -57,6 +74,9 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
   );
   const replyingTo = useMessagesStore((s) => s.replyingTo[conversationId] ?? null);
   const typingUserIds = useMessagesStore((s) => s.typingUsers[conversationId] ?? EMPTY_TYPING);
+
+  // Lifted reaction picker state — only one picker open at a time
+  const [activePickerMessageId, setActivePickerMessageId] = useState<string | null>(null);
 
   // Inverted FlatList needs newest-first order
   const invertedMessages = useMemo(() => [...messages].reverse(), [messages]);
@@ -176,6 +196,10 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
             newerMsg.senderId !== item.senderId ||
             differenceInMinutes(newerMsg.timestamp, item.timestamp) > GROUP_THRESHOLD_MINUTES;
 
+          // Photo grid: group consecutive images from same sender
+          const imgGroup = getImageGroup(invertedMessages, index);
+          if (imgGroup && !imgGroup.isLeader) return null;
+
           return (
             <MessageBubble
               message={item}
@@ -189,6 +213,10 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
               onEdit={handleEdit}
               highlightText={highlightText}
               isSearchMatch={matchingMessageIds?.has(item.id)}
+              activePickerMessageId={activePickerMessageId}
+              onOpenPicker={setActivePickerMessageId}
+              onClosePicker={() => setActivePickerMessageId(null)}
+              imageGroup={imgGroup?.isLeader ? imgGroup.images : undefined}
             />
           );
         }}
@@ -199,6 +227,7 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
         }}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="interactive"
+        onScrollBeginDrag={() => setActivePickerMessageId(null)}
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.3}
         ListFooterComponent={
@@ -206,6 +235,8 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
             <View className="py-3 items-center">
               <ActivityIndicator color="#D4764E" />
             </View>
+          ) : invertedMessages.length > 0 && isToday(invertedMessages[invertedMessages.length - 1].timestamp) && !hasMore ? (
+            <TodayDivider />
           ) : null
         }
       />
@@ -229,6 +260,20 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
       {/* Safe area bottom padding so input sits above the home indicator */}
       <View style={{ height: insets.bottom }} className="bg-background-secondary" />
     </KeyboardAvoidingView>
+
+    {/* Reaction picker backdrop — fullscreen dismiss overlay */}
+    {activePickerMessageId && (
+      <Pressable
+        onPress={() => setActivePickerMessageId(null)}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+        }}
+      />
+    )}
     </View>
   );
 }

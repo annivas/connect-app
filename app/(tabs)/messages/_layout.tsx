@@ -11,6 +11,8 @@ export default function MessagesLayout() {
     >
       <Stack.Screen name="index" />
       <Stack.Screen name="[id]" />
+      <Stack.Screen name="shared-detail" />
+      <Stack.Screen name="note-detail" />
     </Stack>
   );
 }

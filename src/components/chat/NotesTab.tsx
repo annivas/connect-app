@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, FlatList, Pressable } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useShallow } from 'zustand/react/shallow';
 import * as Haptics from 'expo-haptics';
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function NotesTab({ conversationId }: Props) {
+  const router = useRouter();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const conversation = useMessagesStore(
     useShallow((s) => s.getConversationById(conversationId))
@@ -50,7 +52,16 @@ export function NotesTab({ conversationId }: Props) {
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
         renderItem={({ item }: { item: Note }) => (
-          <Card className="mb-3">
+          <Card
+            className="mb-3"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push({
+                pathname: '/(tabs)/messages/note-detail',
+                params: { data: JSON.stringify(item) },
+              });
+            }}
+          >
             <View className="flex-row items-center mb-2">
               <View
                 className="w-3 h-3 rounded-full mr-2"

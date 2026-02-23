@@ -90,8 +90,6 @@ export default function HomeScreen() {
 
   const allNotes = conversations.flatMap((c) => c.metadata?.notes ?? []);
 
-  const navigateToMessages = () => router.push('/(tabs)/messages/');
-
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-background-primary">
       <ScrollView
@@ -118,21 +116,21 @@ export default function HomeScreen() {
             label="Reminders"
             count={pendingReminders.length}
             color="#D4964E"
-            onPress={navigateToMessages}
+            onPress={() => router.push('/(tabs)/home/reminders')}
           />
           <QuickAction
             icon="wallet-outline"
             label="Expenses"
             count={unsettled.length}
             color="#2D9F6F"
-            onPress={navigateToMessages}
+            onPress={() => router.push('/(tabs)/home/expenses')}
           />
           <QuickAction
             icon="document-text-outline"
             label="Notes"
             count={allNotes.length}
             color="#5B8EC9"
-            onPress={navigateToMessages}
+            onPress={() => router.push('/(tabs)/home/notes')}
           />
         </View>
 

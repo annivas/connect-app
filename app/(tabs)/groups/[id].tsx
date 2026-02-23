@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TabView, TabBar, SceneRendererProps } from 'react-native-tab-view';
 import { Ionicons } from '@expo/vector-icons';
-import { format } from 'date-fns';
+import { format, isPast } from 'date-fns';
 import * as Haptics from 'expo-haptics';
 import { useShallow } from 'zustand/react/shallow';
 import { IconButton } from '../../../src/components/ui/IconButton';
@@ -16,9 +16,10 @@ import { GroupInfoSheet } from '../../../src/components/groups/GroupInfoSheet';
 import { SharedTab } from '../../../src/components/chat/SharedTab';
 import { InChatSearchBar } from '../../../src/components/chat/InChatSearchBar';
 import { useMessageSearch } from '../../../src/hooks/useMessageSearch';
+import { ItineraryItemModal } from '../../../src/components/groups/ItineraryItemModal';
 import { useGroupsStore } from '../../../src/stores/useGroupsStore';
 import { useUserStore } from '../../../src/stores/useUserStore';
-import type { RSVPStatus } from '../../../src/types';
+import type { RSVPStatus, ItineraryItem } from '../../../src/types';
 
 type Route = { key: string; title: string };
 
@@ -62,13 +63,29 @@ function RSVPButton({
 }
 
 function EventsTab({ groupId }: { groupId: string }) {
+  const router = useRouter();
   const group = useGroupsStore(useShallow((s) => s.getGroupById(groupId)));
   const currentUserId = useUserStore((s) => s.currentUser?.id);
   const events = group?.events ?? [];
 
+  const upcoming = events.filter((e) => !isPast(e.startDate)).sort(
+    (a, b) => a.startDate.getTime() - b.startDate.getTime(),
+  );
+  const past = events.filter((e) => isPast(e.startDate)).sort(
+    (a, b) => b.startDate.getTime() - a.startDate.getTime(),
+  );
+
   const handleRSVP = (eventId: string, status: RSVPStatus) => {
     Haptics.selectionAsync();
     useGroupsStore.getState().updateRSVP(groupId, eventId, status);
+  };
+
+  const handleOpenEventSpace = (eventId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push({
+      pathname: '/(tabs)/groups/event-space',
+      params: { groupId, eventId },
+    });
   };
 
   if (events.length === 0) {
@@ -85,81 +102,129 @@ function EventsTab({ groupId }: { groupId: string }) {
 
   return (
     <View className="flex-1 bg-background-primary p-4">
-      {events.map((event) => {
-        const goingCount = event.attendees.filter(
-          (a) => a.status === 'going'
-        ).length;
-        const maybeCount = event.attendees.filter(
-          (a) => a.status === 'maybe'
-        ).length;
+      {/* ── Upcoming Events ── */}
+      {upcoming.length > 0 && (
+        <>
+          <Text className="text-text-secondary text-xs uppercase tracking-wide mb-2 font-semibold">
+            Upcoming
+          </Text>
+          {upcoming.map((event) => {
+            const goingCount = event.attendees.filter((a) => a.status === 'going').length;
+            const maybeCount = event.attendees.filter((a) => a.status === 'maybe').length;
+            const myStatus: RSVPStatus =
+              event.attendees.find((a) => a.userId === currentUserId)?.status ?? 'pending';
 
-        const myStatus: RSVPStatus =
-          event.attendees.find((a) => a.userId === currentUserId)?.status ?? 'pending';
+            return (
+              <Card key={event.id} className="mb-3">
+                <View className="flex-row items-start justify-between mb-2">
+                  <View className="flex-1 mr-3">
+                    <Text className="text-text-primary text-[16px] font-semibold">
+                      {event.title}
+                    </Text>
+                    {event.description && (
+                      <Text className="text-text-secondary text-sm mt-1">{event.description}</Text>
+                    )}
+                  </View>
+                  <View className="bg-accent-primary/20 rounded-lg px-3 py-1.5">
+                    <Text className="text-accent-primary text-xs font-semibold">
+                      {format(event.startDate, 'MMM d')}
+                    </Text>
+                  </View>
+                </View>
 
-        return (
-          <Card key={event.id} className="mb-3">
-            <View className="flex-row items-start justify-between mb-2">
-              <View className="flex-1 mr-3">
-                <Text className="text-text-primary text-[16px] font-semibold">
-                  {event.title}
-                </Text>
-                {event.description && (
-                  <Text className="text-text-secondary text-sm mt-1">
-                    {event.description}
-                  </Text>
-                )}
-              </View>
-              <View className="bg-accent-primary/20 rounded-lg px-3 py-1.5">
-                <Text className="text-accent-primary text-xs font-semibold">
-                  {format(event.startDate, 'MMM d')}
-                </Text>
-              </View>
-            </View>
-
-            <View className="flex-row items-center mt-2">
-              <Ionicons name="time-outline" size={14} color="#A8937F" />
-              <Text className="text-text-tertiary text-xs ml-1">
-                {format(event.startDate, 'HH:mm')}
-                {event.endDate && ` - ${format(event.endDate, 'HH:mm')}`}
-              </Text>
-              <View className="flex-row items-center ml-4">
-                <Ionicons
-                  name="checkmark-circle"
-                  size={14}
-                  color="#2D9F6F"
-                />
-                <Text className="text-text-tertiary text-xs ml-1">
-                  {goingCount} going
-                </Text>
-              </View>
-              {maybeCount > 0 && (
-                <View className="flex-row items-center ml-3">
-                  <Ionicons
-                    name="help-circle"
-                    size={14}
-                    color="#D4964E"
-                  />
+                <View className="flex-row items-center mt-2">
+                  <Ionicons name="time-outline" size={14} color="#A8937F" />
                   <Text className="text-text-tertiary text-xs ml-1">
-                    {maybeCount} maybe
+                    {format(event.startDate, 'HH:mm')}
+                    {event.endDate && ` - ${format(event.endDate, 'HH:mm')}`}
+                  </Text>
+                  <View className="flex-row items-center ml-4">
+                    <Ionicons name="checkmark-circle" size={14} color="#2D9F6F" />
+                    <Text className="text-text-tertiary text-xs ml-1">{goingCount} going</Text>
+                  </View>
+                  {maybeCount > 0 && (
+                    <View className="flex-row items-center ml-3">
+                      <Ionicons name="help-circle" size={14} color="#D4964E" />
+                      <Text className="text-text-tertiary text-xs ml-1">{maybeCount} maybe</Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* RSVP Buttons */}
+                <View className="flex-row gap-2 mt-3">
+                  {RSVP_OPTIONS.map((option) => (
+                    <RSVPButton
+                      key={option.status}
+                      option={option}
+                      isSelected={myStatus === option.status}
+                      onPress={() => handleRSVP(event.id, option.status)}
+                    />
+                  ))}
+                </View>
+
+                {/* Event Space Link */}
+                <Pressable
+                  onPress={() => handleOpenEventSpace(event.id)}
+                  className="flex-row items-center justify-center mt-3 pt-3 border-t border-border-subtle active:opacity-70"
+                >
+                  <Ionicons name="chatbubbles-outline" size={16} color="#D4764E" />
+                  <Text className="text-accent-primary text-sm font-medium ml-1.5">
+                    {event.eventSpaceId ? 'Open Chat' : 'Start Chat'}
+                  </Text>
+                </Pressable>
+              </Card>
+            );
+          })}
+        </>
+      )}
+
+      {/* ── Past Events ── */}
+      {past.length > 0 && (
+        <>
+          <Text className="text-text-tertiary text-xs uppercase tracking-wide mb-2 mt-4 font-semibold">
+            Memories
+          </Text>
+          {past.map((event) => {
+            const goingCount = event.attendees.filter((a) => a.status === 'going').length;
+            const maybeCount = event.attendees.filter((a) => a.status === 'maybe').length;
+
+            return (
+              <Card key={event.id} className="mb-3" style={{ opacity: 0.75 }}>
+                <View className="flex-row items-start justify-between mb-1">
+                  <View className="flex-1 mr-3">
+                    <Text className="text-text-secondary text-[15px] font-semibold">
+                      {event.title}
+                    </Text>
+                  </View>
+                  <Text className="text-text-tertiary text-xs">
+                    {format(event.startDate, 'MMM d')}
                   </Text>
                 </View>
-              )}
-            </View>
 
-            {/* RSVP Buttons */}
-            <View className="flex-row gap-2 mt-3">
-              {RSVP_OPTIONS.map((option) => (
-                <RSVPButton
-                  key={option.status}
-                  option={option}
-                  isSelected={myStatus === option.status}
-                  onPress={() => handleRSVP(event.id, option.status)}
-                />
-              ))}
-            </View>
-          </Card>
-        );
-      })}
+                <View className="flex-row items-center mt-1">
+                  <Ionicons name="people" size={13} color="#A8937F" />
+                  <Text className="text-text-tertiary text-xs ml-1">
+                    {goingCount} went{maybeCount > 0 ? `, ${maybeCount} maybe` : ''}
+                  </Text>
+                </View>
+
+                {/* View Chat History — only if event space was created */}
+                {event.eventSpaceId && (
+                  <Pressable
+                    onPress={() => handleOpenEventSpace(event.id)}
+                    className="flex-row items-center justify-center mt-2.5 pt-2.5 border-t border-border-subtle active:opacity-70"
+                  >
+                    <Ionicons name="chatbubbles-outline" size={14} color="#A8937F" />
+                    <Text className="text-text-tertiary text-xs font-medium ml-1.5">
+                      View Chat History
+                    </Text>
+                  </Pressable>
+                )}
+              </Card>
+            );
+          })}
+        </>
+      )}
     </View>
   );
 }
@@ -167,6 +232,8 @@ function EventsTab({ groupId }: { groupId: string }) {
 function TripTab({ groupId }: { groupId: string }) {
   const group = useGroupsStore(useShallow((s) => s.getGroupById(groupId)));
   const trip = group?.trip;
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingItem, setEditingItem] = useState<ItineraryItem | null>(null);
 
   if (!trip) {
     return (
@@ -188,71 +255,140 @@ function TripTab({ groupId }: { groupId: string }) {
     other: 'ellipse',
   };
 
+  const totalDays = Math.max(
+    1,
+    Math.ceil(
+      (trip.endDate.getTime() - trip.startDate.getTime()) / (1000 * 60 * 60 * 24)
+    ) + 1
+  );
+
+  const handleAddItem = () => {
+    setEditingItem(null);
+    setModalVisible(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const handleEditItem = (item: ItineraryItem) => {
+    setEditingItem(item);
+    setModalVisible(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  };
+
+  const handleSave = (item: ItineraryItem) => {
+    if (editingItem) {
+      useGroupsStore.getState().editItineraryItem(groupId, item.id, item);
+    } else {
+      useGroupsStore.getState().addItineraryItem(groupId, item);
+    }
+  };
+
+  const handleDelete = (itemId: string) => {
+    useGroupsStore.getState().deleteItineraryItem(groupId, itemId);
+  };
+
   return (
-    <View className="flex-1 bg-background-primary p-4">
-      {/* Trip header */}
-      <View className="mb-4">
-        <Text className="text-text-primary text-xl font-bold">
-          {trip.destination}
-        </Text>
-        <Text className="text-text-secondary text-sm mt-1">
-          {format(trip.startDate, 'MMM d')} -{' '}
-          {format(trip.endDate, 'MMM d, yyyy')}
-        </Text>
+    <View className="flex-1 bg-background-primary">
+      <View className="p-4 pb-20">
+        {/* Trip header */}
+        <View className="mb-4">
+          <Text className="text-text-primary text-xl font-bold">
+            {trip.destination}
+          </Text>
+          <Text className="text-text-secondary text-sm mt-1">
+            {format(trip.startDate, 'MMM d')} -{' '}
+            {format(trip.endDate, 'MMM d, yyyy')}
+          </Text>
+        </View>
+
+        {/* Itinerary */}
+        {trip.itinerary.map((item, index) => {
+          const showDayHeader =
+            index === 0 ||
+            trip.itinerary[index - 1].day !== item.day;
+
+          return (
+            <View key={item.id}>
+              {showDayHeader && (
+                <Text className="text-accent-primary text-sm font-bold mt-4 mb-2">
+                  Day {item.day}
+                </Text>
+              )}
+              <Pressable
+                onLongPress={() => handleEditItem(item)}
+                className="flex-row mb-3"
+              >
+                <View className="items-center mr-3">
+                  <View className="w-8 h-8 rounded-full bg-surface-elevated items-center justify-center">
+                    <Ionicons
+                      name={typeIcons[item.type] || 'ellipse'}
+                      size={16}
+                      color="#7A6355"
+                    />
+                  </View>
+                  {index < trip.itinerary.length - 1 && (
+                    <View className="w-[2px] flex-1 bg-border-subtle mt-1" />
+                  )}
+                </View>
+                <View className="flex-1 pb-2">
+                  <View className="flex-row items-center">
+                    {item.time && (
+                      <Text className="text-text-tertiary text-xs mr-2">
+                        {item.time}
+                      </Text>
+                    )}
+                    <Text className="text-text-primary font-medium flex-1">
+                      {item.title}
+                    </Text>
+                    {item.cost != null && (
+                      <Text className="text-text-secondary text-xs">
+                        ${item.cost}
+                      </Text>
+                    )}
+                  </View>
+                  {item.description && (
+                    <Text className="text-text-secondary text-xs mt-0.5">
+                      {item.description}
+                    </Text>
+                  )}
+                </View>
+              </Pressable>
+            </View>
+          );
+        })}
+
+        {trip.itinerary.length === 0 && (
+          <View className="py-8 items-center">
+            <Ionicons name="map-outline" size={32} color="#A8937F" />
+            <Text className="text-text-tertiary text-sm mt-2">
+              No items yet — tap + to add one
+            </Text>
+          </View>
+        )}
       </View>
 
-      {/* Itinerary */}
-      {trip.itinerary.map((item, index) => {
-        const showDayHeader =
-          index === 0 ||
-          trip.itinerary[index - 1].day !== item.day;
+      {/* FAB */}
+      <Pressable
+        onPress={handleAddItem}
+        className="absolute bottom-4 right-4 w-14 h-14 rounded-full bg-accent-primary items-center justify-center"
+        style={{
+          shadowColor: '#D4764E',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 8,
+          elevation: 8,
+        }}
+      >
+        <Ionicons name="add" size={28} color="#FFFFFF" />
+      </Pressable>
 
-        return (
-          <View key={item.id}>
-            {showDayHeader && (
-              <Text className="text-accent-primary text-sm font-bold mt-4 mb-2">
-                Day {item.day}
-              </Text>
-            )}
-            <View className="flex-row mb-3">
-              <View className="items-center mr-3">
-                <View className="w-8 h-8 rounded-full bg-surface-elevated items-center justify-center">
-                  <Ionicons
-                    name={typeIcons[item.type] || 'ellipse'}
-                    size={16}
-                    color="#7A6355"
-                  />
-                </View>
-                {index < trip.itinerary.length - 1 && (
-                  <View className="w-[2px] flex-1 bg-border-subtle mt-1" />
-                )}
-              </View>
-              <View className="flex-1 pb-2">
-                <View className="flex-row items-center">
-                  {item.time && (
-                    <Text className="text-text-tertiary text-xs mr-2">
-                      {item.time}
-                    </Text>
-                  )}
-                  <Text className="text-text-primary font-medium flex-1">
-                    {item.title}
-                  </Text>
-                  {item.cost != null && (
-                    <Text className="text-text-secondary text-xs">
-                      ${item.cost}
-                    </Text>
-                  )}
-                </View>
-                {item.description && (
-                  <Text className="text-text-secondary text-xs mt-0.5">
-                    {item.description}
-                  </Text>
-                )}
-              </View>
-            </View>
-          </View>
-        );
-      })}
+      <ItineraryItemModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onSave={handleSave}
+        onDelete={editingItem ? handleDelete : undefined}
+        existingItem={editingItem}
+        totalDays={totalDays}
+      />
     </View>
   );
 }

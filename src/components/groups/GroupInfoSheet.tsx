@@ -212,7 +212,7 @@ export function GroupInfoSheet({ group, visible, onClose, onLeave }: Props) {
         group={group}
         visible={showEditModal}
         onClose={() => setShowEditModal(false)}
-        onSaved={() => {}}
+        onSaved={() => setShowEditModal(false)}
       />
       <AddMembersModal
         groupId={group.id}

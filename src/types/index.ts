@@ -164,6 +164,7 @@ export interface GroupEvent {
   createdBy: string;
   attendees: EventAttendee[];
   type: 'hangout' | 'trip' | 'sports' | 'other';
+  eventSpaceId?: string;
 }
 
 // ─── Trip ────────────────────────────────────
