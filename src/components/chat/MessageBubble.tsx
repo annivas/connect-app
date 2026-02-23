@@ -228,7 +228,7 @@ export function MessageBubble({
   const openReactionPicker = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setShowReactionPicker(true);
-  }, [setShowReactionPicker]);
+  }, []);
 
   // Pan gesture for swipe-to-reply — activates on deliberate horizontal movement
   const panGesture = Gesture.Pan()
@@ -378,22 +378,22 @@ export function MessageBubble({
         </Animated.View>
 
         {/* Composed gesture: Pan (swipe-to-reply) races with LongPress (reaction picker) */}
-        {/* Reaction picker — positioned above the bubble, OUTSIDE GestureDetector so taps reach Pressable */}
-        {showReactionPicker && (
-          <View className={`mb-1.5 ${isMine ? 'items-end pr-0' : 'items-start pl-9'}`}>
-            <ReactionPicker
-              onSelect={handleReactionSelect}
-              onClose={() => setShowReactionPicker(false)}
-              onMore={() => {
-                setShowReactionPicker(false);
-                showMoreActions();
-              }}
-            />
-          </View>
-        )}
-
         <GestureDetector gesture={composedGesture}>
           <Animated.View style={swipeStyle}>
+            {/* Reaction picker — positioned above the bubble */}
+            {showReactionPicker && (
+              <View className={`mb-1.5 ${isMine ? 'items-end pr-0' : 'items-start pl-9'}`}>
+                <ReactionPicker
+                  onSelect={handleReactionSelect}
+                  onClose={() => setShowReactionPicker(false)}
+                  onMore={() => {
+                    setShowReactionPicker(false);
+                    showMoreActions();
+                  }}
+                />
+              </View>
+            )}
+
             {/* Message row — no Pressable wrapper, gestures handled above */}
             <View className={`flex-row ${isMine ? 'justify-end' : 'justify-start'}`}>
               {/* Avatar column (received messages only) */}

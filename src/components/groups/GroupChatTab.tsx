@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react'
 import { FlatList, KeyboardAvoidingView, Platform, View, Text, Pressable, ActivityIndicator, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
-import { isSameDay, isToday, differenceInMinutes } from 'date-fns';
+import { isSameDay, differenceInMinutes } from 'date-fns';
 import * as ImagePicker from 'expo-image-picker';
 import { MessageBubble } from '../chat/MessageBubble';
 import { MessageInput } from '../chat/MessageInput';
@@ -15,20 +15,7 @@ import { getImageGroup } from '../../utils/imageGrouping';
 import { detectEventHint } from '../../utils/eventDetection';
 import type { Message, GroupEvent } from '../../types';
 
-/**
- * Standalone "Today" divider — rendered at the visual top of the inverted list.
- */
-function TodayDivider() {
-  return (
-    <View className="flex-row items-center my-4 px-2">
-      <View className="flex-1 h-px bg-border-subtle" />
-      <Text className="text-text-tertiary text-[11px] mx-3 font-medium tracking-wide uppercase">
-        Today
-      </Text>
-      <View className="flex-1 h-px bg-border-subtle" />
-    </View>
-  );
-}
+
 
 /**
  * Dynamically measure the Y position of the GroupChatTab container to get an
@@ -268,8 +255,6 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
             <View className="py-3 items-center">
               <ActivityIndicator color="#D4764E" />
             </View>
-          ) : invertedMessages.length > 0 && isToday(invertedMessages[invertedMessages.length - 1].timestamp) && !hasMore ? (
-            <TodayDivider />
           ) : null
         }
       />
