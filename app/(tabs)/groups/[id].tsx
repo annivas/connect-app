@@ -1,5 +1,5 @@
 import React, { useState, useLayoutEffect } from 'react';
-import { View, Text, Pressable, useWindowDimensions, ActionSheetIOS, Platform, Alert } from 'react-native';
+import { View, Text, Pressable, ScrollView, useWindowDimensions, ActionSheetIOS, Platform, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TabView, TabBar, SceneRendererProps } from 'react-native-tab-view';
@@ -17,9 +17,11 @@ import { SharedTab } from '../../../src/components/chat/SharedTab';
 import { InChatSearchBar } from '../../../src/components/chat/InChatSearchBar';
 import { useMessageSearch } from '../../../src/hooks/useMessageSearch';
 import { ItineraryItemModal } from '../../../src/components/groups/ItineraryItemModal';
+import { CreatePollModal } from '../../../src/components/groups/CreatePollModal';
+import { PollBubble } from '../../../src/components/groups/PollBubble';
 import { useGroupsStore } from '../../../src/stores/useGroupsStore';
 import { useUserStore } from '../../../src/stores/useUserStore';
-import type { RSVPStatus, ItineraryItem } from '../../../src/types';
+import type { RSVPStatus, ItineraryItem, Poll } from '../../../src/types';
 
 type Route = { key: string; title: string };
 
@@ -393,6 +395,54 @@ function TripTab({ groupId }: { groupId: string }) {
   );
 }
 
+// ─── Polls Tab ──────────────────────────────
+
+function PollsTab({ groupId }: { groupId: string }) {
+  const polls = useGroupsStore(useShallow((s) => s.groupPolls[groupId] ?? []));
+
+  const handleVote = (pollId: string, optionId: string) => {
+    useGroupsStore.getState().votePoll(groupId, pollId, optionId);
+  };
+
+  const handleClosePoll = (pollId: string) => {
+    useGroupsStore.getState().closePoll(groupId, pollId);
+  };
+
+  if (polls.length === 0) {
+    return (
+      <View className="flex-1 bg-background-primary">
+        <EmptyState
+          icon="bar-chart-outline"
+          title="No polls"
+          description="Create a poll to get the group's opinion"
+        />
+      </View>
+    );
+  }
+
+  // Show active polls first, then closed
+  const sorted = [...polls].sort((a, b) => {
+    if (a.isClosed && !b.isClosed) return 1;
+    if (!a.isClosed && b.isClosed) return -1;
+    return b.createdAt.getTime() - a.createdAt.getTime();
+  });
+
+  return (
+    <View className="flex-1 bg-background-primary pt-3">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
+        {sorted.map((poll) => (
+          <PollBubble
+            key={poll.id}
+            poll={poll}
+            onVote={handleVote}
+            onClose={handleClosePoll}
+          />
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
 // ─── Main screen ────────────────────────────
 
 export default function GroupDetailScreen() {
@@ -402,6 +452,7 @@ export default function GroupDetailScreen() {
   const layout = useWindowDimensions();
   const [tabIndex, setTabIndex] = useState(0);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
+  const [showCreatePoll, setShowCreatePoll] = useState(false);
 
   // Hide the bottom tab bar when this screen is focused
   const parentNavigation = navigation.getParent();
@@ -442,6 +493,7 @@ export default function GroupDetailScreen() {
 
     const options = [
       'Group Info',
+      'Create Poll',
       isPinned ? 'Unpin' : 'Pin',
       isMuted ? 'Unmute' : 'Mute',
       'Cancel',
@@ -449,18 +501,20 @@ export default function GroupDetailScreen() {
 
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
-        { options, cancelButtonIndex: 3 },
+        { options, cancelButtonIndex: 4 },
         (idx) => {
           if (idx === 0) setShowGroupInfo(true);
-          if (idx === 1) togglePin(id!);
-          if (idx === 2) toggleMute(id!);
+          if (idx === 1) setShowCreatePoll(true);
+          if (idx === 2) togglePin(id!);
+          if (idx === 3) toggleMute(id!);
         }
       );
     } else {
       Alert.alert('Options', undefined, [
         { text: 'Group Info', onPress: () => setShowGroupInfo(true) },
-        { text: options[1], onPress: () => togglePin(id!) },
-        { text: options[2], onPress: () => toggleMute(id!) },
+        { text: 'Create Poll', onPress: () => setShowCreatePoll(true) },
+        { text: options[2], onPress: () => togglePin(id!) },
+        { text: options[3], onPress: () => toggleMute(id!) },
         { text: 'Cancel', style: 'cancel' },
       ]);
     }
@@ -479,6 +533,7 @@ export default function GroupDetailScreen() {
     { key: 'chat', title: 'Chat' },
     { key: 'events', title: 'Events' },
     { key: 'shared', title: 'Shared' },
+    { key: 'polls', title: 'Polls' },
     ...(isTrip ? [{ key: 'trip', title: 'Trip' }] : []),
   ];
 
@@ -498,6 +553,8 @@ export default function GroupDetailScreen() {
         return <EventsTab groupId={id!} />;
       case 'shared':
         return <SharedTab sharedObjects={group?.metadata?.sharedObjects} />;
+      case 'polls':
+        return <PollsTab groupId={id!} />;
       case 'trip':
         return <TripTab groupId={id!} />;
       default:
@@ -561,6 +618,8 @@ export default function GroupDetailScreen() {
             }}
             activeColor="#D4764E"
             inactiveColor="#A8937F"
+            scrollEnabled
+            tabStyle={{ width: 'auto', minWidth: 80 }}
           />
         )}
       />
@@ -570,6 +629,14 @@ export default function GroupDetailScreen() {
         visible={showGroupInfo}
         onClose={() => setShowGroupInfo(false)}
         onLeave={() => router.back()}
+      />
+
+      <CreatePollModal
+        visible={showCreatePoll}
+        onClose={() => setShowCreatePoll(false)}
+        onCreatePoll={(question, options, isMultipleChoice) => {
+          useGroupsStore.getState().createPoll(id!, question, options, isMultipleChoice);
+        }}
       />
     </SafeAreaView>
   );
