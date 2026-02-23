@@ -96,6 +96,14 @@ export function RemindersTab({ conversationId }: Props) {
                 <Text className="text-text-tertiary text-xs mt-1">
                   {format(item.dueDate, 'MMM d, yyyy · HH:mm')}
                 </Text>
+                {item.linkedMessageId && (
+                  <View className="flex-row items-center mt-1.5">
+                    <Ionicons name="chatbubble-outline" size={11} color="#6366F1" />
+                    <Text className="text-accent-primary text-[11px] font-medium ml-1">
+                      From message
+                    </Text>
+                  </View>
+                )}
               </View>
             </View>
           </Card>

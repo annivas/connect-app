@@ -4,11 +4,12 @@ import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TabView, TabBar, SceneRendererProps } from 'react-native-tab-view';
 import { useShallow } from 'zustand/react/shallow';
+import * as Haptics from 'expo-haptics';
 import { IconButton } from '../../../src/components/ui/IconButton';
 import { Avatar } from '../../../src/components/ui/Avatar';
 import { ChatTab } from '../../../src/components/chat/ChatTab';
-import { SharedTab } from '../../../src/components/chat/SharedTab';
-import { NotesTab } from '../../../src/components/chat/NotesTab';
+import { MediaPinsTab } from '../../../src/components/chat/MediaPinsTab';
+import { NotesSavedTab } from '../../../src/components/chat/NotesSavedTab';
 import { RemindersTab } from '../../../src/components/chat/RemindersTab';
 import { LedgerTab } from '../../../src/components/chat/LedgerTab';
 import { UserProfileSheet } from '../../../src/components/chat/UserProfileSheet';
@@ -23,8 +24,8 @@ type Route = { key: string; title: string };
 
 const routes: Route[] = [
   { key: 'chat', title: 'Chat' },
-  { key: 'shared', title: 'Shared' },
-  { key: 'notes', title: 'Notes' },
+  { key: 'media-pins', title: 'Media & Pins' },
+  { key: 'notes-saved', title: 'Notes & Saved' },
   { key: 'reminders', title: 'Reminders' },
   { key: 'ledger', title: 'Ledger' },
 ];
@@ -131,10 +132,10 @@ export default function ConversationDetailScreen() {
             matchingMessageIds={isSearching ? matchingMessageIds : undefined}
           />
         );
-      case 'shared':
-        return <SharedTab conversationId={id!} />;
-      case 'notes':
-        return <NotesTab conversationId={id!} />;
+      case 'media-pins':
+        return <MediaPinsTab conversationId={id!} />;
+      case 'notes-saved':
+        return <NotesSavedTab conversationId={id!} />;
       case 'reminders':
         return <RemindersTab conversationId={id!} />;
       case 'ledger':
@@ -169,6 +170,14 @@ export default function ConversationDetailScreen() {
           </View>
         </Pressable>
 
+        <IconButton icon="call-outline" onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          Alert.alert('Voice Call', `Calling ${otherUser.name}...`, [{ text: 'End', style: 'cancel' }]);
+        }} />
+        <IconButton icon="videocam-outline" onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          Alert.alert('Video Call', `Video calling ${otherUser.name}...`, [{ text: 'End', style: 'cancel' }]);
+        }} />
         <IconButton icon="search" onPress={openSearch} />
         <IconButton
           icon="ellipsis-horizontal"
