@@ -12,6 +12,7 @@ import { ForwardModal } from './ForwardModal';
 import { PinnedMessageBanner } from './PinnedMessageBanner';
 import { DisappearingMessagesBanner } from './DisappearingMessagesBanner';
 import { ScheduleMessageSheet } from './ScheduleMessageSheet';
+import { AttachmentSheet } from './AttachmentSheet';
 import { TypingIndicator } from './TypingIndicator';
 import { useMessagesStore } from '../../stores/useMessagesStore';
 import { useUserStore } from '../../stores/useUserStore';
@@ -98,6 +99,9 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
 
   // Show disappearing messages sheet from banner tap
   const [showDisappearingSheet, setShowDisappearingSheet] = useState(false);
+
+  // Attachment sheet
+  const [showAttachmentSheet, setShowAttachmentSheet] = useState(false);
 
   // Pinned messages
   const pinnedMessages = useMemo(
@@ -213,7 +217,12 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
     ]);
   };
 
-  const handlePickImage = async () => {
+  // ─── Attachment handlers ──────────────
+  const handleOpenAttachments = () => {
+    setShowAttachmentSheet(true);
+  };
+
+  const handlePickPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Permission Required', 'Please allow access to your photo library to send images.');
@@ -235,6 +244,75 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
     sendMessage(conversationId, asset.uri, userId, {
       type: 'image',
       metadata: { width: asset.width, height: asset.height },
+    });
+  };
+
+  const handlePickCamera = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Please allow camera access to take photos.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets?.[0]) return;
+
+    const asset = result.assets[0];
+    const userId = useUserStore.getState().currentUser?.id;
+    if (!userId) return;
+
+    sendMessage(conversationId, asset.uri, userId, {
+      type: 'image',
+      metadata: { width: asset.width, height: asset.height },
+    });
+  };
+
+  const handlePickDocument = () => {
+    // Mock: send a document message
+    const userId = useUserStore.getState().currentUser?.id;
+    if (!userId) return;
+    sendMessage(conversationId, 'Project_Report.pdf', userId, {
+      type: 'file',
+      metadata: {
+        fileName: 'Project_Report.pdf',
+        fileSize: 2_456_000,
+        mimeType: 'application/pdf',
+        uri: 'mock://document.pdf',
+      },
+    });
+  };
+
+  const handleShareLocation = () => {
+    // Mock: send a location message
+    const userId = useUserStore.getState().currentUser?.id;
+    if (!userId) return;
+    sendMessage(conversationId, 'Shared location', userId, {
+      type: 'location',
+      metadata: {
+        latitude: 37.7749,
+        longitude: -122.4194,
+        address: '1 Market Street, San Francisco, CA 94105',
+        placeName: 'Ferry Building',
+        staticMapUrl: 'https://picsum.photos/seed/sf-map/300/150',
+      },
+    });
+  };
+
+  const handleShareContact = () => {
+    // Mock: send a contact message
+    const userId = useUserStore.getState().currentUser?.id;
+    if (!userId) return;
+    sendMessage(conversationId, 'Shared contact', userId, {
+      type: 'contact',
+      metadata: {
+        name: 'Alex Rivera',
+        phone: '+1 (555) 123-4567',
+        email: 'alex@example.com',
+        avatar: 'https://picsum.photos/seed/contact/100',
+      },
     });
   };
 
@@ -430,7 +508,7 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
       <TypingIndicator typingUserIds={typingUserIds} />
       <MessageInput
         onSend={handleSend}
-        onPickImage={handlePickImage}
+        onPickImage={handleOpenAttachments}
         onScheduleSend={handleScheduleSend}
         onSendVoice={handleSendVoice}
         replyTo={
@@ -494,6 +572,17 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
         setShowScheduleSheet(false);
         setPendingScheduleText('');
       }}
+    />
+
+    {/* Attachment sheet */}
+    <AttachmentSheet
+      visible={showAttachmentSheet}
+      onClose={() => setShowAttachmentSheet(false)}
+      onPickCamera={handlePickCamera}
+      onPickPhoto={handlePickPhoto}
+      onPickDocument={handlePickDocument}
+      onShareLocation={handleShareLocation}
+      onShareContact={handleShareContact}
     />
     </View>
   );

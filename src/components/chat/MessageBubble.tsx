@@ -19,9 +19,12 @@ import { ForwardedLabel } from './ForwardedLabel';
 import { LinkPreviewCard } from './LinkPreviewCard';
 import { PhotoGrid } from './PhotoGrid';
 import { VoiceMessageBubble } from './VoiceMessageBubble';
+import { LocationMessageBubble } from './LocationMessageBubble';
+import { DocumentMessageBubble } from './DocumentMessageBubble';
+import { ContactMessageBubble } from './ContactMessageBubble';
 import { renderHighlightedText } from '../../utils/highlightText';
 import { extractUrls } from '../../utils/urlDetection';
-import { Message, Reaction, VoiceMessageMetadata } from '../../types';
+import { Message, Reaction, VoiceMessageMetadata, LocationMessageMetadata, DocumentMessageMetadata, ContactMessageMetadata } from '../../types';
 import { useUserStore } from '../../stores/useUserStore';
 
 interface Props {
@@ -394,6 +397,37 @@ export function MessageBubble({
                     <VoiceMessageBubble
                       messageId={message.id}
                       metadata={message.metadata as unknown as VoiceMessageMetadata}
+                      isMine={isMine}
+                    />
+                  </View>
+                ) : message.type === 'location' ? (
+                  <View style={getBubbleRadius()} className="overflow-hidden">
+                    <LocationMessageBubble
+                      metadata={message.metadata as unknown as LocationMessageMetadata}
+                      isMine={isMine}
+                    />
+                  </View>
+                ) : message.type === 'file' ? (
+                  <View
+                    style={getBubbleRadius()}
+                    className={`px-3 py-2 ${
+                      isMine ? 'bg-accent-primary' : 'bg-surface-elevated'
+                    }`}
+                  >
+                    <DocumentMessageBubble
+                      metadata={message.metadata as unknown as DocumentMessageMetadata}
+                      isMine={isMine}
+                    />
+                  </View>
+                ) : message.type === 'contact' ? (
+                  <View
+                    style={getBubbleRadius()}
+                    className={`px-3 py-2 ${
+                      isMine ? 'bg-accent-primary' : 'bg-surface-elevated'
+                    }`}
+                  >
+                    <ContactMessageBubble
+                      metadata={message.metadata as unknown as ContactMessageMetadata}
                       isMine={isMine}
                     />
                   </View>
