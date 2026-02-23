@@ -6,6 +6,7 @@ import * as Haptics from 'expo-haptics';
 interface Props {
   onSend: (content: string) => void;
   onPickImage?: () => void;
+  onScheduleSend?: (content: string) => void;
   replyTo?: { senderName: string; content: string } | null;
   onCancelReply?: () => void;
   editingContent?: string | null;
@@ -13,7 +14,7 @@ interface Props {
   onCancelEdit?: () => void;
 }
 
-export function MessageInput({ onSend, onPickImage, replyTo, onCancelReply, editingContent, onSaveEdit, onCancelEdit }: Props) {
+export function MessageInput({ onSend, onPickImage, onScheduleSend, replyTo, onCancelReply, editingContent, onSaveEdit, onCancelEdit }: Props) {
   const [text, setText] = useState('');
   const inputRef = useRef<TextInput>(null);
   const isEditing = editingContent != null;
@@ -42,6 +43,14 @@ export function MessageInput({ onSend, onPickImage, replyTo, onCancelReply, edit
     } else {
       onSend(trimmed);
     }
+    setText('');
+  };
+
+  const handleSchedule = () => {
+    const trimmed = text.trim();
+    if (!trimmed || !onScheduleSend) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onScheduleSend(trimmed);
     setText('');
   };
 
@@ -125,9 +134,11 @@ export function MessageInput({ onSend, onPickImage, replyTo, onCancelReply, edit
           />
         </View>
 
-        {/* Send button */}
+        {/* Send button — long-press to schedule */}
         <Pressable
           onPress={handleSend}
+          onLongPress={!isEditing && hasText && onScheduleSend ? handleSchedule : undefined}
+          delayLongPress={500}
           disabled={!hasText}
           className={`w-9 h-9 rounded-full items-center justify-center mb-0.5 ${
             hasText

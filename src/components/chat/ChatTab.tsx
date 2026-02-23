@@ -10,11 +10,13 @@ import { MessageInput } from './MessageInput';
 import { MessageContextMenu } from './MessageContextMenu';
 import { ForwardModal } from './ForwardModal';
 import { PinnedMessageBanner } from './PinnedMessageBanner';
+import { DisappearingMessagesBanner } from './DisappearingMessagesBanner';
+import { ScheduleMessageSheet } from './ScheduleMessageSheet';
 import { TypingIndicator } from './TypingIndicator';
 import { useMessagesStore } from '../../stores/useMessagesStore';
 import { useUserStore } from '../../stores/useUserStore';
 import { getImageGroup } from '../../utils/imageGrouping';
-import type { Message } from '../../types';
+import type { Message, DisappearingDuration } from '../../types';
 
 /**
  * Standalone "Today" divider — rendered at the visual top of the inverted list
@@ -84,6 +86,18 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
 
   // Forward modal state
   const [forwardMessage, setForwardMessage] = useState<Message | null>(null);
+
+  // Schedule message sheet
+  const [showScheduleSheet, setShowScheduleSheet] = useState(false);
+  const [pendingScheduleText, setPendingScheduleText] = useState('');
+
+  // Disappearing messages
+  const disappearingDuration = useMessagesStore(
+    useShallow((s) => s.getConversationById(conversationId)?.disappearingDuration ?? 'off'),
+  ) as DisappearingDuration;
+
+  // Show disappearing messages sheet from banner tap
+  const [showDisappearingSheet, setShowDisappearingSheet] = useState(false);
 
   // Pinned messages
   const pinnedMessages = useMemo(
@@ -230,6 +244,81 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
     }
   }, [conversationId, hasMore, isLoadingMore]);
 
+  // ─── Disappearing messages expiry timer ──────────────
+  useEffect(() => {
+    if (disappearingDuration === 'off') return;
+
+    const DURATION_MS: Record<string, number> = {
+      '30s': 30_000,
+      '5m': 5 * 60_000,
+      '1h': 60 * 60_000,
+      '24h': 24 * 60 * 60_000,
+      '7d': 7 * 24 * 60 * 60_000,
+    };
+
+    const checkInterval = setInterval(() => {
+      const now = Date.now();
+      const durationMs = DURATION_MS[disappearingDuration];
+      if (!durationMs) return;
+
+      const store = useMessagesStore.getState();
+      const currentMessages = store.messages.filter(
+        (m) => m.conversationId === conversationId,
+      );
+
+      for (const msg of currentMessages) {
+        const msgAge = now - new Date(msg.timestamp).getTime();
+        if (msgAge > durationMs) {
+          store.deleteMessage(conversationId, msg.id);
+        }
+      }
+    }, 10_000); // check every 10 seconds
+
+    return () => clearInterval(checkInterval);
+  }, [conversationId, disappearingDuration]);
+
+  // ─── Scheduled messages timer ──────────────
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const store = useMessagesStore.getState();
+      const now = new Date();
+
+      for (const sched of store.scheduledMessages) {
+        if (
+          sched.status === 'pending' &&
+          sched.conversationId === conversationId &&
+          new Date(sched.scheduledFor) <= now
+        ) {
+          // Send the scheduled message
+          const userId = useUserStore.getState().currentUser?.id;
+          if (userId) {
+            store.sendMessage(conversationId, sched.content, userId);
+            store.cancelScheduledMessage(sched.id); // marks as sent/cancelled
+          }
+        }
+      }
+    }, 5_000); // check every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [conversationId]);
+
+  const handleScheduleSend = (text: string) => {
+    setPendingScheduleText(text);
+    setShowScheduleSheet(true);
+  };
+
+  const handleConfirmSchedule = (date: Date) => {
+    const userId = useUserStore.getState().currentUser?.id;
+    if (!userId || !pendingScheduleText.trim()) return;
+    useMessagesStore.getState().scheduleMessage(
+      conversationId,
+      pendingScheduleText.trim(),
+      userId,
+      date,
+    );
+    setPendingScheduleText('');
+  };
+
   return (
     <View ref={containerRef} onLayout={onLayout} className="flex-1 bg-background-primary">
     <KeyboardAvoidingView
@@ -237,6 +326,12 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
       className="flex-1"
       keyboardVerticalOffset={kbOffset}
     >
+      {/* Disappearing messages banner */}
+      <DisappearingMessagesBanner
+        duration={disappearingDuration}
+        onPress={() => setShowDisappearingSheet(true)}
+      />
+
       {/* Pinned message banner */}
       <PinnedMessageBanner
         pinnedMessages={pinnedMessages}
@@ -322,6 +417,7 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
       <MessageInput
         onSend={handleSend}
         onPickImage={handlePickImage}
+        onScheduleSend={handleScheduleSend}
         replyTo={
           replyingTo
             ? {
@@ -374,6 +470,16 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
         onClose={() => setForwardMessage(null)}
       />
     )}
+
+    {/* Schedule message sheet */}
+    <ScheduleMessageSheet
+      visible={showScheduleSheet}
+      onSchedule={handleConfirmSchedule}
+      onClose={() => {
+        setShowScheduleSheet(false);
+        setPendingScheduleText('');
+      }}
+    />
     </View>
   );
 }

@@ -13,9 +13,11 @@ import { RemindersTab } from '../../../src/components/chat/RemindersTab';
 import { LedgerTab } from '../../../src/components/chat/LedgerTab';
 import { UserProfileSheet } from '../../../src/components/chat/UserProfileSheet';
 import { InChatSearchBar } from '../../../src/components/chat/InChatSearchBar';
+import { DisappearingMessagesSheet } from '../../../src/components/chat/DisappearingMessagesSheet';
 import { useMessageSearch } from '../../../src/hooks/useMessageSearch';
 import { useMessagesStore } from '../../../src/stores/useMessagesStore';
 import { useUserStore } from '../../../src/stores/useUserStore';
+import type { DisappearingDuration } from '../../../src/types';
 
 type Route = { key: string; title: string };
 
@@ -34,6 +36,7 @@ export default function ConversationDetailScreen() {
   const layout = useWindowDimensions();
   const [tabIndex, setTabIndex] = useState(0);
   const [showProfile, setShowProfile] = useState(false);
+  const [showDisappearingSheet, setShowDisappearingSheet] = useState(false);
 
   // Hide the bottom tab bar when this screen is focused
   const parentNavigation = navigation.getParent();
@@ -76,24 +79,31 @@ export default function ConversationDetailScreen() {
     const options = [
       isPinned ? 'Unpin' : 'Pin',
       isMuted ? 'Unmute' : 'Mute',
+      'Disappearing Messages',
       'Cancel',
     ];
 
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
-        { options, cancelButtonIndex: 2 },
+        { options, cancelButtonIndex: 3 },
         (idx) => {
           if (idx === 0) togglePin(id!);
           if (idx === 1) toggleMute(id!);
+          if (idx === 2) setShowDisappearingSheet(true);
         }
       );
     } else {
       Alert.alert('Options', undefined, [
         { text: options[0], onPress: () => togglePin(id!) },
         { text: options[1], onPress: () => toggleMute(id!) },
+        { text: options[2], onPress: () => setShowDisappearingSheet(true) },
         { text: 'Cancel', style: 'cancel' },
       ]);
     }
+  };
+
+  const handleSetDisappearing = (duration: DisappearingDuration) => {
+    useMessagesStore.getState().setDisappearingDuration(id!, duration);
   };
 
   const otherUserId = conversation?.participants.find(
@@ -209,6 +219,13 @@ export default function ConversationDetailScreen() {
         user={otherUser}
         visible={showProfile}
         onClose={() => setShowProfile(false)}
+      />
+
+      <DisappearingMessagesSheet
+        visible={showDisappearingSheet}
+        currentDuration={conversation.disappearingDuration ?? 'off'}
+        onSelect={handleSetDisappearing}
+        onClose={() => setShowDisappearingSheet(false)}
       />
     </SafeAreaView>
   );
