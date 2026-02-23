@@ -205,8 +205,6 @@ export interface ConversationMetadata {
 }
 
 export type DisappearingDuration = '30s' | '5m' | '1h' | '24h' | '7d' | 'off';
-export type ConversationFilter = 'all' | 'unread' | 'groups' | 'archived';
-
 export interface Conversation {
   id: string;
   type: 'individual' | 'group';
