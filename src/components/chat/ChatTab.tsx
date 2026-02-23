@@ -13,6 +13,7 @@ import { PinnedMessageBanner } from './PinnedMessageBanner';
 import { DisappearingMessagesBanner } from './DisappearingMessagesBanner';
 import { ScheduleMessageSheet } from './ScheduleMessageSheet';
 import { AttachmentSheet } from './AttachmentSheet';
+import { UnreadJumpButton } from './UnreadJumpButton';
 import { TypingIndicator } from './TypingIndicator';
 import { useMessagesStore } from '../../stores/useMessagesStore';
 import { useUserStore } from '../../stores/useUserStore';
@@ -102,6 +103,12 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
 
   // Attachment sheet
   const [showAttachmentSheet, setShowAttachmentSheet] = useState(false);
+
+  // Unread jump button
+  const conversationUnreadCount = useMessagesStore(
+    useShallow((s) => s.getConversationById(conversationId)?.unreadCount ?? 0),
+  ) as number;
+  const [showUnreadJump, setShowUnreadJump] = useState(false);
 
   // Pinned messages
   const pinnedMessages = useMemo(
@@ -493,6 +500,12 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="interactive"
         onScrollBeginDrag={() => setContextMenuMessage(null)}
+        onScroll={(e) => {
+          const y = e.nativeEvent.contentOffset.y;
+          // In inverted list, scrolling "up" means moving away from newest messages
+          setShowUnreadJump(y > 300 && conversationUnreadCount > 0);
+        }}
+        scrollEventThrottle={200}
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.3}
         ListFooterComponent={
@@ -527,6 +540,17 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
       {/* Safe area bottom padding so input sits above the home indicator */}
       <View style={{ height: insets.bottom }} className="bg-background-secondary" />
     </KeyboardAvoidingView>
+
+    {/* Unread jump button */}
+    {showUnreadJump && conversationUnreadCount > 0 && (
+      <UnreadJumpButton
+        unreadCount={conversationUnreadCount}
+        onPress={() => {
+          listRef.current?.scrollToEnd({ animated: true });
+          setShowUnreadJump(false);
+        }}
+      />
+    )}
 
     {/* Full-screen context menu overlay */}
     {contextMenuMessage && (
