@@ -7,11 +7,10 @@ import * as Haptics from 'expo-haptics';
 import { SearchBar } from '../../../src/components/ui/SearchBar';
 import { EmptyState } from '../../../src/components/ui/EmptyState';
 import { ConversationListItem } from '../../../src/components/chat/ConversationListItem';
-import { ConversationFilterBar } from '../../../src/components/chat/ConversationFilterBar';
 import { NewConversationModal } from '../../../src/components/chat/NewConversationModal';
 import { useMessagesStore } from '../../../src/stores/useMessagesStore';
 import { useUserStore } from '../../../src/stores/useUserStore';
-import type { ConversationFilter, Message } from '../../../src/types';
+import type { Message } from '../../../src/types';
 
 // ─── Global search result card ──────────────
 
@@ -73,23 +72,11 @@ function GlobalSearchResult({
 
 export default function MessagesScreen() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<ConversationFilter>('all');
   const [refreshing, setRefreshing] = useState(false);
   const [showNewConversation, setShowNewConversation] = useState(false);
   const router = useRouter();
   const conversations = useMessagesStore((s) => s.conversations);
   const getUserById = useUserStore((s) => s.getUserById);
-
-  // Compute filter counts
-  const filterCounts = useMemo(() => {
-    const nonArchived = conversations.filter((c) => !c.isArchived);
-    return {
-      all: nonArchived.length,
-      unread: nonArchived.filter((c) => c.unreadCount > 0 || c.isMarkedUnread).length,
-      groups: nonArchived.filter((c) => c.type === 'group').length,
-      archived: conversations.filter((c) => c.isArchived).length,
-    };
-  }, [conversations]);
 
   // Global search results (search across all messages)
   const globalSearchResults = useMemo(() => {
@@ -100,23 +87,7 @@ export default function MessagesScreen() {
   const isGlobalSearchActive = searchQuery.trim().length >= 2 && globalSearchResults.length > 0;
 
   const filtered = useMemo(() => {
-    let list = [...conversations];
-
-    // Apply filter
-    switch (activeFilter) {
-      case 'all':
-        list = list.filter((c) => !c.isArchived);
-        break;
-      case 'unread':
-        list = list.filter((c) => !c.isArchived && (c.unreadCount > 0 || c.isMarkedUnread));
-        break;
-      case 'groups':
-        list = list.filter((c) => !c.isArchived && c.type === 'group');
-        break;
-      case 'archived':
-        list = list.filter((c) => c.isArchived);
-        break;
-    }
+    let list = conversations.filter((c) => !c.isArchived);
 
     // Apply search on conversation name and last message
     if (searchQuery.trim()) {
@@ -135,7 +106,7 @@ export default function MessagesScreen() {
       if (!a.isPinned && b.isPinned) return 1;
       return b.updatedAt.getTime() - a.updatedAt.getTime();
     });
-  }, [conversations, searchQuery, activeFilter, getUserById]);
+  }, [conversations, searchQuery, getUserById]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -146,15 +117,9 @@ export default function MessagesScreen() {
     }
   }, []);
 
-  const emptyDescription = useMemo(() => {
-    if (searchQuery) return 'No matches for your search';
-    switch (activeFilter) {
-      case 'unread': return 'No unread conversations';
-      case 'groups': return 'No group conversations';
-      case 'archived': return 'No archived conversations';
-      default: return 'Start a conversation to get going';
-    }
-  }, [searchQuery, activeFilter]);
+  const emptyDescription = searchQuery
+    ? 'No matches for your search'
+    : 'Start a conversation to get going';
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-background-primary">
@@ -168,13 +133,6 @@ export default function MessagesScreen() {
           placeholder="Search conversations & messages..."
         />
       </View>
-
-      {/* Filter bar */}
-      <ConversationFilterBar
-        activeFilter={activeFilter}
-        onFilterChange={setActiveFilter}
-        counts={filterCounts}
-      />
 
       {/* Global search results */}
       {isGlobalSearchActive && (
