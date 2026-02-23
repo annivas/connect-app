@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import Animated, { FadeOut, SlideInDown } from 'react-native-reanimated';
 
 interface Props {
   unreadCount: number;
@@ -14,7 +14,7 @@ export function UnreadJumpButton({ unreadCount, onPress }: Props) {
 
   return (
     <Animated.View
-      entering={FadeIn.duration(200)}
+      entering={SlideInDown.duration(300).springify().damping(14).stiffness(200)}
       exiting={FadeOut.duration(150)}
       className="absolute bottom-24 right-4"
       style={{
