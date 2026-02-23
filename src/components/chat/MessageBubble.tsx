@@ -18,9 +18,10 @@ import { FormattedText } from './FormattedText';
 import { ForwardedLabel } from './ForwardedLabel';
 import { LinkPreviewCard } from './LinkPreviewCard';
 import { PhotoGrid } from './PhotoGrid';
+import { VoiceMessageBubble } from './VoiceMessageBubble';
 import { renderHighlightedText } from '../../utils/highlightText';
 import { extractUrls } from '../../utils/urlDetection';
-import { Message, Reaction } from '../../types';
+import { Message, Reaction, VoiceMessageMetadata } from '../../types';
 import { useUserStore } from '../../stores/useUserStore';
 
 interface Props {
@@ -383,7 +384,20 @@ export function MessageBubble({
                   <ForwardedLabel forwardedFrom={message.forwardedFrom} isMine={isMine} />
                 )}
 
-                {message.type === 'image' ? (
+                {message.type === 'audio' ? (
+                  <View
+                    style={getBubbleRadius()}
+                    className={`px-3 py-2 ${
+                      isMine ? 'bg-accent-primary' : 'bg-surface-elevated'
+                    }`}
+                  >
+                    <VoiceMessageBubble
+                      messageId={message.id}
+                      metadata={message.metadata as unknown as VoiceMessageMetadata}
+                      isMine={isMine}
+                    />
+                  </View>
+                ) : message.type === 'image' ? (
                   imageGroup && imageGroup.length > 1 ? (
                     <PhotoGrid images={imageGroup} isMine={isMine} />
                   ) : (

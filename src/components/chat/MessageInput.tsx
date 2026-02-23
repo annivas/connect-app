@@ -2,11 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { VoiceRecordButton } from './VoiceRecordButton';
 
 interface Props {
   onSend: (content: string) => void;
   onPickImage?: () => void;
   onScheduleSend?: (content: string) => void;
+  onSendVoice?: (data: { duration: number; waveformSamples: number[]; uri: string }) => void;
   replyTo?: { senderName: string; content: string } | null;
   onCancelReply?: () => void;
   editingContent?: string | null;
@@ -14,7 +16,7 @@ interface Props {
   onCancelEdit?: () => void;
 }
 
-export function MessageInput({ onSend, onPickImage, onScheduleSend, replyTo, onCancelReply, editingContent, onSaveEdit, onCancelEdit }: Props) {
+export function MessageInput({ onSend, onPickImage, onScheduleSend, onSendVoice, replyTo, onCancelReply, editingContent, onSaveEdit, onCancelEdit }: Props) {
   const [text, setText] = useState('');
   const inputRef = useRef<TextInput>(null);
   const isEditing = editingContent != null;
@@ -134,24 +136,29 @@ export function MessageInput({ onSend, onPickImage, onScheduleSend, replyTo, onC
           />
         </View>
 
-        {/* Send button — long-press to schedule */}
-        <Pressable
-          onPress={handleSend}
-          onLongPress={!isEditing && hasText && onScheduleSend ? handleSchedule : undefined}
-          delayLongPress={500}
-          disabled={!hasText}
-          className={`w-9 h-9 rounded-full items-center justify-center mb-0.5 ${
-            hasText
-              ? isEditing ? 'bg-accent-secondary' : 'bg-accent-primary'
-              : 'bg-transparent'
-          }`}
-        >
-          <Ionicons
-            name={isEditing ? 'checkmark' : 'arrow-up'}
-            size={20}
-            color={hasText ? '#FFFFFF' : '#A8937F'}
-          />
-        </Pressable>
+        {/* Send / Voice toggle — shows mic when empty, send when has text */}
+        {hasText || isEditing ? (
+          <Pressable
+            onPress={handleSend}
+            onLongPress={!isEditing && hasText && onScheduleSend ? handleSchedule : undefined}
+            delayLongPress={500}
+            className={`w-9 h-9 rounded-full items-center justify-center mb-0.5 ${
+              isEditing ? 'bg-accent-secondary' : 'bg-accent-primary'
+            }`}
+          >
+            <Ionicons
+              name={isEditing ? 'checkmark' : 'arrow-up'}
+              size={20}
+              color="#FFFFFF"
+            />
+          </Pressable>
+        ) : onSendVoice ? (
+          <VoiceRecordButton onSendVoice={onSendVoice} />
+        ) : (
+          <Pressable disabled className="w-9 h-9 rounded-full items-center justify-center mb-0.5 bg-transparent">
+            <Ionicons name="arrow-up" size={20} color="#A8937F" />
+          </Pressable>
+        )}
       </View>
     </View>
   );

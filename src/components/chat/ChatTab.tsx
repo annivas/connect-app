@@ -302,6 +302,20 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
     return () => clearInterval(interval);
   }, [conversationId]);
 
+  // ─── Voice message handler ──────────────
+  const handleSendVoice = useCallback((data: { duration: number; waveformSamples: number[]; uri: string }) => {
+    const userId = useUserStore.getState().currentUser?.id;
+    if (!userId) return;
+    sendMessage(conversationId, '🎤 Voice message', userId, {
+      type: 'audio',
+      metadata: {
+        duration: data.duration,
+        waveformSamples: data.waveformSamples,
+        uri: data.uri,
+      },
+    });
+  }, [conversationId, sendMessage]);
+
   const handleScheduleSend = (text: string) => {
     setPendingScheduleText(text);
     setShowScheduleSheet(true);
@@ -418,6 +432,7 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
         onSend={handleSend}
         onPickImage={handlePickImage}
         onScheduleSend={handleScheduleSend}
+        onSendVoice={handleSendVoice}
         replyTo={
           replyingTo
             ? {
