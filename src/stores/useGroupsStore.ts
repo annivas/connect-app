@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Group, Message, RSVPStatus } from '../types';
+import { Group, Message, RSVPStatus, Poll, PollOption } from '../types';
 import { groupsRepository } from '../services';
 import { supabase } from '../lib/supabase';
 import { config } from '../config/env';
@@ -60,6 +60,17 @@ interface GroupsState {
   getEventSpaceMessages: (eventId: string) => Message[];
   createEventSpace: (groupId: string, eventId: string) => void;
   sendEventSpaceMessage: (eventId: string, content: string, senderId: string) => void;
+
+  // Polls
+  groupPolls: Record<string, Poll[]>;
+  createPoll: (groupId: string, question: string, options: string[], isMultipleChoice: boolean) => void;
+  votePoll: (groupId: string, pollId: string, optionId: string) => void;
+  closePoll: (groupId: string, pollId: string) => void;
+
+  // Star / Pin / Forward for group messages
+  toggleStarGroupMessage: (groupId: string, messageId: string) => void;
+  togglePinGroupMessage: (groupId: string, messageId: string) => void;
+  forwardGroupMessage: (sourceGroupId: string, messageId: string, targetConvIds: string[], senderId: string) => void;
 }
 
 export const useGroupsStore = create<GroupsState>((set, get) => ({
@@ -72,6 +83,7 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
   replyingTo: {},
   _channel: null,
   eventSpaceMessages: {},
+  groupPolls: {},
 
   init: async () => {
     set({ isLoading: true, error: null });
@@ -732,5 +744,140 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         [eventId]: [...(state.eventSpaceMessages[eventId] ?? []), newMessage],
       },
     }));
+  },
+
+  // ─── Polls ──────────────────────────────────────
+
+  createPoll: (groupId, question, options, isMultipleChoice) => {
+    const { useUserStore } = require('./useUserStore');
+    const currentUserId = useUserStore.getState().currentUser?.id ?? 'unknown';
+
+    const newPoll: Poll = {
+      id: `poll-${Date.now()}`,
+      question,
+      options: options.map((text, i) => ({
+        id: `opt-${Date.now()}-${i}`,
+        text,
+        voterIds: [],
+      })),
+      createdBy: currentUserId,
+      createdAt: new Date(),
+      isMultipleChoice,
+      isClosed: false,
+    };
+
+    set((state) => ({
+      groupPolls: {
+        ...state.groupPolls,
+        [groupId]: [...(state.groupPolls[groupId] ?? []), newPoll],
+      },
+    }));
+  },
+
+  votePoll: (groupId, pollId, optionId) => {
+    const { useUserStore } = require('./useUserStore');
+    const userId = useUserStore.getState().currentUser?.id;
+    if (!userId) return;
+
+    set((state) => ({
+      groupPolls: {
+        ...state.groupPolls,
+        [groupId]: (state.groupPolls[groupId] ?? []).map((poll) => {
+          if (poll.id !== pollId || poll.isClosed) return poll;
+          return {
+            ...poll,
+            options: poll.options.map((opt) => {
+              if (opt.id === optionId) {
+                // Toggle vote
+                const hasVoted = opt.voterIds.includes(userId);
+                return {
+                  ...opt,
+                  voterIds: hasVoted
+                    ? opt.voterIds.filter((id) => id !== userId)
+                    : [...opt.voterIds, userId],
+                };
+              }
+              // If not multiple choice, remove vote from other options
+              if (!poll.isMultipleChoice) {
+                return {
+                  ...opt,
+                  voterIds: opt.voterIds.filter((id) => id !== userId),
+                };
+              }
+              return opt;
+            }),
+          };
+        }),
+      },
+    }));
+  },
+
+  closePoll: (groupId, pollId) => {
+    set((state) => ({
+      groupPolls: {
+        ...state.groupPolls,
+        [groupId]: (state.groupPolls[groupId] ?? []).map((poll) =>
+          poll.id === pollId ? { ...poll, isClosed: true } : poll,
+        ),
+      },
+    }));
+  },
+
+  // ─── Star / Pin / Forward for group messages ────
+
+  toggleStarGroupMessage: (groupId, messageId) => {
+    set((state) => ({
+      groupMessages: state.groupMessages.map((m) =>
+        m.id === messageId ? { ...m, isStarred: !m.isStarred } : m,
+      ),
+    }));
+  },
+
+  togglePinGroupMessage: (groupId, messageId) => {
+    set((state) => ({
+      groupMessages: state.groupMessages.map((m) =>
+        m.id === messageId ? { ...m, isPinned: !m.isPinned } : m,
+      ),
+    }));
+  },
+
+  forwardGroupMessage: (sourceGroupId, messageId, targetConvIds, senderId) => {
+    const message = get().groupMessages.find((m) => m.id === messageId);
+    if (!message) return;
+
+    const { useUserStore } = require('./useUserStore');
+    const senderUser = useUserStore.getState().getUserById(message.senderId);
+
+    // Forward to conversation targets via the messages store
+    const { useMessagesStore } = require('./useMessagesStore');
+    for (const targetConvId of targetConvIds) {
+      const forwardedMessage: Message = {
+        id: `msg-fwd-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        conversationId: targetConvId,
+        senderId,
+        content: message.content,
+        timestamp: new Date(),
+        type: message.type,
+        metadata: message.metadata,
+        isRead: true,
+        sendStatus: 'sent',
+        forwardedFrom: {
+          originalMessageId: message.id,
+          originalSenderId: message.senderId,
+          originalSenderName: senderUser?.name ?? 'Unknown',
+          originalConversationId: sourceGroupId,
+          originalTimestamp: message.timestamp,
+        },
+      };
+
+      useMessagesStore.setState((state: any) => ({
+        messages: [...state.messages, forwardedMessage],
+        conversations: state.conversations.map((c: any) =>
+          c.id === targetConvId
+            ? { ...c, lastMessage: forwardedMessage, updatedAt: new Date() }
+            : c,
+        ),
+      }));
+    }
   },
 }));

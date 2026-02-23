@@ -60,7 +60,7 @@ export const mockMessagesRepository: IMessagesRepository = {
       isMuted: false,
       createdAt: new Date(),
       updatedAt: new Date(),
-      metadata: { sharedObjects: [], notes: [], reminders: [], ledgerBalance: 0, ledgerEntries: [] },
+      metadata: { sharedObjects: [], notes: [], reminders: [], ledgerBalance: 0, ledgerEntries: [], pinnedMessages: [], starredMessages: [], polls: [], callHistory: [] },
     };
     conversations = [newConv, ...conversations];
     return newConv;

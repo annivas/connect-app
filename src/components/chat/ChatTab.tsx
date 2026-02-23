@@ -4,8 +4,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 import { isSameDay, isToday, differenceInMinutes } from 'date-fns';
 import * as ImagePicker from 'expo-image-picker';
+import * as Clipboard from 'expo-clipboard';
 import { MessageBubble } from './MessageBubble';
 import { MessageInput } from './MessageInput';
+import { MessageContextMenu } from './MessageContextMenu';
+import { ForwardModal } from './ForwardModal';
+import { PinnedMessageBanner } from './PinnedMessageBanner';
 import { TypingIndicator } from './TypingIndicator';
 import { useMessagesStore } from '../../stores/useMessagesStore';
 import { useUserStore } from '../../stores/useUserStore';
@@ -75,8 +79,17 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
   const replyingTo = useMessagesStore((s) => s.replyingTo[conversationId] ?? null);
   const typingUserIds = useMessagesStore((s) => s.typingUsers[conversationId] ?? EMPTY_TYPING);
 
-  // Lifted reaction picker state — only one picker open at a time
-  const [activePickerMessageId, setActivePickerMessageId] = useState<string | null>(null);
+  // Context menu state — replaces old reaction picker
+  const [contextMenuMessage, setContextMenuMessage] = useState<Message | null>(null);
+
+  // Forward modal state
+  const [forwardMessage, setForwardMessage] = useState<Message | null>(null);
+
+  // Pinned messages
+  const pinnedMessages = useMemo(
+    () => messages.filter((m) => m.isPinned),
+    [messages],
+  );
 
   // Inverted FlatList needs newest-first order
   const invertedMessages = useMemo(() => [...messages].reverse(), [messages]);
@@ -130,6 +143,62 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
     setEditingContent(null);
   };
 
+  // ─── Context menu handlers ──────────────
+  const handleContextMenu = (message: Message) => {
+    setContextMenuMessage(message);
+  };
+
+  const handleContextMenuClose = () => {
+    setContextMenuMessage(null);
+  };
+
+  const handleContextMenuReact = (emoji: string) => {
+    if (!contextMenuMessage) return;
+    useMessagesStore.getState().toggleReaction(conversationId, contextMenuMessage.id, emoji);
+  };
+
+  const handleContextMenuReply = () => {
+    if (!contextMenuMessage) return;
+    handleReply(contextMenuMessage);
+  };
+
+  const handleContextMenuForward = () => {
+    if (!contextMenuMessage) return;
+    setForwardMessage(contextMenuMessage);
+  };
+
+  const handleContextMenuPin = () => {
+    if (!contextMenuMessage) return;
+    useMessagesStore.getState().togglePinMessage(conversationId, contextMenuMessage.id);
+  };
+
+  const handleContextMenuStar = () => {
+    if (!contextMenuMessage) return;
+    useMessagesStore.getState().toggleStarMessage(conversationId, contextMenuMessage.id);
+  };
+
+  const handleContextMenuCopy = () => {
+    if (!contextMenuMessage) return;
+    Clipboard.setStringAsync(contextMenuMessage.content);
+  };
+
+  const handleContextMenuEdit = () => {
+    if (!contextMenuMessage) return;
+    handleEdit(contextMenuMessage.id, contextMenuMessage.content);
+  };
+
+  const handleContextMenuDelete = () => {
+    if (!contextMenuMessage) return;
+    Alert.alert('Delete Message', 'Are you sure you want to delete this message?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => handleDelete(contextMenuMessage.id),
+      },
+    ]);
+  };
+
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -168,6 +237,17 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
       className="flex-1"
       keyboardVerticalOffset={kbOffset}
     >
+      {/* Pinned message banner */}
+      <PinnedMessageBanner
+        pinnedMessages={pinnedMessages}
+        onJumpToMessage={(messageId) => {
+          const index = invertedMessages.findIndex((m) => m.id === messageId);
+          if (index >= 0) {
+            listRef.current?.scrollToIndex({ index, animated: true });
+          }
+        }}
+      />
+
       <FlatList
         ref={listRef}
         data={invertedMessages}
@@ -213,9 +293,7 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
               onEdit={handleEdit}
               highlightText={highlightText}
               isSearchMatch={matchingMessageIds?.has(item.id)}
-              activePickerMessageId={activePickerMessageId}
-              onOpenPicker={setActivePickerMessageId}
-              onClosePicker={() => setActivePickerMessageId(null)}
+              onContextMenu={handleContextMenu}
               imageGroup={imgGroup?.isLeader ? imgGroup.images : undefined}
             />
           );
@@ -227,7 +305,7 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
         }}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="interactive"
-        onScrollBeginDrag={() => setActivePickerMessageId(null)}
+        onScrollBeginDrag={() => setContextMenuMessage(null)}
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.3}
         ListFooterComponent={
@@ -261,17 +339,39 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
       <View style={{ height: insets.bottom }} className="bg-background-secondary" />
     </KeyboardAvoidingView>
 
-    {/* Reaction picker backdrop — fullscreen dismiss overlay */}
-    {activePickerMessageId && (
-      <Pressable
-        onPress={() => setActivePickerMessageId(null)}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-        }}
+    {/* Full-screen context menu overlay */}
+    {contextMenuMessage && (
+      <MessageContextMenu
+        message={contextMenuMessage}
+        isMine={contextMenuMessage.senderId === useUserStore.getState().currentUser?.id}
+        onClose={handleContextMenuClose}
+        onReact={handleContextMenuReact}
+        onReply={handleContextMenuReply}
+        onForward={handleContextMenuForward}
+        onPin={handleContextMenuPin}
+        onStar={handleContextMenuStar}
+        onCopy={handleContextMenuCopy}
+        onEdit={
+          contextMenuMessage.senderId === useUserStore.getState().currentUser?.id &&
+          contextMenuMessage.type === 'text'
+            ? handleContextMenuEdit
+            : undefined
+        }
+        onDelete={
+          contextMenuMessage.senderId === useUserStore.getState().currentUser?.id
+            ? handleContextMenuDelete
+            : undefined
+        }
+      />
+    )}
+
+    {/* Forward modal */}
+    {forwardMessage && (
+      <ForwardModal
+        visible={!!forwardMessage}
+        message={forwardMessage}
+        sourceConversationId={conversationId}
+        onClose={() => setForwardMessage(null)}
       />
     )}
     </View>

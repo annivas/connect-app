@@ -1,6 +1,7 @@
 import { Conversation, SharedObject } from '../types';
 import { CURRENT_USER_ID } from './users';
 import { MOCK_MESSAGES } from './messages';
+import { MOCK_CALL_HISTORY } from './calls';
 
 const lastMsg = (convId: string) =>
   [...MOCK_MESSAGES].filter((m) => m.conversationId === convId).pop();
@@ -238,6 +239,10 @@ export const MOCK_CONVERSATIONS: Conversation[] = [
       ],
       ledgerBalance: 0,
       ledgerEntries: [],
+      pinnedMessages: ['msg-pinned-1'],
+      starredMessages: ['msg-starred-1'],
+      polls: [],
+      callHistory: MOCK_CALL_HISTORY.filter((c) => c.conversationId === 'conv-1'),
     },
   },
   {
@@ -277,6 +282,10 @@ export const MOCK_CONVERSATIONS: Conversation[] = [
           isSettled: false,
         },
       ],
+      pinnedMessages: [],
+      starredMessages: [],
+      polls: [],
+      callHistory: MOCK_CALL_HISTORY.filter((c) => c.conversationId === 'conv-2'),
     },
   },
   {
@@ -295,7 +304,12 @@ export const MOCK_CONVERSATIONS: Conversation[] = [
       reminders: [],
       ledgerBalance: 0,
       ledgerEntries: [],
+      pinnedMessages: [],
+      starredMessages: [],
+      polls: [],
+      callHistory: MOCK_CALL_HISTORY.filter((c) => c.conversationId === 'conv-3'),
     },
+    disappearingDuration: '24h',
   },
   {
     id: 'conv-4',
@@ -313,7 +327,12 @@ export const MOCK_CONVERSATIONS: Conversation[] = [
       reminders: [],
       ledgerBalance: 0,
       ledgerEntries: [],
+      pinnedMessages: [],
+      starredMessages: [],
+      polls: [],
+      callHistory: [],
     },
+    isArchived: true,
   },
   {
     id: 'conv-5',
@@ -342,6 +361,10 @@ export const MOCK_CONVERSATIONS: Conversation[] = [
           isSettled: false,
         },
       ],
+      pinnedMessages: [],
+      starredMessages: [],
+      polls: [],
+      callHistory: MOCK_CALL_HISTORY.filter((c) => c.conversationId === 'conv-5'),
     },
   },
 ];

@@ -1,5 +1,5 @@
 import React, { useRef, useMemo, useState, useCallback } from 'react';
-import { View, Text, FlatList, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
+import { View, Text, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useShallow } from 'zustand/react/shallow';
@@ -23,7 +23,7 @@ export default function EventSpaceScreen() {
   const event = group?.events?.find((e) => e.id === eventId);
   const messages = useGroupsStore(useShallow((s) => s.getEventSpaceMessages(eventId!)));
 
-  const [activePickerMessageId, setActivePickerMessageId] = useState<string | null>(null);
+  const [contextMenuMessage, setContextMenuMessage] = useState<Message | null>(null);
 
   const invertedMessages = useMemo(() => [...messages].reverse(), [messages]);
 
@@ -96,9 +96,7 @@ export default function EventSpaceScreen() {
                 isLastInGroup={isLastInGroup}
                 showSenderName
                 onReact={() => {}}
-                activePickerMessageId={activePickerMessageId}
-                onOpenPicker={setActivePickerMessageId}
-                onClosePicker={() => setActivePickerMessageId(null)}
+                onContextMenu={(msg) => setContextMenuMessage(msg)}
               />
             );
           }}
@@ -110,7 +108,7 @@ export default function EventSpaceScreen() {
           }}
           showsVerticalScrollIndicator={false}
           keyboardDismissMode="interactive"
-          onScrollBeginDrag={() => setActivePickerMessageId(null)}
+          onScrollBeginDrag={() => setContextMenuMessage(null)}
           ListEmptyComponent={
             <View className="items-center py-8">
               <Text className="text-text-tertiary text-sm">
@@ -122,12 +120,7 @@ export default function EventSpaceScreen() {
         <MessageInput onSend={handleSend} />
       </KeyboardAvoidingView>
 
-      {activePickerMessageId && (
-        <Pressable
-          onPress={() => setActivePickerMessageId(null)}
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-        />
-      )}
+      {/* Context menu could be added here for event space messages */}
     </SafeAreaView>
   );
 }

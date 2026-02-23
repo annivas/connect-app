@@ -4,8 +4,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 import { isSameDay, isToday, differenceInMinutes } from 'date-fns';
 import * as ImagePicker from 'expo-image-picker';
+import * as Clipboard from 'expo-clipboard';
 import { MessageBubble } from '../chat/MessageBubble';
 import { MessageInput } from '../chat/MessageInput';
+import { MessageContextMenu } from '../chat/MessageContextMenu';
 import { TypingIndicator } from '../chat/TypingIndicator';
 import { EventSuggestionChip } from './EventSuggestionChip';
 import { CreateEventModal } from './CreateEventModal';
@@ -69,8 +71,8 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
   const isLoadingMore = useGroupsStore((s) => s.loadingMessages.has(groupId));
   const replyingTo = useGroupsStore((s) => s.replyingTo[groupId] ?? null);
 
-  // Lifted reaction picker state
-  const [activePickerMessageId, setActivePickerMessageId] = useState<string | null>(null);
+  // Context menu state — replaces old reaction picker
+  const [contextMenuMessage, setContextMenuMessage] = useState<Message | null>(null);
 
   // Event suggestion state
   const [dismissedHintIds, setDismissedHintIds] = useState<Set<string>>(new Set());
@@ -134,6 +136,61 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
   const handleCancelEdit = () => {
     setEditingMessageId(null);
     setEditingContent(null);
+  };
+
+  // ─── Context menu handlers ──────────────
+  const handleContextMenu = (message: Message) => {
+    setContextMenuMessage(message);
+  };
+
+  const handleContextMenuClose = () => {
+    setContextMenuMessage(null);
+  };
+
+  const handleContextMenuReact = (emoji: string) => {
+    if (!contextMenuMessage) return;
+    useGroupsStore.getState().toggleGroupReaction(groupId, contextMenuMessage.id, emoji);
+  };
+
+  const handleContextMenuReply = () => {
+    if (!contextMenuMessage) return;
+    handleReply(contextMenuMessage);
+  };
+
+  const handleContextMenuForward = () => {
+    // Forward modal will be wired in Phase 2C
+  };
+
+  const handleContextMenuPin = () => {
+    if (!contextMenuMessage) return;
+    useGroupsStore.getState().togglePinGroupMessage(groupId, contextMenuMessage.id);
+  };
+
+  const handleContextMenuStar = () => {
+    if (!contextMenuMessage) return;
+    useGroupsStore.getState().toggleStarGroupMessage(groupId, contextMenuMessage.id);
+  };
+
+  const handleContextMenuCopy = () => {
+    if (!contextMenuMessage) return;
+    Clipboard.setStringAsync(contextMenuMessage.content);
+  };
+
+  const handleContextMenuEdit = () => {
+    if (!contextMenuMessage) return;
+    handleEdit(contextMenuMessage.id, contextMenuMessage.content);
+  };
+
+  const handleContextMenuDelete = () => {
+    if (!contextMenuMessage) return;
+    Alert.alert('Delete Message', 'Are you sure you want to delete this message?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => handleDelete(contextMenuMessage.id),
+      },
+    ]);
   };
 
   const handlePickImage = async () => {
@@ -237,9 +294,7 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
               onEdit={handleEdit}
               highlightText={highlightText}
               isSearchMatch={matchingMessageIds?.has(item.id)}
-              activePickerMessageId={activePickerMessageId}
-              onOpenPicker={setActivePickerMessageId}
-              onClosePicker={() => setActivePickerMessageId(null)}
+              onContextMenu={handleContextMenu}
               imageGroup={imgGroup?.isLeader ? imgGroup.images : undefined}
             />
           );
@@ -251,7 +306,7 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
         }}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="interactive"
-        onScrollBeginDrag={() => setActivePickerMessageId(null)}
+        onScrollBeginDrag={() => setContextMenuMessage(null)}
         ListHeaderComponent={
           eventHint ? (
             <EventSuggestionChip
@@ -294,17 +349,29 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
       <View style={{ height: insets.bottom }} className="bg-background-secondary" />
     </KeyboardAvoidingView>
 
-    {/* Reaction picker backdrop — fullscreen dismiss overlay */}
-    {activePickerMessageId && (
-      <Pressable
-        onPress={() => setActivePickerMessageId(null)}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-        }}
+    {/* Full-screen context menu overlay */}
+    {contextMenuMessage && (
+      <MessageContextMenu
+        message={contextMenuMessage}
+        isMine={contextMenuMessage.senderId === useUserStore.getState().currentUser?.id}
+        onClose={handleContextMenuClose}
+        onReact={handleContextMenuReact}
+        onReply={handleContextMenuReply}
+        onForward={handleContextMenuForward}
+        onPin={handleContextMenuPin}
+        onStar={handleContextMenuStar}
+        onCopy={handleContextMenuCopy}
+        onEdit={
+          contextMenuMessage.senderId === useUserStore.getState().currentUser?.id &&
+          contextMenuMessage.type === 'text'
+            ? handleContextMenuEdit
+            : undefined
+        }
+        onDelete={
+          contextMenuMessage.senderId === useUserStore.getState().currentUser?.id
+            ? handleContextMenuDelete
+            : undefined
+        }
       />
     )}
 
