@@ -5,7 +5,6 @@ import {
   Modal,
   Pressable,
   FlatList,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -15,6 +14,7 @@ import { Avatar } from '../ui/Avatar';
 import { SearchBar } from '../ui/SearchBar';
 import { useUserStore } from '../../stores/useUserStore';
 import { useGroupsStore } from '../../stores/useGroupsStore';
+import { useToastStore } from '../../stores/useToastStore';
 import type { User } from '../../types';
 
 interface Props {
@@ -85,7 +85,7 @@ export function AddMembersModal({
       handleClose();
       onAdded();
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to add members');
+      useToastStore.getState().show({ message: err instanceof Error ? err.message : 'Failed to add members', type: 'error' });
       setIsAdding(false);
     }
   };

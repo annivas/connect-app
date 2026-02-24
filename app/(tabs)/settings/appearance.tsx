@@ -41,10 +41,23 @@ const ACCENT_COLORS = [
   '#C94F4F', // Warm Red
 ];
 
+const THEME_OPTIONS: {
+  key: 'light' | 'dark' | 'system';
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  description: string;
+}[] = [
+  { key: 'light', label: 'Light', icon: 'sunny', description: 'Warm cream theme' },
+  { key: 'dark', label: 'Dark', icon: 'moon', description: 'Warm dark theme' },
+  { key: 'system', label: 'System', icon: 'phone-portrait-outline', description: 'Match device setting' },
+];
+
 export default function AppearanceScreen() {
   const router = useRouter();
   const accent = useSettingsStore((s) => s.accentColor);
   const setAccent = useSettingsStore((s) => s.setAccentColor);
+  const theme = useSettingsStore((s) => s.theme);
+  const setTheme = useSettingsStore((s) => s.setTheme);
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-background-primary">
@@ -64,18 +77,44 @@ export default function AppearanceScreen() {
         <Text className="text-text-tertiary text-xs font-semibold px-4 pt-6 pb-3 uppercase tracking-wider">
           Theme
         </Text>
-        <View className="mx-4 bg-surface rounded-2xl p-4 flex-row items-center mb-2">
-          <View className="w-10 h-10 bg-accent-primary/20 rounded-full items-center justify-center mr-3">
-            <Ionicons name="moon" size={22} color="#D4764E" />
-          </View>
-          <View>
-            <Text className="text-text-primary font-semibold text-[15px]">
-              Dark Mode
-            </Text>
-            <Text className="text-text-tertiary text-xs mt-0.5">
-              Light mode coming in a future update
-            </Text>
-          </View>
+        <View className="mx-4 flex-row gap-2">
+          {THEME_OPTIONS.map((option) => {
+            const isSelected = theme === option.key;
+            return (
+              <Pressable
+                key={option.key}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setTheme(option.key);
+                }}
+                className={`flex-1 items-center py-4 rounded-2xl border ${
+                  isSelected
+                    ? 'bg-accent-primary/20 border-accent-primary'
+                    : 'bg-surface border-border'
+                }`}
+              >
+                <Ionicons
+                  name={option.icon}
+                  size={24}
+                  color={isSelected ? '#D4764E' : '#7A6355'}
+                />
+                <Text
+                  className={`text-sm mt-1.5 font-semibold ${
+                    isSelected ? 'text-accent-primary' : 'text-text-primary'
+                  }`}
+                >
+                  {option.label}
+                </Text>
+                <Text
+                  className={`text-[10px] mt-0.5 ${
+                    isSelected ? 'text-accent-primary/70' : 'text-text-tertiary'
+                  }`}
+                >
+                  {option.description}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
 
         {/* Accent color */}

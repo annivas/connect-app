@@ -6,6 +6,7 @@ import { config } from '../config/env';
 import { adaptMessage } from '../services/supabase/adapters';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import type { CreateGroupInput, UpdateGroupInput } from '../services/types';
+import { getCurrentUserId, getUserById, getMessagesStoreRef } from './helpers';
 
 const PAGE_SIZE = 50;
 
@@ -105,6 +106,7 @@ interface GroupsState {
 
   // Disappearing messages
   setGroupDisappearingDuration: (groupId: string, duration: DisappearingDuration) => void;
+  reset: () => void;
 }
 
 export const useGroupsStore = create<GroupsState>((set, get) => ({
@@ -330,8 +332,7 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
     let metadata = options?.metadata;
     let replyTo: Message['replyTo'] | undefined;
     if (replyingMsg) {
-      const { useUserStore } = require('./useUserStore');
-      const senderUser = useUserStore.getState().getUserById(replyingMsg.senderId);
+      const senderUser = getUserById(replyingMsg.senderId);
       replyTo = {
         messageId: replyingMsg.id,
         content: replyingMsg.content,
@@ -429,8 +430,7 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
   },
 
   toggleGroupReaction: (groupId, messageId, emoji) => {
-    const { useUserStore } = require('./useUserStore');
-    const userId = useUserStore.getState().currentUser?.id;
+    const userId = getCurrentUserId();
     if (!userId) return;
 
     // Optimistic update
@@ -521,11 +521,7 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
 
   updateRSVP: (groupId, eventId, status) => {
     // Optimistic update — find the event and update current user's attendee status
-    const currentUserId = (() => {
-      // Inline import to avoid circular dep at module level
-      const { useUserStore } = require('./useUserStore');
-      return useUserStore.getState().currentUser?.id;
-    })();
+    const currentUserId = getCurrentUserId();
     if (!currentUserId) return;
 
     set((state) => ({
@@ -785,8 +781,7 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
   // ─── Polls ──────────────────────────────────────
 
   createPoll: (groupId, question, options, isMultipleChoice) => {
-    const { useUserStore } = require('./useUserStore');
-    const currentUserId = useUserStore.getState().currentUser?.id ?? 'unknown';
+    const currentUserId = getCurrentUserId() || 'unknown';
 
     const newPoll: Poll = {
       id: `poll-${Date.now()}`,
@@ -811,8 +806,7 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
   },
 
   votePoll: (groupId, pollId, optionId) => {
-    const { useUserStore } = require('./useUserStore');
-    const userId = useUserStore.getState().currentUser?.id;
+    const userId = getCurrentUserId();
     if (!userId) return;
 
     set((state) => ({
@@ -911,11 +905,10 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
     const message = get().groupMessages.find((m) => m.id === messageId);
     if (!message) return;
 
-    const { useUserStore } = require('./useUserStore');
-    const senderUser = useUserStore.getState().getUserById(message.senderId);
+    const senderUser = getUserById(message.senderId);
 
     // Forward to conversation targets via the messages store
-    const { useMessagesStore } = require('./useMessagesStore');
+    const messagesStore = getMessagesStoreRef();
     for (const targetConvId of targetConvIds) {
       const forwardedMessage: Message = {
         id: `msg-fwd-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -936,7 +929,7 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         },
       };
 
-      useMessagesStore.setState((state: any) => ({
+      messagesStore.setState((state: any) => ({
         messages: [...state.messages, forwardedMessage],
         conversations: state.conversations.map((c: any) =>
           c.id === targetConvId
@@ -951,8 +944,7 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
 
   // Scheduled messages
   scheduleGroupMessage: (groupId, content, scheduledFor) => {
-    const { useUserStore } = require('./useUserStore');
-    const currentUserId = useUserStore.getState().currentUser?.id ?? 'unknown';
+    const currentUserId = getCurrentUserId() || 'unknown';
     const scheduled: ScheduledMessage = {
       id: `gsched-${Date.now()}`,
       conversationId: groupId,
@@ -1156,5 +1148,23 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         g.id === groupId ? { ...g, disappearingDuration: duration } : g,
       ),
     }));
+  },
+
+  reset: () => {
+    get().unsubscribe();
+    set({
+      groups: [],
+      groupMessages: [],
+      isLoading: false,
+      error: null,
+      hasMoreMessages: {},
+      loadingMessages: new Set(),
+      replyingTo: {},
+      _channel: null,
+      eventSpaceMessages: {},
+      groupPolls: {},
+      typingUsers: {},
+      scheduledMessages: [],
+    });
   },
 }));

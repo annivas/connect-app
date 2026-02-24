@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TextInput, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { VoiceRecordButton } from './VoiceRecordButton';
+import { useMessagesStore } from '../../stores/useMessagesStore';
 
 interface Props {
+  conversationId?: string;
   onSend: (content: string) => void;
   onPickImage?: () => void;
   onScheduleSend?: (content: string) => void;
@@ -16,10 +18,30 @@ interface Props {
   onCancelEdit?: () => void;
 }
 
-export function MessageInput({ onSend, onPickImage, onScheduleSend, onSendVoice, replyTo, onCancelReply, editingContent, onSaveEdit, onCancelEdit }: Props) {
-  const [text, setText] = useState('');
+export function MessageInput({ conversationId, onSend, onPickImage, onScheduleSend, onSendVoice, replyTo, onCancelReply, editingContent, onSaveEdit, onCancelEdit }: Props) {
+  const initialDraft = conversationId ? useMessagesStore.getState().getDraft(conversationId) : '';
+  const [text, setText] = useState(initialDraft);
   const inputRef = useRef<TextInput>(null);
   const isEditing = editingContent != null;
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounced draft saving
+  const saveDraft = useCallback((value: string) => {
+    if (!conversationId) return;
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(() => {
+      if (value.trim()) {
+        useMessagesStore.getState().setDraft(conversationId, value);
+      } else {
+        useMessagesStore.getState().clearDraft(conversationId);
+      }
+    }, 500);
+  }, [conversationId]);
+
+  const handleTextChange = (value: string) => {
+    setText(value);
+    saveDraft(value);
+  };
 
   // Pre-populate text when entering edit mode
   useEffect(() => {
@@ -46,6 +68,7 @@ export function MessageInput({ onSend, onPickImage, onScheduleSend, onSendVoice,
       onSend(trimmed);
     }
     setText('');
+    if (conversationId) useMessagesStore.getState().clearDraft(conversationId);
   };
 
   const handleSchedule = () => {
@@ -54,6 +77,7 @@ export function MessageInput({ onSend, onPickImage, onScheduleSend, onSendVoice,
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     onScheduleSend(trimmed);
     setText('');
+    if (conversationId) useMessagesStore.getState().clearDraft(conversationId);
   };
 
   const hasText = text.trim().length > 0;
@@ -127,7 +151,7 @@ export function MessageInput({ onSend, onPickImage, onScheduleSend, onSendVoice,
           <TextInput
             ref={inputRef}
             value={text}
-            onChangeText={setText}
+            onChangeText={handleTextChange}
             placeholder={isEditing ? 'Edit message...' : 'Message...'}
             placeholderTextColor="#A8937F"
             className="flex-1 text-text-primary text-[15px] max-h-[100px] py-1"
@@ -136,12 +160,21 @@ export function MessageInput({ onSend, onPickImage, onScheduleSend, onSendVoice,
           />
         </View>
 
+        {/* Schedule send button (visible when text present and not editing) */}
+        {hasText && !isEditing && onScheduleSend && (
+          <Pressable
+            onPress={handleSchedule}
+            className="w-9 h-9 items-center justify-center mb-0.5 mr-0.5"
+            hitSlop={6}
+          >
+            <Ionicons name="time-outline" size={22} color="#C2956B" />
+          </Pressable>
+        )}
+
         {/* Send / Voice toggle — shows mic when empty, send when has text */}
         {hasText || isEditing ? (
           <Pressable
             onPress={handleSend}
-            onLongPress={!isEditing && hasText && onScheduleSend ? handleSchedule : undefined}
-            delayLongPress={500}
             className={`w-9 h-9 rounded-full items-center justify-center mb-0.5 ${
               isEditing ? 'bg-accent-secondary' : 'bg-accent-primary'
             }`}

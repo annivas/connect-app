@@ -6,8 +6,8 @@ import {
   Modal,
   FlatList,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
+import { useToastStore } from '../../stores/useToastStore';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Constants from 'expo-constants';
@@ -92,10 +92,10 @@ export function LocationPickerModal({
         });
         handleClose();
       } else {
-        Alert.alert('Error', 'Could not load place details.');
+        useToastStore.getState().show({ message: 'Could not load place details.', type: 'error' });
       }
     } catch {
-      Alert.alert('Error', 'Network error. Please try again.');
+      useToastStore.getState().show({ message: 'Network error. Please try again.', type: 'error' });
     } finally {
       setIsLoadingDetails(false);
     }

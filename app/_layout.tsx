@@ -1,16 +1,28 @@
+import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useColorScheme } from 'nativewind';
 import { View, Text, Pressable } from 'react-native';
 import { useAppInit } from '../src/hooks/useAppInit';
 import { LoadingScreen } from '../src/components/ui/LoadingScreen';
 import { ActiveCallScreen } from '../src/components/call/ActiveCallScreen';
 import { VideoCallScreen } from '../src/components/call/VideoCallScreen';
 import { IncomingCallScreen } from '../src/components/call/IncomingCallScreen';
+import { ToastProvider } from '../src/components/ui/ToastProvider';
+import { useSettingsStore } from '../src/stores/useSettingsStore';
 import '../global.css';
 
 export default function RootLayout() {
   const { isReady, isAuthenticated, isAuthInitialized, error } = useAppInit();
+  const theme = useSettingsStore((s) => s.theme);
+  const { colorScheme, setColorScheme } = useColorScheme();
+  const statusBarStyle = colorScheme === 'dark' ? 'light' : 'dark';
+
+  // Sync settings store theme → NativeWind color scheme
+  useEffect(() => {
+    setColorScheme(theme);
+  }, [theme, setColorScheme]);
 
   // Phase 1: Auth check in progress — show splash
   if (!isAuthInitialized) {
@@ -49,7 +61,7 @@ export default function RootLayout() {
   if (!isAuthenticated) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <StatusBar style="dark" />
+        <StatusBar style={statusBarStyle} />
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(auth)" />
         </Stack>
@@ -69,7 +81,7 @@ export default function RootLayout() {
   // Phase 3: Fully initialized — show main app
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <StatusBar style="dark" />
+      <StatusBar style={statusBarStyle} />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="(tabs)" />
@@ -78,6 +90,7 @@ export default function RootLayout() {
       <ActiveCallScreen />
       <VideoCallScreen />
       <IncomingCallScreen />
+      <ToastProvider />
     </GestureHandlerRootView>
   );
 }
