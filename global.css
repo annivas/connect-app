@@ -1,3 +1,63 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    --color-background-primary: #FFF8F0;
+    --color-background-secondary: #FFF1E6;
+    --color-background-tertiary: #FFE8D6;
+
+    --color-surface: #FFE8D6;
+    --color-surface-elevated: #FFFFFF;
+    --color-surface-hover: #FFD6BA;
+
+    --color-accent-primary: #D4764E;
+    --color-accent-secondary: #C2956B;
+    --color-accent-tertiary: #8B6F5A;
+
+    --color-text-primary: #2D1F14;
+    --color-text-secondary: #7A6355;
+    --color-text-tertiary: #A8937F;
+    --color-text-inverse: #FFFFFF;
+
+    --color-border: #E8D5C4;
+    --color-border-subtle: #F0E2D4;
+    --color-border-emphasis: #D4BFA8;
+
+    --color-status-success: #2D9F6F;
+    --color-status-warning: #D4964E;
+    --color-status-error: #C94F4F;
+    --color-status-info: #5B8EC9;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-background-primary: #1A1412;
+      --color-background-secondary: #221C18;
+      --color-background-tertiary: #2C241E;
+
+      --color-surface: #2C241E;
+      --color-surface-elevated: #362E26;
+      --color-surface-hover: #3E342A;
+
+      --color-accent-primary: #E0885E;
+      --color-accent-secondary: #D4A87E;
+      --color-accent-tertiary: #A0886E;
+
+      --color-text-primary: #F0E6DC;
+      --color-text-secondary: #BBA898;
+      --color-text-tertiary: #8A7A6C;
+      --color-text-inverse: #1A1412;
+
+      --color-border: #3E342A;
+      --color-border-subtle: #2C241E;
+      --color-border-emphasis: #504436;
+
+      --color-status-success: #3EB87F;
+      --color-status-warning: #E0A85E;
+      --color-status-error: #D96060;
+      --color-status-info: #6EA0D4;
+    }
+  }
+}

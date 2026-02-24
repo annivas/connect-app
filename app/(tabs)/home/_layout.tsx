@@ -1,11 +1,14 @@
 import { Stack } from 'expo-router';
+import { useThemeColors } from '../../../src/hooks/useThemeColors';
 
 export default function HomeLayout() {
+  const themeColors = useThemeColors();
+
   return (
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: '#FFF8F0' },
+        contentStyle: { backgroundColor: themeColors.background.primary },
       }}
     >
       <Stack.Screen name="index" />

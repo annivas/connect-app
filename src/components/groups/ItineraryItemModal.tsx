@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Modal, Pressable, TextInput, ScrollView, Alert } from 'react-native';
+import { useToastStore } from '../../stores/useToastStore';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import type { ItineraryItem, ItineraryItemType } from '../../types';
@@ -55,7 +56,7 @@ export function ItineraryItemModal({ visible, onClose, onSave, onDelete, existin
 
   const handleSave = () => {
     if (!title.trim()) {
-      Alert.alert('Required', 'Please enter a title.');
+      useToastStore.getState().show({ message: 'Please enter a title.', type: 'warning' });
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

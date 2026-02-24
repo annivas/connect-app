@@ -27,6 +27,8 @@ export function ConversationListItem({ conversation, highlightText }: Props) {
   const router = useRouter();
   const getUserById = useUserStore((s) => s.getUserById);
   const swipeableRef = useRef<Swipeable>(null);
+  const typingUserIds = useMessagesStore((s) => s.typingUsers[conversation.id] ?? []);
+  const draft = useMessagesStore((s) => s.drafts?.[conversation.id]);
 
   const otherUserId = conversation.participants.find(
     (id) => id !== useUserStore.getState().currentUser?.id
@@ -179,7 +181,22 @@ export function ConversationListItem({ conversation, highlightText }: Props) {
 
           <View className="flex-row items-center justify-between">
             <View className="flex-1 mr-2" style={{ overflow: 'hidden' }}>
-              {highlightText && conversation.lastMessage?.content ? (
+              {typingUserIds.length > 0 ? (
+                <Text className="text-accent-primary text-sm italic" numberOfLines={1}>
+                  {(() => {
+                    const names = typingUserIds
+                      .map((uid) => getUserById(uid)?.name?.split(' ')[0])
+                      .filter(Boolean);
+                    if (names.length === 1) return `${names[0]} is typing...`;
+                    return `${names.join(', ')} are typing...`;
+                  })()}
+                </Text>
+              ) : draft ? (
+                <Text className="text-sm" numberOfLines={1}>
+                  <Text className="text-status-error font-medium">[Draft] </Text>
+                  <Text className="text-text-secondary">{draft}</Text>
+                </Text>
+              ) : highlightText && conversation.lastMessage?.content ? (
                 renderHighlightedText(
                   conversation.lastMessage.content,
                   highlightText,

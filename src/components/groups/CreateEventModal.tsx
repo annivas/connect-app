@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, Modal, Platform, Alert } from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, Modal, Platform } from 'react-native';
+import { useToastStore } from '../../stores/useToastStore';
 import { Ionicons } from '@expo/vector-icons';
 import { format, addDays } from 'date-fns';
 import * as Haptics from 'expo-haptics';
@@ -61,7 +62,7 @@ export function CreateEventModal({ visible, onClose, onSave, suggestedTitle }: P
 
   const handleSave = () => {
     if (!title.trim()) {
-      Alert.alert('Missing Title', 'Please enter a title for the event.');
+      useToastStore.getState().show({ message: 'Please enter a title for the event.', type: 'warning' });
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

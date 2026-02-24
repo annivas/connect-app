@@ -6,7 +6,6 @@ import {
   Modal,
   Pressable,
   FlatList,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -17,6 +16,7 @@ import { Avatar } from '../ui/Avatar';
 import { SearchBar } from '../ui/SearchBar';
 import { useUserStore } from '../../stores/useUserStore';
 import { useGroupsStore } from '../../stores/useGroupsStore';
+import { useToastStore } from '../../stores/useToastStore';
 import type { Group, GroupType, User } from '../../types';
 
 interface Props {
@@ -102,7 +102,7 @@ export function CreateGroupModal({ visible, onClose, onCreated }: Props) {
       reset();
       onCreated(group);
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to create group');
+      useToastStore.getState().show({ message: err instanceof Error ? err.message : 'Failed to create group', type: 'error' });
       setIsSaving(false);
     }
   };

@@ -1,18 +1,12 @@
-import React, { useState, useLayoutEffect } from 'react';
-import { View, Text, Pressable, useWindowDimensions, ActionSheetIOS, Platform, Alert } from 'react-native';
+import React, { useLayoutEffect } from 'react';
+import { View, Text, Pressable, Platform, ActionSheetIOS, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { TabView, TabBar, SceneRendererProps } from 'react-native-tab-view';
-import { useShallow } from 'zustand/react/shallow';
 import * as Haptics from 'expo-haptics';
+import { useShallow } from 'zustand/react/shallow';
 import { IconButton } from '../../../src/components/ui/IconButton';
 import { Avatar } from '../../../src/components/ui/Avatar';
 import { ChatTab } from '../../../src/components/chat/ChatTab';
-import { MediaPinsTab } from '../../../src/components/chat/MediaPinsTab';
-import { NotesSavedTab } from '../../../src/components/chat/NotesSavedTab';
-import { RemindersTab } from '../../../src/components/chat/RemindersTab';
-import { LedgerTab } from '../../../src/components/chat/LedgerTab';
-import { UserProfileSheet } from '../../../src/components/chat/UserProfileSheet';
 import { InChatSearchBar } from '../../../src/components/chat/InChatSearchBar';
 import { DisappearingMessagesSheet } from '../../../src/components/chat/DisappearingMessagesSheet';
 import { useMessageSearch } from '../../../src/hooks/useMessageSearch';
@@ -21,24 +15,11 @@ import { useUserStore } from '../../../src/stores/useUserStore';
 import { useCallStore } from '../../../src/stores/useCallStore';
 import type { DisappearingDuration } from '../../../src/types';
 
-type Route = { key: string; title: string };
-
-const routes: Route[] = [
-  { key: 'chat', title: 'Chat' },
-  { key: 'media-pins', title: 'Media & Pins' },
-  { key: 'notes-saved', title: 'Notes & Saved' },
-  { key: 'reminders', title: 'Reminders' },
-  { key: 'ledger', title: 'Ledger' },
-];
-
 export default function ConversationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const navigation = useNavigation();
-  const layout = useWindowDimensions();
-  const [tabIndex, setTabIndex] = useState(0);
-  const [showProfile, setShowProfile] = useState(false);
-  const [showDisappearingSheet, setShowDisappearingSheet] = useState(false);
+  const [showDisappearingSheet, setShowDisappearingSheet] = React.useState(false);
 
   // Hide the bottom tab bar when this screen is focused
   const parentNavigation = navigation.getParent();
@@ -121,69 +102,12 @@ export default function ConversationDetailScreen() {
     );
   }
 
-  // Build members array for 1-on-1 context (current user + other user)
-  const currentUser = useUserStore.getState().currentUser;
-  const conversationMembers = [currentUser, otherUser].filter(Boolean) as import('../../../src/types').User[];
-
-  const renderScene = ({
-    route,
-  }: SceneRendererProps & { route: Route }) => {
-    switch (route.key) {
-      case 'chat':
-        return (
-          <ChatTab
-            conversationId={id!}
-            highlightText={isSearching ? chatSearchQuery : undefined}
-            matchingMessageIds={isSearching ? matchingMessageIds : undefined}
-          />
-        );
-      case 'media-pins':
-        return (
-          <MediaPinsTab
-            pinnedMessageIds={conversation?.metadata?.pinnedMessages ?? []}
-            sharedObjects={conversation?.metadata?.sharedObjects ?? []}
-            allMessages={messages}
-            contextId={id!}
-            contextType="conversation"
-          />
-        );
-      case 'notes-saved':
-        return (
-          <NotesSavedTab
-            notes={conversation?.metadata?.notes ?? []}
-            starredMessageIds={conversation?.metadata?.starredMessages ?? []}
-            allMessages={messages}
-            onCreateNote={(note) => useMessagesStore.getState().createNote(id!, note)}
-          />
-        );
-      case 'reminders':
-        return (
-          <RemindersTab
-            reminders={conversation?.metadata?.reminders ?? []}
-            onToggleComplete={(rid) => useMessagesStore.getState().toggleReminderComplete(id!, rid)}
-            onCreateReminder={(rem) => useMessagesStore.getState().createReminder(id!, {
-              title: rem.title,
-              description: rem.description,
-              dueDate: rem.dueDate instanceof Date ? rem.dueDate.toISOString() : String(rem.dueDate),
-              priority: rem.priority,
-            })}
-          />
-        );
-      case 'ledger':
-        return (
-          <LedgerTab
-            mode="conversation"
-            entries={conversation?.metadata?.ledgerEntries ?? []}
-            balance={conversation?.metadata?.ledgerBalance ?? 0}
-            otherUser={otherUser}
-            onSettle={(eid) => useMessagesStore.getState().settleLedgerEntry(id!, eid)}
-            onCreateEntry={(entry) => useMessagesStore.getState().createLedgerEntry(id!, entry)}
-            members={conversationMembers}
-          />
-        );
-      default:
-        return null;
-    }
+  const handleOpenInfo = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push({
+      pathname: '/(tabs)/messages/info',
+      params: { id: id! },
+    });
   };
 
   return (
@@ -192,7 +116,7 @@ export default function ConversationDetailScreen() {
       <View className="flex-row items-center px-2 pb-2 border-b border-border-subtle">
         <IconButton icon="chevron-back" onPress={() => router.back()} />
 
-        <Pressable onPress={() => setShowProfile(true)} className="flex-1 flex-row items-center ml-1">
+        <Pressable onPress={handleOpenInfo} className="flex-1 flex-row items-center ml-1">
           <Avatar
             uri={otherUser.avatar}
             size="md"
@@ -237,40 +161,11 @@ export default function ConversationDetailScreen() {
         onClose={clearSearch}
       />
 
-      {/* Top Tabs */}
-      <TabView
-        navigationState={{ index: tabIndex, routes }}
-        renderScene={renderScene}
-        onIndexChange={setTabIndex}
-        initialLayout={{ width: layout.width }}
-        lazy
-        renderTabBar={(props) => (
-          <TabBar
-            {...props}
-            indicatorStyle={{
-              backgroundColor: '#D4764E',
-              height: 3,
-              borderRadius: 1.5,
-            }}
-            style={{
-              backgroundColor: '#FFF8F0',
-              elevation: 0,
-              shadowOpacity: 0,
-              borderBottomWidth: 1,
-              borderBottomColor: '#F0E2D4',
-            }}
-            activeColor="#D4764E"
-            inactiveColor="#A8937F"
-            scrollEnabled
-            tabStyle={{ width: 'auto', minWidth: 80 }}
-          />
-        )}
-      />
-
-      <UserProfileSheet
-        user={otherUser}
-        visible={showProfile}
-        onClose={() => setShowProfile(false)}
+      {/* Full-screen chat */}
+      <ChatTab
+        conversationId={id!}
+        highlightText={isSearching ? chatSearchQuery : undefined}
+        matchingMessageIds={isSearching ? matchingMessageIds : undefined}
       />
 
       <DisappearingMessagesSheet

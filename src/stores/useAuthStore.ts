@@ -95,6 +95,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       await supabase.auth.signOut();
     } finally {
+      // Reset all stores to clear user data
+      const { useMessagesStore } = require('./useMessagesStore');
+      const { useGroupsStore } = require('./useGroupsStore');
+      const { useHomeStore } = require('./useHomeStore');
+      const { useCallStore } = require('./useCallStore');
+
+      useMessagesStore.getState().reset();
+      useGroupsStore.getState().reset();
+      useHomeStore.getState().reset();
+      useCallStore.getState().reset();
+
       set({ session: null, isLoading: false });
     }
   },

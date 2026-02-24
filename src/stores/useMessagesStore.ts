@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { config } from '../config/env';
 import { adaptMessage } from '../services/supabase/adapters';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import { getCurrentUserId, getUserById } from './helpers';
 
 const PAGE_SIZE = 50;
 
@@ -24,6 +25,9 @@ interface MessagesState {
 
   // Typing indicators (per conversation → user IDs currently typing)
   typingUsers: Record<string, string[]>;
+
+  // Draft messages per conversation
+  drafts: Record<string, string>;
 
   // Realtime
   _channel: RealtimeChannel | null;
@@ -72,6 +76,10 @@ interface MessagesState {
   scheduleMessage: (conversationId: string, content: string, senderId: string, scheduledFor: Date) => void;
   cancelScheduledMessage: (messageId: string) => void;
   searchAllConversations: (query: string) => { conversationId: string; messages: Message[] }[];
+  setDraft: (conversationId: string, text: string) => void;
+  getDraft: (conversationId: string) => string;
+  clearDraft: (conversationId: string) => void;
+  reset: () => void;
 }
 
 export const useMessagesStore = create<MessagesState>((set, get) => ({
@@ -83,6 +91,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
   loadingMessages: new Set(),
   replyingTo: {},
   typingUsers: {},
+  drafts: {},
   _channel: null,
   scheduledMessages: [],
 
@@ -328,8 +337,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     let metadata = options?.metadata;
     let replyTo: Message['replyTo'] | undefined;
     if (replyingMsg) {
-      const { useUserStore } = require('./useUserStore');
-      const senderUser = useUserStore.getState().getUserById(replyingMsg.senderId);
+      const senderUser = getUserById(replyingMsg.senderId);
       replyTo = {
         messageId: replyingMsg.id,
         content: replyingMsg.content,
@@ -484,8 +492,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
   },
 
   toggleReaction: (conversationId, messageId, emoji) => {
-    const { useUserStore } = require('./useUserStore');
-    const userId = useUserStore.getState().currentUser?.id;
+    const userId = getCurrentUserId();
     if (!userId) return;
 
     // Optimistic update
@@ -674,8 +681,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
   },
 
   addSharedObject: (conversationId, data) => {
-    const { useUserStore } = require('./useUserStore');
-    const currentUserId = useUserStore.getState().currentUser?.id ?? 'unknown';
+    const currentUserId = getCurrentUserId() || 'unknown';
 
     const newObject: SharedObject = {
       id: `shared-${Date.now()}`,
@@ -755,8 +761,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     const message = get().messages.find((m) => m.id === messageId);
     if (!message) return;
 
-    const { useUserStore } = require('./useUserStore');
-    const senderUser = useUserStore.getState().getUserById(message.senderId);
+    const senderUser = getUserById(message.senderId);
 
     for (const targetConvId of targetConvIds) {
       const forwardedMessage: Message = {
@@ -855,5 +860,39 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
       conversationId,
       messages,
     }));
+  },
+
+  setDraft: (conversationId, text) => {
+    set((state) => ({
+      drafts: { ...state.drafts, [conversationId]: text },
+    }));
+  },
+
+  getDraft: (conversationId) => {
+    return get().drafts[conversationId] ?? '';
+  },
+
+  clearDraft: (conversationId) => {
+    set((state) => {
+      const { [conversationId]: _, ...rest } = state.drafts;
+      return { drafts: rest };
+    });
+  },
+
+  reset: () => {
+    get().unsubscribe();
+    set({
+      conversations: [],
+      messages: [],
+      isLoading: false,
+      error: null,
+      hasMoreMessages: {},
+      loadingMessages: new Set(),
+      replyingTo: {},
+      typingUsers: {},
+      drafts: {},
+      _channel: null,
+      scheduledMessages: [],
+    });
   },
 }));

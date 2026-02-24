@@ -4,20 +4,25 @@ import { View, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Badge } from '../../src/components/ui/Badge';
 import { useMessagesStore } from '../../src/stores/useMessagesStore';
+import { useThemeColors } from '../../src/hooks/useThemeColors';
+import { useColorScheme } from 'nativewind';
 
 export default function TabLayout() {
   const unreadCount = useMessagesStore((s) => s.getUnreadCount());
+  const themeColors = useThemeColors();
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#D4764E',
-        tabBarInactiveTintColor: '#A8937F',
+        tabBarActiveTintColor: themeColors.accent.primary,
+        tabBarInactiveTintColor: themeColors.text.tertiary,
         tabBarStyle: {
           position: 'absolute',
           backgroundColor:
-            Platform.OS === 'ios' ? 'transparent' : '#FFF1E6',
+            Platform.OS === 'ios' ? 'transparent' : themeColors.background.secondary,
           borderTopWidth: 0,
           elevation: 0,
           height: Platform.OS === 'ios' ? 88 : 70,
@@ -27,14 +32,16 @@ export default function TabLayout() {
           Platform.OS === 'ios' ? (
             <BlurView
               intensity={80}
-              tint="light"
+              tint={isDark ? 'dark' : 'light'}
               style={{
                 position: 'absolute',
                 top: 0,
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: 'rgba(255, 241, 230, 0.75)',
+                backgroundColor: isDark
+                  ? 'rgba(26, 20, 18, 0.75)'
+                  : 'rgba(255, 241, 230, 0.75)',
               }}
             />
           ) : null,

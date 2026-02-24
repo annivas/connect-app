@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { CallType, CallEntry } from '../types';
+import { getCurrentUserId } from './helpers';
 
 interface ActiveCall {
   id: string;
@@ -35,6 +36,7 @@ interface CallState {
   toggleSpeaker: () => void;
   toggleVideo: () => void;
   simulateIncomingCall: (callerId: string, type: CallType) => void;
+  reset: () => void;
 }
 
 export const useCallStore = create<CallState>((set, get) => ({
@@ -45,8 +47,7 @@ export const useCallStore = create<CallState>((set, get) => ({
 
   initiateCall: (conversationId, participantIds, type) => {
     const callId = `call-${Date.now()}`;
-    const { useUserStore } = require('./useUserStore');
-    const currentUserId = useUserStore.getState().currentUser?.id ?? 'unknown';
+    const currentUserId = getCurrentUserId() || 'unknown';
 
     const activeCall: ActiveCall = {
       id: callId,
@@ -77,8 +78,7 @@ export const useCallStore = create<CallState>((set, get) => ({
 
   initiateGroupCall: (groupId, memberIds, type) => {
     const callId = `call-group-${Date.now()}`;
-    const { useUserStore } = require('./useUserStore');
-    const currentUserId = useUserStore.getState().currentUser?.id ?? 'unknown';
+    const currentUserId = getCurrentUserId() || 'unknown';
 
     const otherMembers = memberIds.filter((id) => id !== currentUserId);
 
@@ -188,8 +188,7 @@ export const useCallStore = create<CallState>((set, get) => ({
 
   simulateIncomingCall: (callerId, type) => {
     const callId = `call-incoming-${Date.now()}`;
-    const { useUserStore } = require('./useUserStore');
-    const currentUserId = useUserStore.getState().currentUser?.id ?? 'unknown';
+    const currentUserId = getCurrentUserId() || 'unknown';
 
     const incoming: IncomingCall = {
       id: callId,
@@ -227,5 +226,14 @@ export const useCallStore = create<CallState>((set, get) => ({
         });
       }
     }, 30_000);
+  },
+
+  reset: () => {
+    set({
+      isInCall: false,
+      activeCall: null,
+      incomingCall: null,
+      callHistory: [],
+    });
   },
 }));

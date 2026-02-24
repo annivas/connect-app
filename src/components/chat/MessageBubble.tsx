@@ -96,6 +96,17 @@ function SendStatusIndicator({
     );
   }
 
+  if (status === 'delivered') {
+    return (
+      <Ionicons
+        name="checkmark-done"
+        size={14}
+        color="#A8937F"
+        style={{ marginLeft: 4 }}
+      />
+    );
+  }
+
   return (
     <Ionicons
       name={isRead ? 'checkmark-done' : 'checkmark'}
@@ -566,6 +577,22 @@ export function MessageBubble({
             isMine={isMine}
             onToggle={(emoji) => onReact?.(message.id, emoji)}
           />
+        )}
+
+        {/* Failed to send banner */}
+        {isFailed && isMine && (
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              onRetry?.(message.id);
+            }}
+            className="flex-row items-center justify-end mt-1 mr-1"
+          >
+            <Ionicons name="alert-circle" size={12} color="#C94F4F" />
+            <Text className="text-status-error text-[11px] ml-1">
+              Failed to send · Tap to retry
+            </Text>
+          </Pressable>
         )}
       </View>
 
