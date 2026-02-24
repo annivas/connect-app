@@ -19,6 +19,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.connect.app',
+    infoPlist: {
+      NSContactsUsageDescription:
+        'Allow Connect to access your contacts to share them in chats.',
+    },
   },
   android: {
     adaptiveIcon: {
@@ -37,7 +41,16 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   runtimeVersion: {
     policy: 'appVersion',
   },
-  plugins: ['expo-router'],
+  plugins: [
+    'expo-router',
+    [
+      'expo-contacts',
+      {
+        contactsPermission:
+          'Allow Connect to access your contacts to share them in chats.',
+      },
+    ],
+  ],
   experiments: {
     typedRoutes: true,
   },
@@ -45,6 +58,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     supabaseUrl: process.env.SUPABASE_URL ?? '',
     supabaseAnonKey: process.env.SUPABASE_ANON_KEY ?? '',
     sentryDsn: process.env.SENTRY_DSN ?? '',
+    googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY ?? '',
     useMocks: process.env.USE_MOCKS !== 'false',
     eas: {
       projectId: 'c77c992d-bdb2-410c-8091-07d0b9e5c7cb',

@@ -4,6 +4,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 import { isSameDay, differenceInMinutes } from 'date-fns';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import * as Contacts from 'expo-contacts';
+import Constants from 'expo-constants';
 import * as Clipboard from 'expo-clipboard';
 import { MessageBubble } from './MessageBubble';
 import { MessageInput } from './MessageInput';
@@ -13,6 +16,7 @@ import { PinnedMessageBanner } from './PinnedMessageBanner';
 import { DisappearingMessagesBanner } from './DisappearingMessagesBanner';
 import { ScheduleMessageSheet } from './ScheduleMessageSheet';
 import { AttachmentSheet } from './AttachmentSheet';
+import { LocationPickerModal } from './LocationPickerModal';
 import { UnreadJumpButton } from './UnreadJumpButton';
 import { TypingIndicator } from './TypingIndicator';
 import { CallHistoryEntry } from '../call/CallHistoryEntry';
@@ -293,50 +297,89 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
     });
   };
 
-  const handlePickDocument = () => {
-    // Mock: send a document message
-    const userId = useUserStore.getState().currentUser?.id;
-    if (!userId) return;
-    sendMessage(conversationId, 'Project_Report.pdf', userId, {
-      type: 'file',
-      metadata: {
-        fileName: 'Project_Report.pdf',
-        fileSize: 2_456_000,
-        mimeType: 'application/pdf',
-        uri: 'mock://document.pdf',
-      },
-    });
+  const handlePickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: '*/*',
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+
+      const asset = result.assets[0];
+      const userId = useUserStore.getState().currentUser?.id;
+      if (!userId) return;
+
+      sendMessage(conversationId, asset.name, userId, {
+        type: 'file',
+        metadata: {
+          fileName: asset.name,
+          fileSize: asset.size ?? 0,
+          mimeType: asset.mimeType ?? 'application/octet-stream',
+          uri: asset.uri,
+        },
+      });
+    } catch {
+      Alert.alert('Error', 'Failed to pick document. Please try again.');
+    }
   };
+
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
 
   const handleShareLocation = () => {
-    // Mock: send a location message
+    setShowLocationPicker(true);
+  };
+
+  const handleLocationSelected = (location: {
+    latitude: number;
+    longitude: number;
+    address: string;
+    placeName: string;
+  }) => {
     const userId = useUserStore.getState().currentUser?.id;
     if (!userId) return;
-    sendMessage(conversationId, 'Shared location', userId, {
+
+    const apiKey = Constants.expoConfig?.extra?.googlePlacesApiKey ?? '';
+    sendMessage(conversationId, location.placeName, userId, {
       type: 'location',
       metadata: {
-        latitude: 37.7749,
-        longitude: -122.4194,
-        address: '1 Market Street, San Francisco, CA 94105',
-        placeName: 'Ferry Building',
-        staticMapUrl: 'https://picsum.photos/seed/sf-map/300/150',
+        ...location,
+        staticMapUrl: `https://maps.googleapis.com/maps/api/staticmap?center=${location.latitude},${location.longitude}&zoom=15&size=300x150&markers=color:red%7C${location.latitude},${location.longitude}&key=${apiKey}`,
       },
     });
   };
 
-  const handleShareContact = () => {
-    // Mock: send a contact message
-    const userId = useUserStore.getState().currentUser?.id;
-    if (!userId) return;
-    sendMessage(conversationId, 'Shared contact', userId, {
-      type: 'contact',
-      metadata: {
-        name: 'Alex Rivera',
-        phone: '+1 (555) 123-4567',
-        email: 'alex@example.com',
-        avatar: 'https://picsum.photos/seed/contact/100',
-      },
-    });
+  const handleShareContact = async () => {
+    try {
+      const { status } = await Contacts.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Please allow access to your contacts to share them.',
+        );
+        return;
+      }
+
+      const contact = await Contacts.presentContactPickerAsync();
+      if (!contact) return;
+
+      const userId = useUserStore.getState().currentUser?.id;
+      if (!userId) return;
+
+      sendMessage(conversationId, `Shared contact: ${contact.name}`, userId, {
+        type: 'contact',
+        metadata: {
+          name: contact.name ?? 'Unknown',
+          phone: contact.phoneNumbers?.[0]?.number,
+          email: contact.emails?.[0]?.email,
+          avatar:
+            contact.imageAvailable && contact.image?.uri
+              ? contact.image.uri
+              : undefined,
+        },
+      });
+    } catch {
+      Alert.alert('Error', 'Failed to pick contact. Please try again.');
+    }
   };
 
   const handleLoadMore = useCallback(() => {
@@ -644,6 +687,11 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
       onPickDocument={handlePickDocument}
       onShareLocation={handleShareLocation}
       onShareContact={handleShareContact}
+    />
+    <LocationPickerModal
+      visible={showLocationPicker}
+      onClose={() => setShowLocationPicker(false)}
+      onSelectLocation={handleLocationSelected}
     />
     </View>
   );
