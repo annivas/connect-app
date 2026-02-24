@@ -27,6 +27,8 @@ import type {
   ItineraryItemType,
   Collection,
   CollectionType,
+  Poll,
+  PollOption,
 } from '../../types';
 
 // ─── Profile → User ────────────────────────────
@@ -139,6 +141,39 @@ export function adaptLedgerEntry(row: Tables<'ledger_entries'>): LedgerEntry {
     category: row.category ?? undefined,
     date: new Date(row.date),
     isSettled: row.is_settled,
+  };
+}
+
+// ─── Polls ─────────────────────────────────────
+
+export interface PollRow {
+  id: string;
+  group_id: string;
+  question: string;
+  options: unknown;
+  created_by: string;
+  created_at: string;
+  is_multiple_choice: boolean;
+  is_closed: boolean;
+}
+
+export function adaptPoll(row: PollRow): Poll {
+  const options = Array.isArray(row.options)
+    ? (row.options as Array<{ id: string; text: string; voterIds: string[] }>).map((o) => ({
+        id: o.id,
+        text: o.text,
+        voterIds: o.voterIds ?? [],
+      }))
+    : [];
+
+  return {
+    id: row.id,
+    question: row.question,
+    options,
+    createdBy: row.created_by,
+    createdAt: new Date(row.created_at),
+    isMultipleChoice: row.is_multiple_choice,
+    isClosed: row.is_closed,
   };
 }
 
@@ -258,9 +293,18 @@ export interface GroupAssemblyData {
   trip?: Trip;
   sharedObjects: SharedObject[];
   notes: Note[];
+  reminders?: Reminder[];
+  ledgerEntries?: LedgerEntry[];
+  polls?: Poll[];
 }
 
 export function adaptGroup(data: GroupAssemblyData): Group {
+  const ledgerEntries = data.ledgerEntries ?? [];
+  const ledgerBalance = ledgerEntries.reduce(
+    (sum, entry) => (entry.isSettled ? sum : sum + entry.amount),
+    0,
+  );
+
   return {
     id: data.group.id,
     name: data.group.name,
@@ -280,9 +324,9 @@ export function adaptGroup(data: GroupAssemblyData): Group {
     metadata: {
       sharedObjects: data.sharedObjects,
       notes: data.notes,
-      reminders: [],
-      ledgerEntries: [],
-      ledgerBalance: 0,
+      reminders: data.reminders ?? [],
+      ledgerEntries,
+      ledgerBalance,
       pinnedMessages: [],
       starredMessages: [],
       callHistory: [],

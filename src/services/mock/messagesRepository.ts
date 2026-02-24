@@ -1,4 +1,4 @@
-import { Message, MessageType, Conversation, Note, Reminder, LedgerEntry, Reaction } from '../../types';
+import { Message, MessageType, Conversation, Note, Reminder, LedgerEntry, Reaction, SharedObject, SharedObjectType, DisappearingDuration } from '../../types';
 import { MOCK_CONVERSATIONS } from '../../mocks/conversations';
 import { MOCK_MESSAGES } from '../../mocks/messages';
 import { IMessagesRepository, PaginationParams, CreateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../types';
@@ -215,5 +215,51 @@ export const mockMessagesRepository: IMessagesRepository = {
     return messages.filter(
       (m) => m.conversationId === conversationId && m.content.toLowerCase().includes(q),
     );
+  },
+
+  // ─── Stub implementations for new interface methods ───
+
+  async toggleStarMessage(_messageId: string, _isStarred: boolean): Promise<void> {},
+
+  async togglePinMessage(_messageId: string, _isPinned: boolean): Promise<void> {},
+
+  async forwardMessage(
+    targetConvId: string,
+    content: string,
+    senderId: string,
+    type: MessageType,
+    _metadata: Record<string, unknown> | undefined,
+    _forwardedFrom: Record<string, unknown>,
+  ): Promise<Message> {
+    const msg: Message = {
+      id: `msg-fwd-${Date.now()}`,
+      conversationId: targetConvId,
+      senderId,
+      content,
+      timestamp: new Date(),
+      type,
+      isRead: true,
+    };
+    messages = [...messages, msg];
+    return msg;
+  },
+
+  async toggleArchive(_conversationId: string): Promise<void> {},
+
+  async markAsUnread(_conversationId: string): Promise<void> {},
+
+  async setDisappearingDuration(_conversationId: string, _duration: DisappearingDuration): Promise<void> {},
+
+  async addSharedObject(_conversationId: string, data: { type: SharedObjectType; title: string; description?: string; url?: string }): Promise<SharedObject> {
+    return {
+      id: `shared-${Date.now()}`,
+      type: data.type,
+      title: data.title,
+      description: data.description,
+      url: data.url,
+      sharedBy: 'current-user',
+      sharedAt: new Date(),
+      metadata: { url: data.url } as SharedObject['metadata'],
+    };
   },
 };

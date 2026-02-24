@@ -709,14 +709,28 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
           : c,
       ),
     }));
+
+    messagesRepository.addSharedObject(conversationId, data).catch(() => {
+      // Revert: remove the optimistic object
+      set((state) => ({
+        conversations: state.conversations.map((c) =>
+          c.id === conversationId && c.metadata
+            ? { ...c, metadata: { ...c.metadata, sharedObjects: c.metadata.sharedObjects.filter((o) => o.id !== newObject.id) } }
+            : c,
+        ),
+      }));
+    });
   },
 
   // ─── Star / Pin / Forward / Archive / Search ──────
 
   toggleStarMessage: (conversationId, messageId) => {
+    const msg = get().messages.find((m) => m.id === messageId);
+    const newStarred = !msg?.isStarred;
+
     set((state) => ({
       messages: state.messages.map((m) =>
-        m.id === messageId ? { ...m, isStarred: !m.isStarred } : m,
+        m.id === messageId ? { ...m, isStarred: newStarred } : m,
       ),
       conversations: state.conversations.map((c) => {
         if (c.id !== conversationId || !c.metadata) return c;
@@ -733,12 +747,24 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
         };
       }),
     }));
+
+    messagesRepository.toggleStarMessage(messageId, newStarred).catch(() => {
+      // Revert
+      set((state) => ({
+        messages: state.messages.map((m) =>
+          m.id === messageId ? { ...m, isStarred: !newStarred } : m,
+        ),
+      }));
+    });
   },
 
   togglePinMessage: (conversationId, messageId) => {
+    const msg = get().messages.find((m) => m.id === messageId);
+    const newPinned = !msg?.isPinned;
+
     set((state) => ({
       messages: state.messages.map((m) =>
-        m.id === messageId ? { ...m, isPinned: !m.isPinned } : m,
+        m.id === messageId ? { ...m, isPinned: newPinned } : m,
       ),
       conversations: state.conversations.map((c) => {
         if (c.id !== conversationId || !c.metadata) return c;
@@ -755,6 +781,15 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
         };
       }),
     }));
+
+    messagesRepository.togglePinMessage(messageId, newPinned).catch(() => {
+      // Revert
+      set((state) => ({
+        messages: state.messages.map((m) =>
+          m.id === messageId ? { ...m, isPinned: !newPinned } : m,
+        ),
+      }));
+    });
   },
 
   forwardMessage: (sourceConvId, messageId, targetConvIds, senderId) => {
@@ -764,8 +799,17 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     const senderUser = getUserById(message.senderId);
 
     for (const targetConvId of targetConvIds) {
+      const optimisticId = `msg-fwd-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      const forwardedFrom = {
+        originalMessageId: message.id,
+        originalSenderId: message.senderId,
+        originalSenderName: senderUser?.name ?? 'Unknown',
+        originalConversationId: sourceConvId,
+        originalTimestamp: message.timestamp,
+      };
+
       const forwardedMessage: Message = {
-        id: `msg-fwd-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        id: optimisticId,
         conversationId: targetConvId,
         senderId,
         content: message.content,
@@ -773,14 +817,8 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
         type: message.type,
         metadata: message.metadata,
         isRead: true,
-        sendStatus: 'sent',
-        forwardedFrom: {
-          originalMessageId: message.id,
-          originalSenderId: message.senderId,
-          originalSenderName: senderUser?.name ?? 'Unknown',
-          originalConversationId: sourceConvId,
-          originalTimestamp: message.timestamp,
-        },
+        sendStatus: 'sending',
+        forwardedFrom,
       };
 
       set((state) => ({
@@ -791,18 +829,50 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
             : c,
         ),
       }));
+
+      messagesRepository.forwardMessage(
+        targetConvId, message.content, senderId, message.type,
+        message.metadata as Record<string, unknown> | undefined,
+        forwardedFrom as unknown as Record<string, unknown>,
+      ).then((saved) => {
+        set((state) => ({
+          messages: state.messages.map((m) =>
+            m.id === optimisticId ? { ...saved, sendStatus: 'sent' as const, forwardedFrom } : m,
+          ),
+        }));
+      }).catch(() => {
+        set((state) => ({
+          messages: state.messages.map((m) =>
+            m.id === optimisticId ? { ...m, sendStatus: 'failed' as const } : m,
+          ),
+        }));
+      });
     }
   },
 
   toggleArchive: (conversationId) => {
+    const conv = get().conversations.find((c) => c.id === conversationId);
+    const wasArchived = conv?.isArchived ?? false;
+
     set((state) => ({
       conversations: state.conversations.map((c) =>
         c.id === conversationId ? { ...c, isArchived: !c.isArchived } : c,
       ),
     }));
+
+    messagesRepository.toggleArchive(conversationId).catch(() => {
+      set((state) => ({
+        conversations: state.conversations.map((c) =>
+          c.id === conversationId ? { ...c, isArchived: wasArchived } : c,
+        ),
+      }));
+    });
   },
 
   markAsUnread: (conversationId) => {
+    const conv = get().conversations.find((c) => c.id === conversationId);
+    const prevUnread = conv?.unreadCount ?? 0;
+
     set((state) => ({
       conversations: state.conversations.map((c) =>
         c.id === conversationId
@@ -810,14 +880,35 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
           : c,
       ),
     }));
+
+    messagesRepository.markAsUnread(conversationId).catch(() => {
+      set((state) => ({
+        conversations: state.conversations.map((c) =>
+          c.id === conversationId
+            ? { ...c, isMarkedUnread: false, unreadCount: prevUnread }
+            : c,
+        ),
+      }));
+    });
   },
 
   setDisappearingDuration: (conversationId, duration) => {
+    const conv = get().conversations.find((c) => c.id === conversationId);
+    const prevDuration = conv?.disappearingDuration;
+
     set((state) => ({
       conversations: state.conversations.map((c) =>
         c.id === conversationId ? { ...c, disappearingDuration: duration } : c,
       ),
     }));
+
+    messagesRepository.setDisappearingDuration(conversationId, duration).catch(() => {
+      set((state) => ({
+        conversations: state.conversations.map((c) =>
+          c.id === conversationId ? { ...c, disappearingDuration: prevDuration } : c,
+        ),
+      }));
+    });
   },
 
   scheduleMessage: (conversationId, content, senderId, scheduledFor) => {
