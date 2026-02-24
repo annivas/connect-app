@@ -96,7 +96,8 @@ export const mockGroupsRepository: IGroupsRepository = {
       lastActivity: new Date(),
       isPinned: false,
       isMuted: false,
-      metadata: { sharedObjects: [], notes: [] },
+      unreadCount: 0,
+      metadata: { sharedObjects: [], notes: [], reminders: [], ledgerEntries: [], ledgerBalance: 0, pinnedMessages: [], starredMessages: [], callHistory: [] },
     };
     groups = [newGroup, ...groups];
     return newGroup;

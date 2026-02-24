@@ -13,7 +13,11 @@ import { Card } from '../../../src/components/ui/Card';
 import { EmptyState } from '../../../src/components/ui/EmptyState';
 import { GroupChatTab } from '../../../src/components/groups/GroupChatTab';
 import { GroupInfoSheet } from '../../../src/components/groups/GroupInfoSheet';
-import { SharedTab } from '../../../src/components/chat/SharedTab';
+import { MediaPinsTab } from '../../../src/components/chat/MediaPinsTab';
+import { NotesSavedTab } from '../../../src/components/chat/NotesSavedTab';
+import { RemindersTab } from '../../../src/components/chat/RemindersTab';
+import { LedgerTab } from '../../../src/components/chat/LedgerTab';
+import { DisappearingMessagesSheet } from '../../../src/components/chat/DisappearingMessagesSheet';
 import { InChatSearchBar } from '../../../src/components/chat/InChatSearchBar';
 import { useMessageSearch } from '../../../src/hooks/useMessageSearch';
 import { ItineraryItemModal } from '../../../src/components/groups/ItineraryItemModal';
@@ -21,7 +25,8 @@ import { CreatePollModal } from '../../../src/components/groups/CreatePollModal'
 import { PollBubble } from '../../../src/components/groups/PollBubble';
 import { useGroupsStore } from '../../../src/stores/useGroupsStore';
 import { useUserStore } from '../../../src/stores/useUserStore';
-import type { RSVPStatus, ItineraryItem, Poll } from '../../../src/types';
+import { useCallStore } from '../../../src/stores/useCallStore';
+import type { RSVPStatus, ItineraryItem, Poll, DisappearingDuration, User } from '../../../src/types';
 
 type Route = { key: string; title: string };
 
@@ -453,6 +458,7 @@ export default function GroupDetailScreen() {
   const [tabIndex, setTabIndex] = useState(0);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
   const [showCreatePoll, setShowCreatePoll] = useState(false);
+  const [showDisappearingSheet, setShowDisappearingSheet] = useState(false);
 
   // Hide the bottom tab bar when this screen is focused
   const parentNavigation = navigation.getParent();
@@ -474,6 +480,15 @@ export default function GroupDetailScreen() {
 
   const group = useGroupsStore(useShallow((s) => s.getGroupById(id!)));
   const groupMessages = useGroupsStore(useShallow((s) => s.getGroupMessages(id!)));
+  const getUserById = useUserStore((s) => s.getUserById);
+
+  // Resolve group members to User objects for props-driven tabs
+  const memberUsers: User[] = React.useMemo(() => {
+    if (!group) return [];
+    return group.members
+      .map((memberId) => getUserById(memberId))
+      .filter((u): u is User => u != null);
+  }, [group, getUserById]);
 
   const {
     searchQuery: chatSearchQuery,
@@ -485,6 +500,11 @@ export default function GroupDetailScreen() {
     matchCount,
   } = useMessageSearch(groupMessages);
 
+  const handleStartGroupCall = (type: 'voice' | 'video') => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    useCallStore.getState().initiateGroupCall(id!, group?.members ?? [], type);
+  };
+
   const showMenu = () => {
     const { togglePin, toggleMute, getGroupById } = useGroupsStore.getState();
     const g = getGroupById(id!);
@@ -494,6 +514,7 @@ export default function GroupDetailScreen() {
     const options = [
       'Group Info',
       'Create Poll',
+      'Disappearing Messages',
       isPinned ? 'Unpin' : 'Pin',
       isMuted ? 'Unmute' : 'Mute',
       'Cancel',
@@ -501,20 +522,22 @@ export default function GroupDetailScreen() {
 
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
-        { options, cancelButtonIndex: 4 },
+        { options, cancelButtonIndex: 5 },
         (idx) => {
           if (idx === 0) setShowGroupInfo(true);
           if (idx === 1) setShowCreatePoll(true);
-          if (idx === 2) togglePin(id!);
-          if (idx === 3) toggleMute(id!);
+          if (idx === 2) setShowDisappearingSheet(true);
+          if (idx === 3) togglePin(id!);
+          if (idx === 4) toggleMute(id!);
         }
       );
     } else {
       Alert.alert('Options', undefined, [
         { text: 'Group Info', onPress: () => setShowGroupInfo(true) },
         { text: 'Create Poll', onPress: () => setShowCreatePoll(true) },
-        { text: options[2], onPress: () => togglePin(id!) },
-        { text: options[3], onPress: () => toggleMute(id!) },
+        { text: 'Disappearing Messages', onPress: () => setShowDisappearingSheet(true) },
+        { text: options[3], onPress: () => togglePin(id!) },
+        { text: options[4], onPress: () => toggleMute(id!) },
         { text: 'Cancel', style: 'cancel' },
       ]);
     }
@@ -533,6 +556,9 @@ export default function GroupDetailScreen() {
     { key: 'chat', title: 'Chat' },
     { key: 'events', title: 'Events' },
     { key: 'shared', title: 'Shared' },
+    { key: 'notes', title: 'Notes' },
+    { key: 'reminders', title: 'Reminders' },
+    { key: 'ledger', title: 'Ledger' },
     { key: 'polls', title: 'Polls' },
     ...(isTrip ? [{ key: 'trip', title: 'Trip' }] : []),
   ];
@@ -552,7 +578,45 @@ export default function GroupDetailScreen() {
       case 'events':
         return <EventsTab groupId={id!} />;
       case 'shared':
-        return <SharedTab sharedObjects={group?.metadata?.sharedObjects} />;
+        return (
+          <MediaPinsTab
+            pinnedMessageIds={group?.metadata?.pinnedMessages ?? []}
+            sharedObjects={group?.metadata?.sharedObjects ?? []}
+            allMessages={groupMessages}
+            onAddSharedObject={(obj) => useGroupsStore.getState().addGroupSharedObject(id!, obj)}
+            contextId={id!}
+            contextType="group"
+          />
+        );
+      case 'notes':
+        return (
+          <NotesSavedTab
+            notes={group?.metadata?.notes ?? []}
+            starredMessageIds={group?.metadata?.starredMessages ?? []}
+            allMessages={groupMessages}
+            onCreateNote={(note) => useGroupsStore.getState().createGroupNote(id!, note)}
+          />
+        );
+      case 'reminders':
+        return (
+          <RemindersTab
+            reminders={group?.metadata?.reminders ?? []}
+            onToggleComplete={(rid) => useGroupsStore.getState().toggleGroupReminderComplete(id!, rid)}
+            onCreateReminder={(rem) => useGroupsStore.getState().createGroupReminder(id!, rem)}
+            members={memberUsers}
+          />
+        );
+      case 'ledger':
+        return (
+          <LedgerTab
+            mode="group"
+            entries={group?.metadata?.ledgerEntries ?? []}
+            pairBalances={useGroupsStore.getState().getGroupPairBalances(id!)}
+            members={memberUsers}
+            onSettle={(eid) => useGroupsStore.getState().settleGroupLedgerEntry(id!, eid)}
+            onCreateEntry={(entry) => useGroupsStore.getState().createGroupLedgerEntry(id!, entry)}
+          />
+        );
       case 'polls':
         return <PollsTab groupId={id!} />;
       case 'trip':
@@ -581,6 +645,8 @@ export default function GroupDetailScreen() {
             </Text>
           </View>
         </Pressable>
+        <IconButton icon="call-outline" onPress={() => handleStartGroupCall('voice')} />
+        <IconButton icon="videocam-outline" onPress={() => handleStartGroupCall('video')} />
         <IconButton icon="search" onPress={openSearch} />
         <IconButton icon="ellipsis-horizontal" onPress={showMenu} />
       </View>
@@ -637,6 +703,13 @@ export default function GroupDetailScreen() {
         onCreatePoll={(question, options, isMultipleChoice) => {
           useGroupsStore.getState().createPoll(id!, question, options, isMultipleChoice);
         }}
+      />
+
+      <DisappearingMessagesSheet
+        visible={showDisappearingSheet}
+        currentDuration={group?.disappearingDuration ?? 'off'}
+        onSelect={(duration) => useGroupsStore.getState().setGroupDisappearingDuration(id!, duration)}
+        onClose={() => setShowDisappearingSheet(false)}
       />
     </SafeAreaView>
   );

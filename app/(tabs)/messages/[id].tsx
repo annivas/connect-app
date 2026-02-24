@@ -121,6 +121,10 @@ export default function ConversationDetailScreen() {
     );
   }
 
+  // Build members array for 1-on-1 context (current user + other user)
+  const currentUser = useUserStore.getState().currentUser;
+  const conversationMembers = [currentUser, otherUser].filter(Boolean) as import('../../../src/types').User[];
+
   const renderScene = ({
     route,
   }: SceneRendererProps & { route: Route }) => {
@@ -134,13 +138,49 @@ export default function ConversationDetailScreen() {
           />
         );
       case 'media-pins':
-        return <MediaPinsTab conversationId={id!} />;
+        return (
+          <MediaPinsTab
+            pinnedMessageIds={conversation?.metadata?.pinnedMessages ?? []}
+            sharedObjects={conversation?.metadata?.sharedObjects ?? []}
+            allMessages={messages}
+            contextId={id!}
+            contextType="conversation"
+          />
+        );
       case 'notes-saved':
-        return <NotesSavedTab conversationId={id!} />;
+        return (
+          <NotesSavedTab
+            notes={conversation?.metadata?.notes ?? []}
+            starredMessageIds={conversation?.metadata?.starredMessages ?? []}
+            allMessages={messages}
+            onCreateNote={(note) => useMessagesStore.getState().createNote(id!, note)}
+          />
+        );
       case 'reminders':
-        return <RemindersTab conversationId={id!} />;
+        return (
+          <RemindersTab
+            reminders={conversation?.metadata?.reminders ?? []}
+            onToggleComplete={(rid) => useMessagesStore.getState().toggleReminderComplete(id!, rid)}
+            onCreateReminder={(rem) => useMessagesStore.getState().createReminder(id!, {
+              title: rem.title,
+              description: rem.description,
+              dueDate: rem.dueDate instanceof Date ? rem.dueDate.toISOString() : String(rem.dueDate),
+              priority: rem.priority,
+            })}
+          />
+        );
       case 'ledger':
-        return <LedgerTab conversationId={id!} />;
+        return (
+          <LedgerTab
+            mode="conversation"
+            entries={conversation?.metadata?.ledgerEntries ?? []}
+            balance={conversation?.metadata?.ledgerBalance ?? 0}
+            otherUser={otherUser}
+            onSettle={(eid) => useMessagesStore.getState().settleLedgerEntry(id!, eid)}
+            onCreateEntry={(entry) => useMessagesStore.getState().createLedgerEntry(id!, entry)}
+            members={conversationMembers}
+          />
+        );
       default:
         return null;
     }

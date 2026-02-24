@@ -9,6 +9,8 @@ interface ActiveCall {
   isSpeakerOn: boolean;
   isVideoEnabled: boolean;
   startedAt: Date;
+  isGroupCall?: boolean;
+  groupId?: string;
 }
 
 interface IncomingCall {
@@ -25,6 +27,7 @@ interface CallState {
   callHistory: CallEntry[];
 
   initiateCall: (conversationId: string, participantIds: string[], type: CallType) => void;
+  initiateGroupCall: (groupId: string, memberIds: string[], type: CallType) => void;
   answerCall: () => void;
   declineCall: () => void;
   endCall: () => void;
@@ -63,6 +66,44 @@ export const useCallStore = create<CallState>((set, get) => ({
       type,
       status: 'ongoing',
       startedAt: new Date(),
+    };
+
+    set({
+      isInCall: true,
+      activeCall,
+      callHistory: [historyEntry, ...get().callHistory],
+    });
+  },
+
+  initiateGroupCall: (groupId, memberIds, type) => {
+    const callId = `call-group-${Date.now()}`;
+    const { useUserStore } = require('./useUserStore');
+    const currentUserId = useUserStore.getState().currentUser?.id ?? 'unknown';
+
+    const otherMembers = memberIds.filter((id) => id !== currentUserId);
+
+    const activeCall: ActiveCall = {
+      id: callId,
+      type,
+      participants: otherMembers,
+      isMuted: false,
+      isSpeakerOn: false,
+      isVideoEnabled: type === 'video',
+      startedAt: new Date(),
+      isGroupCall: true,
+      groupId,
+    };
+
+    const historyEntry: CallEntry = {
+      id: callId,
+      conversationId: '',
+      callerId: currentUserId,
+      receiverIds: otherMembers,
+      type,
+      status: 'ongoing',
+      startedAt: new Date(),
+      isGroupCall: true,
+      groupId,
     };
 
     set({

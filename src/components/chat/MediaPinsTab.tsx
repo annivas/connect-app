@@ -5,10 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { format } from 'date-fns';
 import * as Haptics from 'expo-haptics';
-import { useShallow } from 'zustand/react/shallow';
 import { EmptyState } from '../ui/EmptyState';
 import { ShareLinkModal } from './ShareLinkModal';
-import { useMessagesStore } from '../../stores/useMessagesStore';
 import { useUserStore } from '../../stores/useUserStore';
 import type { SharedObject, SharedObjectType, PlaceMetadata, Message } from '../../types';
 
@@ -201,23 +199,18 @@ function SharedItemCard({ item, onPress }: { item: SharedObject; onPress?: () =>
 // ─── Main component ──────────────────────────
 
 interface MediaPinsTabProps {
-  conversationId: string;
+  pinnedMessageIds: string[];
+  sharedObjects: SharedObject[];
+  allMessages: Message[];
+  onAddSharedObject?: (obj: Omit<SharedObject, 'id' | 'sharedAt'>) => void;
+  contextId: string;
+  contextType: 'conversation' | 'group';
 }
 
-export function MediaPinsTab({ conversationId }: MediaPinsTabProps) {
+export function MediaPinsTab({ pinnedMessageIds, sharedObjects, allMessages, contextId, contextType }: MediaPinsTabProps) {
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
   const [isModalVisible, setIsModalVisible] = useState(false);
-
-  const conversation = useMessagesStore(
-    useShallow((s) => s.getConversationById(conversationId))
-  );
-  const allMessages = useMessagesStore(
-    useShallow((s) => s.getMessagesByConversationId(conversationId))
-  );
-
-  const sharedObjects = conversation?.metadata?.sharedObjects ?? [];
-  const pinnedMessageIds = conversation?.metadata?.pinnedMessages ?? [];
 
   // Resolve pinned messages from the message list
   const pinnedMessages = useMemo(() => {
@@ -254,7 +247,7 @@ export function MediaPinsTab({ conversationId }: MediaPinsTabProps) {
         </Pressable>
         <ShareLinkModal
           visible={isModalVisible}
-          conversationId={conversationId}
+          conversationId={contextId}
           onClose={() => setIsModalVisible(false)}
         />
       </View>
@@ -367,7 +360,7 @@ export function MediaPinsTab({ conversationId }: MediaPinsTabProps) {
 
       <ShareLinkModal
         visible={isModalVisible}
-        conversationId={conversationId}
+        conversationId={contextId}
         onClose={() => setIsModalVisible(false)}
       />
     </View>

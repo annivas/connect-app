@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Group, Message, RSVPStatus, Poll, PollOption } from '../types';
+import { Group, Message, RSVPStatus, Poll, PollOption, Note, Reminder, LedgerEntry, SharedObject, DisappearingDuration, ScheduledMessage, GroupPairBalance } from '../types';
 import { groupsRepository } from '../services';
 import { supabase } from '../lib/supabase';
 import { config } from '../config/env';
@@ -71,6 +71,40 @@ interface GroupsState {
   toggleStarGroupMessage: (groupId: string, messageId: string) => void;
   togglePinGroupMessage: (groupId: string, messageId: string) => void;
   forwardGroupMessage: (sourceGroupId: string, messageId: string, targetConvIds: string[], senderId: string) => void;
+
+  // ─── NEW: Feature parity with 1-on-1 chats ──────
+
+  // Typing indicators (per group -> user IDs typing)
+  typingUsers: Record<string, string[]>;
+
+  // Scheduled messages
+  scheduledMessages: ScheduledMessage[];
+  scheduleGroupMessage: (groupId: string, content: string, scheduledFor: Date) => void;
+  cancelGroupScheduledMessage: (messageId: string) => void;
+
+  // Notes CRUD
+  createGroupNote: (groupId: string, note: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  deleteGroupNote: (groupId: string, noteId: string) => void;
+
+  // Reminders CRUD
+  createGroupReminder: (groupId: string, reminder: Omit<Reminder, 'id' | 'createdAt'>) => void;
+  toggleGroupReminderComplete: (groupId: string, reminderId: string) => void;
+
+  // Ledger CRUD
+  createGroupLedgerEntry: (groupId: string, entry: Omit<LedgerEntry, 'id'>) => void;
+  settleGroupLedgerEntry: (groupId: string, entryId: string) => void;
+  getGroupPairBalances: (groupId: string) => GroupPairBalance[];
+
+  // Shared objects
+  addGroupSharedObject: (groupId: string, obj: Omit<SharedObject, 'id' | 'sharedAt'>) => void;
+
+  // List operations
+  toggleGroupArchive: (groupId: string) => void;
+  markGroupAsUnread: (groupId: string) => void;
+  markGroupAsRead: (groupId: string) => void;
+
+  // Disappearing messages
+  setGroupDisappearingDuration: (groupId: string, duration: DisappearingDuration) => void;
 }
 
 export const useGroupsStore = create<GroupsState>((set, get) => ({
@@ -84,6 +118,8 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
   _channel: null,
   eventSpaceMessages: {},
   groupPolls: {},
+  typingUsers: {},
+  scheduledMessages: [],
 
   init: async () => {
     set({ isLoading: true, error: null });
@@ -826,18 +862,48 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
   // ─── Star / Pin / Forward for group messages ────
 
   toggleStarGroupMessage: (groupId, messageId) => {
+    const msg = get().groupMessages.find((m) => m.id === messageId);
+    const willStar = !msg?.isStarred;
     set((state) => ({
       groupMessages: state.groupMessages.map((m) =>
-        m.id === messageId ? { ...m, isStarred: !m.isStarred } : m,
+        m.id === messageId ? { ...m, isStarred: willStar } : m,
       ),
+      groups: state.groups.map((g) => {
+        if (g.id !== groupId || !g.metadata) return g;
+        const starred = g.metadata.starredMessages ?? [];
+        return {
+          ...g,
+          metadata: {
+            ...g.metadata,
+            starredMessages: willStar
+              ? [...starred, messageId]
+              : starred.filter((id) => id !== messageId),
+          },
+        };
+      }),
     }));
   },
 
   togglePinGroupMessage: (groupId, messageId) => {
+    const msg = get().groupMessages.find((m) => m.id === messageId);
+    const willPin = !msg?.isPinned;
     set((state) => ({
       groupMessages: state.groupMessages.map((m) =>
-        m.id === messageId ? { ...m, isPinned: !m.isPinned } : m,
+        m.id === messageId ? { ...m, isPinned: willPin } : m,
       ),
+      groups: state.groups.map((g) => {
+        if (g.id !== groupId || !g.metadata) return g;
+        const pinned = g.metadata.pinnedMessages ?? [];
+        return {
+          ...g,
+          metadata: {
+            ...g.metadata,
+            pinnedMessages: willPin
+              ? [...pinned, messageId]
+              : pinned.filter((id) => id !== messageId),
+          },
+        };
+      }),
     }));
   },
 
@@ -879,5 +945,216 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         ),
       }));
     }
+  },
+
+  // ─── NEW: Feature parity actions ──────────────────
+
+  // Scheduled messages
+  scheduleGroupMessage: (groupId, content, scheduledFor) => {
+    const { useUserStore } = require('./useUserStore');
+    const currentUserId = useUserStore.getState().currentUser?.id ?? 'unknown';
+    const scheduled: ScheduledMessage = {
+      id: `gsched-${Date.now()}`,
+      conversationId: groupId,
+      groupId,
+      content,
+      scheduledFor,
+      createdAt: new Date(),
+      status: 'pending',
+    };
+    set((state) => ({
+      scheduledMessages: [...state.scheduledMessages, scheduled],
+    }));
+  },
+
+  cancelGroupScheduledMessage: (messageId) => {
+    set((state) => ({
+      scheduledMessages: state.scheduledMessages.map((m) =>
+        m.id === messageId ? { ...m, status: 'cancelled' as const } : m,
+      ),
+    }));
+  },
+
+  // Notes
+  createGroupNote: (groupId, noteData) => {
+    const newNote: Note = {
+      ...noteData,
+      id: `gnote-${Date.now()}`,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    set((state) => ({
+      groups: state.groups.map((g) => {
+        if (g.id !== groupId) return g;
+        const metadata = g.metadata ?? {
+          sharedObjects: [], notes: [], reminders: [], ledgerEntries: [],
+          ledgerBalance: 0, pinnedMessages: [], starredMessages: [], callHistory: [],
+        };
+        return { ...g, metadata: { ...metadata, notes: [...metadata.notes, newNote] } };
+      }),
+    }));
+  },
+
+  deleteGroupNote: (groupId, noteId) => {
+    set((state) => ({
+      groups: state.groups.map((g) => {
+        if (g.id !== groupId || !g.metadata) return g;
+        return {
+          ...g,
+          metadata: { ...g.metadata, notes: g.metadata.notes.filter((n) => n.id !== noteId) },
+        };
+      }),
+    }));
+  },
+
+  // Reminders
+  createGroupReminder: (groupId, reminderData) => {
+    const newReminder: Reminder = {
+      ...reminderData,
+      id: `grem-${Date.now()}`,
+      createdAt: new Date(),
+    };
+    set((state) => ({
+      groups: state.groups.map((g) => {
+        if (g.id !== groupId) return g;
+        const metadata = g.metadata ?? {
+          sharedObjects: [], notes: [], reminders: [], ledgerEntries: [],
+          ledgerBalance: 0, pinnedMessages: [], starredMessages: [], callHistory: [],
+        };
+        return { ...g, metadata: { ...metadata, reminders: [...metadata.reminders, newReminder] } };
+      }),
+    }));
+  },
+
+  toggleGroupReminderComplete: (groupId, reminderId) => {
+    set((state) => ({
+      groups: state.groups.map((g) => {
+        if (g.id !== groupId || !g.metadata) return g;
+        return {
+          ...g,
+          metadata: {
+            ...g.metadata,
+            reminders: g.metadata.reminders.map((r) =>
+              r.id === reminderId ? { ...r, isCompleted: !r.isCompleted } : r,
+            ),
+          },
+        };
+      }),
+    }));
+  },
+
+  // Ledger
+  createGroupLedgerEntry: (groupId, entryData) => {
+    const newEntry: LedgerEntry = {
+      ...entryData,
+      id: `gled-${Date.now()}`,
+    };
+    set((state) => ({
+      groups: state.groups.map((g) => {
+        if (g.id !== groupId) return g;
+        const metadata = g.metadata ?? {
+          sharedObjects: [], notes: [], reminders: [], ledgerEntries: [],
+          ledgerBalance: 0, pinnedMessages: [], starredMessages: [], callHistory: [],
+        };
+        return { ...g, metadata: { ...metadata, ledgerEntries: [...metadata.ledgerEntries, newEntry] } };
+      }),
+    }));
+  },
+
+  settleGroupLedgerEntry: (groupId, entryId) => {
+    set((state) => ({
+      groups: state.groups.map((g) => {
+        if (g.id !== groupId || !g.metadata) return g;
+        return {
+          ...g,
+          metadata: {
+            ...g.metadata,
+            ledgerEntries: g.metadata.ledgerEntries.map((e) =>
+              e.id === entryId ? { ...e, isSettled: true } : e,
+            ),
+          },
+        };
+      }),
+    }));
+  },
+
+  getGroupPairBalances: (groupId) => {
+    const group = get().groups.find((g) => g.id === groupId);
+    const entries = group?.metadata?.ledgerEntries ?? [];
+    const unsettled = entries.filter((e) => !e.isSettled);
+
+    // Build net balance map: key = "userId1|userId2" (sorted), value = amount userId1 is owed
+    const balanceMap: Record<string, number> = {};
+
+    for (const entry of unsettled) {
+      const perPerson = entry.amount / entry.splitBetween.length;
+      for (const memberId of entry.splitBetween) {
+        if (memberId === entry.paidBy) continue;
+        // memberId owes paidBy
+        const key = [entry.paidBy, memberId].sort().join('|');
+        const sign = entry.paidBy < memberId ? 1 : -1;
+        balanceMap[key] = (balanceMap[key] ?? 0) + perPerson * sign;
+      }
+    }
+
+    return Object.entries(balanceMap)
+      .filter(([, amount]) => Math.abs(amount) > 0.01)
+      .map(([key, amount]) => {
+        const [userId1, userId2] = key.split('|');
+        return { userId1, userId2, amount };
+      });
+  },
+
+  // Shared objects
+  addGroupSharedObject: (groupId, objData) => {
+    const newObj: SharedObject = {
+      ...objData,
+      id: `gso-${Date.now()}`,
+      sharedAt: new Date(),
+    };
+    set((state) => ({
+      groups: state.groups.map((g) => {
+        if (g.id !== groupId) return g;
+        const metadata = g.metadata ?? {
+          sharedObjects: [], notes: [], reminders: [], ledgerEntries: [],
+          ledgerBalance: 0, pinnedMessages: [], starredMessages: [], callHistory: [],
+        };
+        return { ...g, metadata: { ...metadata, sharedObjects: [...metadata.sharedObjects, newObj] } };
+      }),
+    }));
+  },
+
+  // Archive / Unread
+  toggleGroupArchive: (groupId) => {
+    set((state) => ({
+      groups: state.groups.map((g) =>
+        g.id === groupId ? { ...g, isArchived: !g.isArchived } : g,
+      ),
+    }));
+  },
+
+  markGroupAsUnread: (groupId) => {
+    set((state) => ({
+      groups: state.groups.map((g) =>
+        g.id === groupId ? { ...g, isMarkedUnread: true, unreadCount: Math.max(g.unreadCount, 1) } : g,
+      ),
+    }));
+  },
+
+  markGroupAsRead: (groupId) => {
+    set((state) => ({
+      groups: state.groups.map((g) =>
+        g.id === groupId ? { ...g, isMarkedUnread: false, unreadCount: 0 } : g,
+      ),
+    }));
+  },
+
+  // Disappearing messages
+  setGroupDisappearingDuration: (groupId, duration) => {
+    set((state) => ({
+      groups: state.groups.map((g) =>
+        g.id === groupId ? { ...g, disappearingDuration: duration } : g,
+      ),
+    }));
   },
 }));

@@ -277,6 +277,8 @@ export interface CallEntry {
   startedAt: Date;
   endedAt?: Date;
   duration?: number;
+  isGroupCall?: boolean;
+  groupId?: string;
 }
 
 // ─── Trip ────────────────────────────────────
@@ -310,6 +312,18 @@ export type GroupType = 'general' | 'trip' | 'sports' | 'project';
 export interface GroupMetadata {
   sharedObjects: SharedObject[];
   notes: Note[];
+  reminders: Reminder[];
+  ledgerEntries: LedgerEntry[];
+  ledgerBalance: number;
+  pinnedMessages: string[];
+  starredMessages: string[];
+  callHistory: CallEntry[];
+}
+
+export interface GroupPairBalance {
+  userId1: string;
+  userId2: string;
+  amount: number; // positive = userId1 is owed by userId2
 }
 
 export interface Group {
@@ -327,6 +341,11 @@ export interface Group {
   lastActivity: Date;
   isPinned: boolean;
   isMuted: boolean;
+  isArchived?: boolean;
+  isMarkedUnread?: boolean;
+  unreadCount: number;
+  disappearingDuration?: DisappearingDuration;
+  lastMessage?: Message;
   metadata?: GroupMetadata;
 }
 
@@ -351,6 +370,7 @@ export interface Collection {
 export interface ScheduledMessage {
   id: string;
   conversationId: string;
+  groupId?: string;
   content: string;
   scheduledFor: Date;
   createdAt: Date;

@@ -1,4 +1,4 @@
-import { Group, SharedObject } from '../types';
+import { Group, SharedObject, Reminder, LedgerEntry, Note, CallEntry } from '../types';
 import { CURRENT_USER_ID } from './users';
 
 // ─── Group shared objects ────────────────────
@@ -113,6 +113,158 @@ const group2SharedObjects: SharedObject[] = [
   },
 ];
 
+// ─── Group reminders ────────────────────────
+
+const group1Reminders: Reminder[] = [
+  {
+    id: 'grem-1',
+    title: 'Book trail permits',
+    description: 'Dipsea Trail requires online reservation',
+    dueDate: new Date('2026-02-21T12:00:00'),
+    isCompleted: false,
+    createdBy: CURRENT_USER_ID,
+    assignedTo: [CURRENT_USER_ID],
+    createdAt: new Date('2026-02-18T10:00:00'),
+    priority: 'high',
+  },
+  {
+    id: 'grem-2',
+    title: 'Bring extra water bottles',
+    dueDate: new Date('2026-02-22T07:00:00'),
+    isCompleted: false,
+    createdBy: 'user-1',
+    assignedTo: ['user-1', 'user-2'],
+    createdAt: new Date('2026-02-19T14:00:00'),
+    priority: 'medium',
+  },
+  {
+    id: 'grem-3',
+    title: 'Pick board games for Saturday',
+    dueDate: new Date('2026-02-27T18:00:00'),
+    isCompleted: true,
+    createdBy: 'user-2',
+    assignedTo: ['user-2'],
+    createdAt: new Date('2026-02-16T09:00:00'),
+    priority: 'low',
+  },
+];
+
+const group2Reminders: Reminder[] = [
+  {
+    id: 'grem-4',
+    title: 'Apply for e-visa',
+    description: 'Japan Tourist Visa application',
+    dueDate: new Date('2026-03-15T23:59:00'),
+    isCompleted: false,
+    createdBy: 'user-3',
+    assignedTo: [CURRENT_USER_ID, 'user-3', 'user-4'],
+    createdAt: new Date('2026-02-10T11:00:00'),
+    priority: 'high',
+  },
+  {
+    id: 'grem-5',
+    title: 'Buy JR Pass',
+    dueDate: new Date('2026-03-20T12:00:00'),
+    isCompleted: false,
+    createdBy: CURRENT_USER_ID,
+    assignedTo: [CURRENT_USER_ID, 'user-4'],
+    createdAt: new Date('2026-02-12T09:00:00'),
+    priority: 'medium',
+  },
+];
+
+// ─── Group ledger entries ───────────────────
+
+const group1LedgerEntries: LedgerEntry[] = [
+  {
+    id: 'gled-1',
+    description: 'Trail snacks & supplies',
+    amount: 45.00,
+    paidBy: CURRENT_USER_ID,
+    splitBetween: [CURRENT_USER_ID, 'user-1', 'user-2', 'user-5'],
+    category: 'Food',
+    date: new Date('2026-02-19T10:00:00'),
+    isSettled: false,
+  },
+  {
+    id: 'gled-2',
+    description: 'Gas for carpool',
+    amount: 30.00,
+    paidBy: 'user-1',
+    splitBetween: [CURRENT_USER_ID, 'user-1', 'user-5'],
+    category: 'Transport',
+    date: new Date('2026-02-15T08:00:00'),
+    isSettled: false,
+  },
+  {
+    id: 'gled-3',
+    description: 'Pizza for game night',
+    amount: 60.00,
+    paidBy: 'user-2',
+    splitBetween: [CURRENT_USER_ID, 'user-1', 'user-2', 'user-5'],
+    category: 'Food',
+    date: new Date('2026-02-14T20:00:00'),
+    isSettled: true,
+  },
+];
+
+const group2LedgerEntries: LedgerEntry[] = [
+  {
+    id: 'gled-4',
+    description: 'Airbnb deposit - Shibuya',
+    amount: 450.00,
+    paidBy: 'user-3',
+    splitBetween: [CURRENT_USER_ID, 'user-3', 'user-4'],
+    category: 'Accommodation',
+    date: new Date('2026-02-10T14:00:00'),
+    isSettled: false,
+  },
+  {
+    id: 'gled-5',
+    description: 'TeamLab Borderless tickets',
+    amount: 90.00,
+    paidBy: CURRENT_USER_ID,
+    splitBetween: [CURRENT_USER_ID, 'user-3', 'user-4'],
+    category: 'Entertainment',
+    date: new Date('2026-02-14T15:00:00'),
+    isSettled: false,
+  },
+];
+
+// ─── Group call history ─────────────────────
+
+const group1CallHistory: CallEntry[] = [
+  {
+    id: 'gcall-1',
+    conversationId: 'group-1',
+    callerId: CURRENT_USER_ID,
+    receiverIds: ['user-1', 'user-2', 'user-5'],
+    type: 'voice',
+    status: 'answered',
+    startedAt: new Date('2026-02-19T19:00:00'),
+    endedAt: new Date('2026-02-19T19:25:00'),
+    duration: 1500,
+    isGroupCall: true,
+    groupId: 'group-1',
+  },
+];
+
+// ─── Group notes ────────────────────────────
+
+const group1Notes: Note[] = [
+  {
+    id: 'gnote-1',
+    title: 'Packing list for hikes',
+    content: 'Water, sunscreen, trail mix, first aid kit, hat, hiking boots',
+    color: '#D4764E',
+    createdBy: 'user-1',
+    createdAt: new Date('2026-02-17T10:00:00'),
+    updatedAt: new Date('2026-02-17T10:00:00'),
+    isPrivate: false,
+    tags: ['essentials'],
+  },
+];
+
 export const MOCK_GROUPS: Group[] = [
   {
     id: 'group-1',
@@ -127,6 +279,16 @@ export const MOCK_GROUPS: Group[] = [
     lastActivity: new Date('2026-02-20T11:00:00'),
     isPinned: true,
     isMuted: false,
+    unreadCount: 3,
+    lastMessage: {
+      id: 'glm-1',
+      conversationId: 'group-1',
+      senderId: 'user-1',
+      content: 'Who is bringing the trail mix?',
+      timestamp: new Date('2026-02-20T11:00:00'),
+      type: 'text',
+      isRead: false,
+    },
     events: [
       {
         id: 'event-1',
@@ -160,7 +322,16 @@ export const MOCK_GROUPS: Group[] = [
         ],
       },
     ],
-    metadata: { sharedObjects: group1SharedObjects, notes: [] },
+    metadata: {
+      sharedObjects: group1SharedObjects,
+      notes: group1Notes,
+      reminders: group1Reminders,
+      ledgerEntries: group1LedgerEntries,
+      ledgerBalance: 0,
+      pinnedMessages: [],
+      starredMessages: [],
+      callHistory: group1CallHistory,
+    },
   },
   {
     id: 'group-2',
@@ -175,6 +346,16 @@ export const MOCK_GROUPS: Group[] = [
     lastActivity: new Date('2026-02-19T20:00:00'),
     isPinned: false,
     isMuted: false,
+    unreadCount: 0,
+    lastMessage: {
+      id: 'glm-2',
+      conversationId: 'group-2',
+      senderId: 'user-3',
+      content: 'Found a great ramen place near the hotel!',
+      timestamp: new Date('2026-02-19T20:00:00'),
+      type: 'text',
+      isRead: true,
+    },
     trip: {
       id: 'trip-1',
       groupId: 'group-2',
@@ -233,7 +414,16 @@ export const MOCK_GROUPS: Group[] = [
         },
       ],
     },
-    metadata: { sharedObjects: group2SharedObjects, notes: [] },
+    metadata: {
+      sharedObjects: group2SharedObjects,
+      notes: [],
+      reminders: group2Reminders,
+      ledgerEntries: group2LedgerEntries,
+      ledgerBalance: 0,
+      pinnedMessages: [],
+      starredMessages: [],
+      callHistory: [],
+    },
   },
   {
     id: 'group-3',
@@ -248,6 +438,16 @@ export const MOCK_GROUPS: Group[] = [
     lastActivity: new Date('2026-02-18T21:00:00'),
     isPinned: false,
     isMuted: false,
+    unreadCount: 1,
+    lastMessage: {
+      id: 'glm-3',
+      conversationId: 'group-3',
+      senderId: 'user-5',
+      content: 'Game on for Thursday!',
+      timestamp: new Date('2026-02-18T21:00:00'),
+      type: 'text',
+      isRead: false,
+    },
     events: [
       {
         id: 'event-3',
@@ -265,6 +465,15 @@ export const MOCK_GROUPS: Group[] = [
         ],
       },
     ],
-    metadata: { sharedObjects: [], notes: [] },
+    metadata: {
+      sharedObjects: [],
+      notes: [],
+      reminders: [],
+      ledgerEntries: [],
+      ledgerBalance: 0,
+      pinnedMessages: [],
+      starredMessages: [],
+      callHistory: [],
+    },
   },
 ];
