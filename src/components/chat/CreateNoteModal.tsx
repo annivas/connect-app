@@ -2,17 +2,18 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Modal, Pressable, Switch, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useMessagesStore } from '../../stores/useMessagesStore';
+import type { Note } from '../../types';
 
 interface Props {
   visible: boolean;
-  conversationId: string;
+  conversationId?: string;
   onClose: () => void;
+  onSave?: (note: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>) => void;
 }
 
 const NOTE_COLORS = ['#D4764E', '#C2956B', '#5B8EC9', '#2D9F6F', '#D4964E', '#C94F4F'];
 
-export function CreateNoteModal({ visible, conversationId, onClose }: Props) {
+export function CreateNoteModal({ visible, onClose, onSave }: Props) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [color, setColor] = useState(NOTE_COLORS[0]);
@@ -40,11 +41,12 @@ export function CreateNoteModal({ visible, conversationId, onClose }: Props) {
     setIsSaving(true);
 
     try {
-      await useMessagesStore.getState().createNote(conversationId, {
+      await onSave?.({
         title: title.trim(),
         content: content.trim(),
         color,
         isPrivate,
+        createdBy: '',
       });
       reset();
       onClose();

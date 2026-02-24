@@ -2,16 +2,19 @@ import React, { useState } from 'react';
 import { View, Text, FlatList, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
-import { useShallow } from 'zustand/react/shallow';
 import * as Haptics from 'expo-haptics';
 import { Card } from '../ui/Card';
 import { EmptyState } from '../ui/EmptyState';
+import { Avatar } from '../ui/Avatar';
 import { CreateReminderModal } from './CreateReminderModal';
-import { Reminder } from '../../types';
-import { useMessagesStore } from '../../stores/useMessagesStore';
+import { useUserStore } from '../../stores/useUserStore';
+import type { Reminder, User } from '../../types';
 
 interface Props {
-  conversationId: string;
+  reminders: Reminder[];
+  onToggleComplete: (reminderId: string) => void;
+  onCreateReminder: (reminder: Omit<Reminder, 'id' | 'createdAt'>) => void;
+  members?: User[];
 }
 
 const priorityColors = {
@@ -20,16 +23,13 @@ const priorityColors = {
   high: '#C94F4F',
 };
 
-export function RemindersTab({ conversationId }: Props) {
+export function RemindersTab({ reminders, onToggleComplete, onCreateReminder, members }: Props) {
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const conversation = useMessagesStore(
-    useShallow((s) => s.getConversationById(conversationId))
-  );
-  const reminders = conversation?.metadata?.reminders ?? [];
+  const getUserById = useUserStore((s) => s.getUserById);
 
   const handleToggle = (reminderId: string) => {
     Haptics.selectionAsync();
-    useMessagesStore.getState().toggleReminderComplete(conversationId, reminderId);
+    onToggleComplete(reminderId);
   };
 
   const handleFABPress = () => {
@@ -48,8 +48,9 @@ export function RemindersTab({ conversationId }: Props) {
         <FAB onPress={handleFABPress} />
         <CreateReminderModal
           visible={isModalVisible}
-          conversationId={conversationId}
           onClose={() => setIsModalVisible(false)}
+          onSave={onCreateReminder}
+          members={members}
         />
       </View>
     );
@@ -96,6 +97,23 @@ export function RemindersTab({ conversationId }: Props) {
                 <Text className="text-text-tertiary text-xs mt-1">
                   {format(item.dueDate, 'MMM d, yyyy · HH:mm')}
                 </Text>
+                {item.assignedTo && item.assignedTo.length > 0 && members && (
+                  <View className="flex-row items-center mt-1.5">
+                    {item.assignedTo.slice(0, 4).map((userId) => {
+                      const user = getUserById(userId);
+                      return user ? (
+                        <View key={userId} className="-mr-1">
+                          <Avatar uri={user.avatar} size="sm" />
+                        </View>
+                      ) : null;
+                    })}
+                    {item.assignedTo.length > 4 && (
+                      <Text className="text-text-tertiary text-[10px] ml-2">
+                        +{item.assignedTo.length - 4}
+                      </Text>
+                    )}
+                  </View>
+                )}
                 {item.linkedMessageId && (
                   <View className="flex-row items-center mt-1.5">
                     <Ionicons name="chatbubble-outline" size={11} color="#D4764E" />
@@ -112,8 +130,9 @@ export function RemindersTab({ conversationId }: Props) {
       <FAB onPress={handleFABPress} />
       <CreateReminderModal
         visible={isModalVisible}
-        conversationId={conversationId}
         onClose={() => setIsModalVisible(false)}
+        onSave={onCreateReminder}
+        members={members}
       />
     </View>
   );

@@ -2,12 +2,15 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Modal, Pressable, ScrollView, ActivityIndicator } from 'react-native';
 import { parse, isValid } from 'date-fns';
 import * as Haptics from 'expo-haptics';
-import { useMessagesStore } from '../../stores/useMessagesStore';
+import { MemberAssignmentPicker } from '../groups/MemberAssignmentPicker';
+import type { Reminder, User } from '../../types';
 
 interface Props {
   visible: boolean;
-  conversationId: string;
+  conversationId?: string;
   onClose: () => void;
+  onSave?: (reminder: Omit<Reminder, 'id' | 'createdAt'>) => void;
+  members?: User[];
 }
 
 type Priority = 'low' | 'medium' | 'high';
@@ -18,13 +21,14 @@ const PRIORITIES: { value: Priority; label: string; color: string }[] = [
   { value: 'high', label: 'High', color: '#C94F4F' },
 ];
 
-export function CreateReminderModal({ visible, conversationId, onClose }: Props) {
+export function CreateReminderModal({ visible, onClose, onSave, members }: Props) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dateText, setDateText] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
   const [isSaving, setIsSaving] = useState(false);
   const [dateError, setDateError] = useState('');
+  const [assignedTo, setAssignedTo] = useState<string[]>([]);
 
   const parsedDate = parse(dateText, 'yyyy-MM-dd HH:mm', new Date());
   const isDateValid = dateText.length > 0 && isValid(parsedDate);
@@ -37,6 +41,7 @@ export function CreateReminderModal({ visible, conversationId, onClose }: Props)
     setPriority('medium');
     setIsSaving(false);
     setDateError('');
+    setAssignedTo([]);
   };
 
   const handleCancel = () => {
@@ -58,11 +63,14 @@ export function CreateReminderModal({ visible, conversationId, onClose }: Props)
     setIsSaving(true);
 
     try {
-      await useMessagesStore.getState().createReminder(conversationId, {
+      await onSave?.({
         title: title.trim(),
         description: description.trim() || undefined,
-        dueDate: parsedDate.toISOString(),
+        dueDate: parsedDate,
         priority,
+        isCompleted: false,
+        createdBy: '',
+        assignedTo: assignedTo.length > 0 ? assignedTo : undefined,
       });
       reset();
       onClose();
@@ -183,6 +191,20 @@ export function CreateReminderModal({ visible, conversationId, onClose }: Props)
               );
             })}
           </View>
+
+          {/* Assign To (group mode only) */}
+          {members && members.length > 0 && (
+            <MemberAssignmentPicker
+              members={members}
+              selectedIds={assignedTo}
+              onToggle={(userId) =>
+                setAssignedTo((prev) =>
+                  prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+                )
+              }
+              label="ASSIGN TO"
+            />
+          )}
         </ScrollView>
       </View>
     </Modal>

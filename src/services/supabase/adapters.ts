@@ -276,9 +276,16 @@ export function adaptGroup(data: GroupAssemblyData): Group {
     lastActivity: new Date(data.group.last_activity),
     isPinned: data.isPinned,
     isMuted: data.isMuted,
+    unreadCount: 0,
     metadata: {
       sharedObjects: data.sharedObjects,
       notes: data.notes,
+      reminders: [],
+      ledgerEntries: [],
+      ledgerBalance: 0,
+      pinnedMessages: [],
+      starredMessages: [],
+      callHistory: [],
     },
   };
 }

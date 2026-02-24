@@ -2,37 +2,34 @@ import React, { useState } from 'react';
 import { View, Text, FlatList, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
-import { useShallow } from 'zustand/react/shallow';
 import * as Haptics from 'expo-haptics';
 import { Card } from '../ui/Card';
 import { EmptyState } from '../ui/EmptyState';
 import { CreateExpenseModal } from './CreateExpenseModal';
-import { LedgerEntry } from '../../types';
-import { useMessagesStore } from '../../stores/useMessagesStore';
+import type { LedgerEntry, User, GroupPairBalance } from '../../types';
 import { useUserStore } from '../../stores/useUserStore';
 
 interface Props {
-  conversationId: string;
+  mode: 'conversation' | 'group';
+  entries: LedgerEntry[];
+  // 1-on-1 mode
+  balance?: number;
+  otherUser?: User | null;
+  // Group mode
+  pairBalances?: GroupPairBalance[];
+  members?: User[];
+  // Callbacks
+  onSettle: (entryId: string) => void;
+  onCreateEntry: (entry: Omit<LedgerEntry, 'id'>) => void;
 }
 
-export function LedgerTab({ conversationId }: Props) {
+export function LedgerTab({ mode, entries, balance = 0, otherUser, pairBalances, members, onSettle, onCreateEntry }: Props) {
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const conversation = useMessagesStore(
-    useShallow((s) => s.getConversationById(conversationId))
-  );
   const getUserById = useUserStore((s) => s.getUserById);
-
-  const entries = conversation?.metadata?.ledgerEntries ?? [];
-  const balance = conversation?.metadata?.ledgerBalance ?? 0;
-
-  const otherUserId = conversation?.participants.find(
-    (id) => id !== useUserStore.getState().currentUser?.id
-  );
-  const otherUser = otherUserId ? getUserById(otherUserId) : null;
 
   const handleSettle = (entryId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    useMessagesStore.getState().settleLedgerEntry(conversationId, entryId);
+    onSettle(entryId);
   };
 
   const handleFABPress = () => {
@@ -51,8 +48,9 @@ export function LedgerTab({ conversationId }: Props) {
         <FAB onPress={handleFABPress} />
         <CreateExpenseModal
           visible={isModalVisible}
-          conversationId={conversationId}
           onClose={() => setIsModalVisible(false)}
+          onSave={onCreateEntry}
+          members={members}
         />
       </View>
     );
@@ -60,22 +58,57 @@ export function LedgerTab({ conversationId }: Props) {
 
   return (
     <View className="flex-1 bg-background-primary">
-      {/* Balance card */}
-      <View className="m-4 rounded-2xl p-5 bg-accent-primary">
-        <Text className="text-white/80 text-sm font-medium mb-1">
-          Balance
-        </Text>
-        <Text className="text-white text-3xl font-bold">
-          ${Math.abs(balance).toFixed(2)}
-        </Text>
-        <Text className="text-white/70 text-sm mt-1">
-          {balance > 0
-            ? `${otherUser?.name} owes you`
-            : balance < 0
-              ? `You owe ${otherUser?.name}`
-              : "You're settled up"}
-        </Text>
-      </View>
+      {/* Balance card — conversation mode */}
+      {mode === 'conversation' && (
+        <View className="m-4 rounded-2xl p-5 bg-accent-primary">
+          <Text className="text-white/80 text-sm font-medium mb-1">
+            Balance
+          </Text>
+          <Text className="text-white text-3xl font-bold">
+            ${Math.abs(balance).toFixed(2)}
+          </Text>
+          <Text className="text-white/70 text-sm mt-1">
+            {balance > 0
+              ? `${otherUser?.name} owes you`
+              : balance < 0
+                ? `You owe ${otherUser?.name}`
+                : "You're settled up"}
+          </Text>
+        </View>
+      )}
+
+      {/* Group balances — group mode */}
+      {mode === 'group' && pairBalances && pairBalances.length > 0 && (
+        <View className="m-4 rounded-2xl p-4 bg-surface">
+          <Text className="text-text-primary font-semibold text-[15px] mb-3">
+            Group Balances
+          </Text>
+          {pairBalances.filter((pb) => pb.amount !== 0).map((pb) => {
+            const user1 = getUserById(pb.userId1);
+            const user2 = getUserById(pb.userId2);
+            const owedByName = pb.amount > 0 ? (user2?.name ?? 'Unknown') : (user1?.name ?? 'Unknown');
+            const owedToName = pb.amount > 0 ? (user1?.name ?? 'Unknown') : (user2?.name ?? 'Unknown');
+            return (
+              <View key={`${pb.userId1}-${pb.userId2}`} className="flex-row items-center justify-between py-2 border-b border-border-subtle">
+                <Text className="text-text-secondary text-[13px] flex-1">
+                  {owedByName} owes {owedToName}
+                </Text>
+                <Text className="text-accent-primary font-semibold text-[14px]">
+                  ${Math.abs(pb.amount).toFixed(2)}
+                </Text>
+              </View>
+            );
+          })}
+          {pairBalances.filter((pb) => pb.amount !== 0).length === 0 && (
+            <View className="items-center py-3">
+              <Ionicons name="checkmark-circle-outline" size={24} color="#2D9F6F" />
+              <Text className="text-status-success text-[13px] font-medium mt-1">
+                All settled up!
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
 
       {/* Entries */}
       <FlatList
@@ -139,8 +172,9 @@ export function LedgerTab({ conversationId }: Props) {
       <FAB onPress={handleFABPress} />
       <CreateExpenseModal
         visible={isModalVisible}
-        conversationId={conversationId}
         onClose={() => setIsModalVisible(false)}
+        onSave={onCreateEntry}
+        members={members}
       />
     </View>
   );

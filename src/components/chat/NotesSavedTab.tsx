@@ -3,12 +3,10 @@ import { View, Text, FlatList, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
-import { useShallow } from 'zustand/react/shallow';
 import * as Haptics from 'expo-haptics';
 import { Card } from '../ui/Card';
 import { EmptyState } from '../ui/EmptyState';
 import { CreateNoteModal } from './CreateNoteModal';
-import { useMessagesStore } from '../../stores/useMessagesStore';
 import { useUserStore } from '../../stores/useUserStore';
 import type { Note, Message } from '../../types';
 
@@ -130,23 +128,17 @@ function NoteCard({ note, onPress }: { note: Note; onPress: () => void }) {
 // ─── Main component ─────────────────────────
 
 interface NotesSavedTabProps {
-  conversationId: string;
+  notes: Note[];
+  starredMessageIds: string[];
+  allMessages: Message[];
+  onCreateNote: (note: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  onDeleteNote?: (noteId: string) => void;
 }
 
-export function NotesSavedTab({ conversationId }: NotesSavedTabProps) {
+export function NotesSavedTab({ notes, starredMessageIds, allMessages, onCreateNote }: NotesSavedTabProps) {
   const router = useRouter();
   const [activeSegment, setActiveSegment] = useState<Segment>('saved');
   const [isModalVisible, setIsModalVisible] = useState(false);
-
-  const conversation = useMessagesStore(
-    useShallow((s) => s.getConversationById(conversationId))
-  );
-  const allMessages = useMessagesStore(
-    useShallow((s) => s.getMessagesByConversationId(conversationId))
-  );
-
-  const notes = conversation?.metadata?.notes ?? [];
-  const starredMessageIds = conversation?.metadata?.starredMessages ?? [];
 
   // Resolve starred messages from the message list
   const starredMessages = useMemo(() => {
@@ -183,8 +175,8 @@ export function NotesSavedTab({ conversationId }: NotesSavedTabProps) {
         {activeSegment === 'notes' && <FAB onPress={handleFABPress} />}
         <CreateNoteModal
           visible={isModalVisible}
-          conversationId={conversationId}
           onClose={() => setIsModalVisible(false)}
+          onSave={onCreateNote}
         />
       </View>
     );
@@ -256,8 +248,8 @@ export function NotesSavedTab({ conversationId }: NotesSavedTabProps) {
 
       <CreateNoteModal
         visible={isModalVisible}
-        conversationId={conversationId}
         onClose={() => setIsModalVisible(false)}
+        onSave={onCreateNote}
       />
     </View>
   );

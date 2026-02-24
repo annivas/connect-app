@@ -8,14 +8,22 @@ import * as Clipboard from 'expo-clipboard';
 import { MessageBubble } from '../chat/MessageBubble';
 import { MessageInput } from '../chat/MessageInput';
 import { MessageContextMenu } from '../chat/MessageContextMenu';
+import { ForwardModal } from '../chat/ForwardModal';
+import { PinnedMessageBanner } from '../chat/PinnedMessageBanner';
+import { DisappearingMessagesBanner } from '../chat/DisappearingMessagesBanner';
+import { ScheduleMessageSheet } from '../chat/ScheduleMessageSheet';
+import { AttachmentSheet } from '../chat/AttachmentSheet';
+import { UnreadJumpButton } from '../chat/UnreadJumpButton';
 import { TypingIndicator } from '../chat/TypingIndicator';
+import { CallHistoryEntry } from '../call/CallHistoryEntry';
 import { EventSuggestionChip } from './EventSuggestionChip';
 import { CreateEventModal } from './CreateEventModal';
 import { useGroupsStore } from '../../stores/useGroupsStore';
 import { useUserStore } from '../../stores/useUserStore';
+import { useCallStore } from '../../stores/useCallStore';
 import { getImageGroup } from '../../utils/imageGrouping';
 import { detectEventHint } from '../../utils/eventDetection';
-import type { Message, GroupEvent } from '../../types';
+import type { Message, GroupEvent, CallEntry, DisappearingDuration } from '../../types';
 
 /**
  * Dynamically measure the Y position of the GroupChatTab container to get an
@@ -64,6 +72,67 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [suggestedEventTitle, setSuggestedEventTitle] = useState<string | undefined>();
 
+  // Forward modal
+  const [forwardMessage, setForwardMessage] = useState<Message | null>(null);
+
+  // Attachment sheet
+  const [showAttachmentSheet, setShowAttachmentSheet] = useState(false);
+
+  // Schedule message
+  const [showScheduleSheet, setShowScheduleSheet] = useState(false);
+  const [pendingScheduleText, setPendingScheduleText] = useState('');
+
+  // Unread jump button
+  const groupUnreadCount = useGroupsStore(
+    useShallow((s) => s.groups.find((g) => g.id === groupId)?.unreadCount ?? 0),
+  ) as number;
+  const [showUnreadJump, setShowUnreadJump] = useState(false);
+
+  // Disappearing messages
+  const disappearingDuration = useGroupsStore(
+    useShallow((s) => s.groups.find((g) => g.id === groupId)?.disappearingDuration ?? 'off'),
+  ) as DisappearingDuration;
+
+  // Pinned messages
+  const pinnedMessages = useMemo(
+    () => messages.filter((m) => m.isPinned),
+    [messages],
+  );
+
+  // Typing users
+  const typingUserIds = useGroupsStore(
+    useShallow((s) => s.typingUsers[groupId] ?? []),
+  );
+
+  // Call history for this group
+  const callHistory = useCallStore(
+    useShallow((s) => s.callHistory.filter((c) => c.groupId === groupId)),
+  );
+
+  // Merge messages and call history into a unified timeline
+  type TimelineItem =
+    | { kind: 'message'; data: Message }
+    | { kind: 'call'; data: CallEntry };
+
+  const invertedTimeline = useMemo(() => {
+    const timeline: TimelineItem[] = [
+      ...messages.map((m): TimelineItem => ({ kind: 'message', data: m })),
+      ...callHistory
+        .filter((c) => c.status !== 'ongoing')
+        .map((c): TimelineItem => ({ kind: 'call', data: c })),
+    ];
+    timeline.sort(
+      (a, b) =>
+        new Date(
+          a.kind === 'message' ? a.data.timestamp : a.data.startedAt,
+        ).getTime() -
+        new Date(
+          b.kind === 'message' ? b.data.timestamp : b.data.startedAt,
+        ).getTime(),
+    );
+    return timeline.reverse();
+  }, [messages, callHistory]);
+
   // Inverted FlatList needs newest-first order
   const invertedMessages = useMemo(() => [...messages].reverse(), [messages]);
 
@@ -77,6 +146,61 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
   // Load messages when entering the group chat
   useEffect(() => {
     useGroupsStore.getState().loadGroupMessages(groupId);
+  }, [groupId]);
+
+  // ─── Disappearing messages expiry timer ──────────────
+  useEffect(() => {
+    if (disappearingDuration === 'off') return;
+
+    const DURATION_MS: Record<string, number> = {
+      '30s': 30_000,
+      '5m': 5 * 60_000,
+      '1h': 60 * 60_000,
+      '24h': 24 * 60 * 60_000,
+      '7d': 7 * 24 * 60 * 60_000,
+    };
+
+    const checkInterval = setInterval(() => {
+      const now = Date.now();
+      const durationMs = DURATION_MS[disappearingDuration];
+      if (!durationMs) return;
+
+      const store = useGroupsStore.getState();
+      const currentMessages = store.getGroupMessages(groupId);
+
+      for (const msg of currentMessages) {
+        const msgAge = now - new Date(msg.timestamp).getTime();
+        if (msgAge > durationMs) {
+          store.deleteGroupMessage(groupId, msg.id);
+        }
+      }
+    }, 10_000);
+
+    return () => clearInterval(checkInterval);
+  }, [groupId, disappearingDuration]);
+
+  // ─── Scheduled messages timer ──────────────
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const store = useGroupsStore.getState();
+      const now = new Date();
+
+      for (const sched of store.scheduledMessages) {
+        if (
+          sched.status === 'pending' &&
+          sched.groupId === groupId &&
+          new Date(sched.scheduledFor) <= now
+        ) {
+          const userId = useUserStore.getState().currentUser?.id;
+          if (userId) {
+            store.sendGroupMessage(groupId, sched.content, userId);
+            store.cancelGroupScheduledMessage(sched.id);
+          }
+        }
+      }
+    }, 5_000);
+
+    return () => clearInterval(interval);
   }, [groupId]);
 
   const handleSend = (content: string) => {
@@ -143,7 +267,8 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
   };
 
   const handleContextMenuForward = () => {
-    // Forward modal will be wired in Phase 2C
+    if (!contextMenuMessage) return;
+    setForwardMessage(contextMenuMessage);
   };
 
   const handleContextMenuPin = () => {
@@ -178,7 +303,12 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
     ]);
   };
 
-  const handlePickImage = async () => {
+  // ─── Attachment handlers ──────────────
+  const handleOpenAttachments = () => {
+    setShowAttachmentSheet(true);
+  };
+
+  const handlePickPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Permission Required', 'Please allow access to your photo library to send images.');
@@ -201,6 +331,102 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
       type: 'image',
       metadata: { width: asset.width, height: asset.height },
     });
+  };
+
+  const handlePickCamera = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Please allow camera access to take photos.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets?.[0]) return;
+
+    const asset = result.assets[0];
+    const userId = useUserStore.getState().currentUser?.id;
+    if (!userId) return;
+
+    sendGroupMessage(groupId, asset.uri, userId, {
+      type: 'image',
+      metadata: { width: asset.width, height: asset.height },
+    });
+  };
+
+  const handlePickDocument = () => {
+    const userId = useUserStore.getState().currentUser?.id;
+    if (!userId) return;
+    sendGroupMessage(groupId, 'Project_Report.pdf', userId, {
+      type: 'file',
+      metadata: {
+        fileName: 'Project_Report.pdf',
+        fileSize: 2_456_000,
+        mimeType: 'application/pdf',
+        uri: 'mock://document.pdf',
+      },
+    });
+  };
+
+  const handleShareLocation = () => {
+    const userId = useUserStore.getState().currentUser?.id;
+    if (!userId) return;
+    sendGroupMessage(groupId, 'Shared location', userId, {
+      type: 'location',
+      metadata: {
+        latitude: 37.7749,
+        longitude: -122.4194,
+        address: '1 Market Street, San Francisco, CA 94105',
+        placeName: 'Ferry Building',
+        staticMapUrl: 'https://picsum.photos/seed/sf-map/300/150',
+      },
+    });
+  };
+
+  const handleShareContact = () => {
+    const userId = useUserStore.getState().currentUser?.id;
+    if (!userId) return;
+    sendGroupMessage(groupId, 'Shared contact', userId, {
+      type: 'contact',
+      metadata: {
+        name: 'Alex Rivera',
+        phone: '+1 (555) 123-4567',
+        email: 'alex@example.com',
+        avatar: 'https://picsum.photos/seed/contact/100',
+      },
+    });
+  };
+
+  // ─── Voice message handler ──────────────
+  const handleSendVoice = useCallback((data: { duration: number; waveformSamples: number[]; uri: string }) => {
+    const userId = useUserStore.getState().currentUser?.id;
+    if (!userId) return;
+    sendGroupMessage(groupId, '🎤 Voice message', userId, {
+      type: 'audio',
+      metadata: {
+        duration: data.duration,
+        waveformSamples: data.waveformSamples,
+        uri: data.uri,
+      },
+    });
+  }, [groupId, sendGroupMessage]);
+
+  // ─── Schedule message handlers ──────────────
+  const handleScheduleSend = (text: string) => {
+    setPendingScheduleText(text);
+    setShowScheduleSheet(true);
+  };
+
+  const handleConfirmSchedule = (date: Date) => {
+    if (!pendingScheduleText.trim()) return;
+    useGroupsStore.getState().scheduleGroupMessage(
+      groupId,
+      pendingScheduleText.trim(),
+      date,
+    );
+    setPendingScheduleText('');
   };
 
   const handleLoadMore = useCallback(() => {
@@ -234,40 +460,80 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
       className="flex-1"
       keyboardVerticalOffset={kbOffset}
     >
-      <FlatList
-        ref={listRef}
-        data={invertedMessages}
-        keyExtractor={(item) => item.id}
+      {/* Disappearing messages banner */}
+      <DisappearingMessagesBanner
+        duration={disappearingDuration}
+        onPress={() => {/* Sheet is opened from header menu */}}
+      />
+
+      {/* Pinned message banner */}
+      <PinnedMessageBanner
+        pinnedMessages={pinnedMessages}
+        onJumpToMessage={(messageId) => {
+          const index = invertedTimeline.findIndex(
+            (ti) => ti.kind === 'message' && ti.data.id === messageId,
+          );
+          if (index >= 0) {
+            listRef.current?.scrollToIndex({ index, animated: true });
+          }
+        }}
+      />
+
+      <FlatList<TimelineItem>
+        ref={listRef as React.RefObject<FlatList<TimelineItem>>}
+        data={invertedTimeline}
+        keyExtractor={(ti) =>
+          ti.kind === 'message' ? ti.data.id : `call-${ti.data.id}`
+        }
         inverted
-        renderItem={({ item, index }) => {
-          // In inverted list, index 0 = newest. We look at index+1 for the "next older" message.
-          // "previous" = the message that came BEFORE this one in time = invertedMessages[index + 1]
-          // "next" = the message that came AFTER this one in time = invertedMessages[index - 1]
-          const olderMsg = index < invertedMessages.length - 1 ? invertedMessages[index + 1] : null;
-          const newerMsg = index > 0 ? invertedMessages[index - 1] : null;
+        renderItem={({ item: ti, index }) => {
+          // ── Call history entry ──
+          if (ti.kind === 'call') {
+            return (
+              <CallHistoryEntry
+                entry={ti.data}
+                conversationId={groupId}
+              />
+            );
+          }
+
+          // ── Message bubble ──
+          const msg = ti.data;
+
+          // Find neighboring messages (skip call entries for grouping)
+          const findNeighborMsg = (dir: -1 | 1): Message | null => {
+            for (let i = index + dir; i >= 0 && i < invertedTimeline.length; i += dir) {
+              const neighbor = invertedTimeline[i];
+              if (neighbor.kind === 'message') return neighbor.data;
+            }
+            return null;
+          };
+          const olderMsg = findNeighborMsg(1);
+          const newerMsg = findNeighborMsg(-1);
 
           // Show date divider if this is the first message of the day
-          const showDateDivider = !olderMsg || !isSameDay(olderMsg.timestamp, item.timestamp);
+          const showDateDivider = !olderMsg || !isSameDay(olderMsg.timestamp, msg.timestamp);
 
           // Group consecutive messages from same sender within threshold
           const isFirstInGroup =
             !olderMsg ||
-            olderMsg.senderId !== item.senderId ||
-            differenceInMinutes(item.timestamp, olderMsg.timestamp) > GROUP_THRESHOLD_MINUTES ||
+            olderMsg.senderId !== msg.senderId ||
+            differenceInMinutes(msg.timestamp, olderMsg.timestamp) > GROUP_THRESHOLD_MINUTES ||
             showDateDivider;
 
           const isLastInGroup =
             !newerMsg ||
-            newerMsg.senderId !== item.senderId ||
-            differenceInMinutes(newerMsg.timestamp, item.timestamp) > GROUP_THRESHOLD_MINUTES;
+            newerMsg.senderId !== msg.senderId ||
+            differenceInMinutes(newerMsg.timestamp, msg.timestamp) > GROUP_THRESHOLD_MINUTES;
 
           // Photo grid: group consecutive images from same sender
-          const imgGroup = getImageGroup(invertedMessages, index);
+          const msgIndex = invertedMessages.indexOf(msg);
+          const imgGroup = msgIndex >= 0 ? getImageGroup(invertedMessages, msgIndex) : undefined;
           if (imgGroup && !imgGroup.isLeader) return null;
 
           return (
             <MessageBubble
-              message={item}
+              message={msg}
               showDateDivider={showDateDivider}
               isFirstInGroup={isFirstInGroup}
               isLastInGroup={isLastInGroup}
@@ -278,7 +544,7 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
               onReply={handleReply}
               onEdit={handleEdit}
               highlightText={highlightText}
-              isSearchMatch={matchingMessageIds?.has(item.id)}
+              isSearchMatch={matchingMessageIds?.has(msg.id)}
               onContextMenu={handleContextMenu}
               imageGroup={imgGroup?.isLeader ? imgGroup.images : undefined}
             />
@@ -292,6 +558,11 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="interactive"
         onScrollBeginDrag={() => setContextMenuMessage(null)}
+        onScroll={(e) => {
+          const y = e.nativeEvent.contentOffset.y;
+          setShowUnreadJump(y > 300 && groupUnreadCount > 0);
+        }}
+        scrollEventThrottle={200}
         ListHeaderComponent={
           eventHint ? (
             <EventSuggestionChip
@@ -311,10 +582,12 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
           ) : null
         }
       />
-      <TypingIndicator typingUserIds={[]} />
+      <TypingIndicator typingUserIds={typingUserIds} />
       <MessageInput
         onSend={handleSend}
-        onPickImage={handlePickImage}
+        onPickImage={handleOpenAttachments}
+        onScheduleSend={handleScheduleSend}
+        onSendVoice={handleSendVoice}
         replyTo={
           replyingTo
             ? {
@@ -331,6 +604,17 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
       {/* Safe area bottom padding so input sits above the home indicator */}
       <View style={{ height: insets.bottom }} className="bg-background-secondary" />
     </KeyboardAvoidingView>
+
+    {/* Unread jump button */}
+    {showUnreadJump && groupUnreadCount > 0 && (
+      <UnreadJumpButton
+        unreadCount={groupUnreadCount}
+        onPress={() => {
+          listRef.current?.scrollToEnd({ animated: true });
+          setShowUnreadJump(false);
+        }}
+      />
+    )}
 
     {/* Full-screen context menu overlay */}
     {contextMenuMessage && (
@@ -357,6 +641,37 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
         }
       />
     )}
+
+    {/* Forward modal */}
+    {forwardMessage && (
+      <ForwardModal
+        visible={!!forwardMessage}
+        message={forwardMessage}
+        sourceConversationId={groupId}
+        onClose={() => setForwardMessage(null)}
+      />
+    )}
+
+    {/* Schedule message sheet */}
+    <ScheduleMessageSheet
+      visible={showScheduleSheet}
+      onSchedule={handleConfirmSchedule}
+      onClose={() => {
+        setShowScheduleSheet(false);
+        setPendingScheduleText('');
+      }}
+    />
+
+    {/* Attachment sheet */}
+    <AttachmentSheet
+      visible={showAttachmentSheet}
+      onClose={() => setShowAttachmentSheet(false)}
+      onPickCamera={handlePickCamera}
+      onPickPhoto={handlePickPhoto}
+      onPickDocument={handlePickDocument}
+      onShareLocation={handleShareLocation}
+      onShareContact={handleShareContact}
+    />
 
     <CreateEventModal
       visible={showCreateEvent}
