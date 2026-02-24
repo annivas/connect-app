@@ -50,6 +50,7 @@ const conv1SharedObjects: SharedObject[] = [
     sharedBy: 'user-1',
     sharedAt: new Date('2026-02-16T22:15:00'),
     metadata: {
+      title: 'Midnight City',
       artist: 'M83',
       album: 'Hurry Up, We\'re Dreaming',
       albumArt: 'https://picsum.photos/seed/m83/200/200',
@@ -115,6 +116,7 @@ const conv2SharedObjects: SharedObject[] = [
     sharedBy: 'user-2',
     sharedAt: new Date('2026-02-17T21:00:00'),
     metadata: {
+      title: 'Electric Feel',
       artist: 'MGMT',
       album: 'Oracular Spectacular',
       albumArt: 'https://picsum.photos/seed/mgmt/200/200',
@@ -180,6 +182,7 @@ const conv5SharedObjects: SharedObject[] = [
     sharedBy: CURRENT_USER_ID,
     sharedAt: new Date('2026-02-14T20:00:00'),
     metadata: {
+      title: 'Bohemian Rhapsody',
       artist: 'Queen',
       album: 'A Night at the Opera',
       albumArt: 'https://picsum.photos/seed/queen/200/200',

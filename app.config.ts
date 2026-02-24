@@ -59,6 +59,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     supabaseAnonKey: process.env.SUPABASE_ANON_KEY ?? '',
     sentryDsn: process.env.SENTRY_DSN ?? '',
     googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY ?? '',
+    spotifyClientId: process.env.SPOTIFY_CLIENT_ID ?? '',
+    spotifyClientSecret: process.env.SPOTIFY_CLIENT_SECRET ?? '',
     useMocks: process.env.USE_MOCKS !== 'false',
     eas: {
       projectId: 'c77c992d-bdb2-410c-8091-07d0b9e5c7cb',

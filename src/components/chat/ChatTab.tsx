@@ -17,6 +17,7 @@ import { DisappearingMessagesBanner } from './DisappearingMessagesBanner';
 import { ScheduleMessageSheet } from './ScheduleMessageSheet';
 import { AttachmentSheet } from './AttachmentSheet';
 import { LocationPickerModal } from './LocationPickerModal';
+import { SpotifyPickerModal } from './SpotifyPickerModal';
 import { UnreadJumpButton } from './UnreadJumpButton';
 import { TypingIndicator } from './TypingIndicator';
 import { CallHistoryEntry } from '../call/CallHistoryEntry';
@@ -24,7 +25,7 @@ import { useMessagesStore } from '../../stores/useMessagesStore';
 import { useUserStore } from '../../stores/useUserStore';
 import { useCallStore } from '../../stores/useCallStore';
 import { getImageGroup } from '../../utils/imageGrouping';
-import type { Message, CallEntry, DisappearingDuration } from '../../types';
+import type { Message, CallEntry, DisappearingDuration, SongMetadata } from '../../types';
 
 /**
  * Dynamically measure the Y position of the ChatTab container to get an accurate
@@ -345,6 +346,23 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
         ...location,
         staticMapUrl: `https://maps.googleapis.com/maps/api/staticmap?center=${location.latitude},${location.longitude}&zoom=15&size=300x150&markers=color:red%7C${location.latitude},${location.longitude}&key=${apiKey}`,
       },
+    });
+  };
+
+  // ─── Song sharing ──────────────
+  const [showSpotifyPicker, setShowSpotifyPicker] = useState(false);
+
+  const handleShareSong = () => {
+    setShowSpotifyPicker(true);
+  };
+
+  const handleSongSelected = (song: SongMetadata) => {
+    const userId = useUserStore.getState().currentUser?.id;
+    if (!userId) return;
+
+    sendMessage(conversationId, `${song.title} by ${song.artist}`, userId, {
+      type: 'song',
+      metadata: { ...song },
     });
   };
 
@@ -687,6 +705,12 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
       onPickDocument={handlePickDocument}
       onShareLocation={handleShareLocation}
       onShareContact={handleShareContact}
+      onShareSong={handleShareSong}
+    />
+    <SpotifyPickerModal
+      visible={showSpotifyPicker}
+      onClose={() => setShowSpotifyPicker(false)}
+      onSelectSong={handleSongSelected}
     />
     <LocationPickerModal
       visible={showLocationPicker}
