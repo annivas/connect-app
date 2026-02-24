@@ -42,6 +42,41 @@ export const spacing = {
   '2xl': 48,
 } as const;
 
+export const darkColors = {
+  background: {
+    primary: '#1A1412',
+    secondary: '#221C18',
+    tertiary: '#2C241E',
+  },
+  surface: {
+    default: '#2C241E',
+    elevated: '#362E26',
+    hover: '#3E342A',
+  },
+  accent: {
+    primary: '#E0885E',
+    secondary: '#D4A87E',
+    tertiary: '#A0886E',
+  },
+  text: {
+    primary: '#F0E6DC',
+    secondary: '#BBA898',
+    tertiary: '#8A7A6C',
+    inverse: '#1A1412',
+  },
+  border: {
+    default: '#3E342A',
+    subtle: '#2C241E',
+    emphasis: '#504436',
+  },
+  status: {
+    success: '#3EB87F',
+    warning: '#E0A85E',
+    error: '#D96060',
+    info: '#6EA0D4',
+  },
+} as const;
+
 export const borderRadius = {
   sm: 8,
   md: 12,

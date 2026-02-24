@@ -52,6 +52,53 @@ export const MOCK_USERS: User[] = [
     status: 'online',
     statusMessage: 'Exploring the world',
   },
+  {
+    id: 'user-6',
+    name: 'Priya Patel',
+    username: '@priyap',
+    avatar: 'https://i.pravatar.cc/150?img=29',
+    status: 'online',
+    statusMessage: 'Reading between the lines',
+  },
+  {
+    id: 'user-7',
+    name: 'Marcus Johnson',
+    username: '@marcusj',
+    avatar: 'https://i.pravatar.cc/150?img=53',
+    status: 'away',
+    statusMessage: 'On a call',
+  },
+  {
+    id: 'user-8',
+    name: 'Emma Wilson',
+    username: '@emmaw',
+    avatar: 'https://i.pravatar.cc/150?img=44',
+    status: 'offline',
+  },
+  {
+    id: 'user-9',
+    name: 'Lucas Hernandez',
+    username: '@lucash',
+    avatar: 'https://i.pravatar.cc/150?img=60',
+    status: 'online',
+    statusMessage: 'Photography is life',
+  },
+  {
+    id: 'user-10',
+    name: 'Aisha Rahman',
+    username: '@aishar',
+    avatar: 'https://i.pravatar.cc/150?img=21',
+    status: 'online',
+    statusMessage: 'Creating magic',
+  },
+  {
+    id: 'user-11',
+    name: 'David Chang',
+    username: '@davidc',
+    avatar: 'https://i.pravatar.cc/150?img=8',
+    status: 'away',
+    statusMessage: 'Cooking something up',
+  },
 ];
 
 export const getUserById = (id: string): User | undefined =>

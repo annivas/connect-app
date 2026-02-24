@@ -97,7 +97,7 @@ export interface Message {
   replyTo?: MessageReplyTo;
   isEdited?: boolean;
   isRead: boolean;
-  sendStatus?: 'sending' | 'sent' | 'failed';
+  sendStatus?: 'sending' | 'sent' | 'delivered' | 'failed';
   isStarred?: boolean;
   isPinned?: boolean;
   forwardedFrom?: ForwardedFrom;

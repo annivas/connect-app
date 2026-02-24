@@ -11,14 +11,22 @@ interface NotificationSettings {
   reminderAlerts: boolean;
 }
 
+interface PrivacySettings {
+  showOnlineStatus: boolean;
+  readReceipts: boolean;
+  typingIndicators: boolean;
+}
+
 interface SettingsState {
   theme: 'dark' | 'light' | 'system';
   accentColor: string;
   notifications: NotificationSettings;
+  privacy: PrivacySettings;
 
   setTheme: (theme: 'dark' | 'light' | 'system') => void;
   setAccentColor: (color: string) => void;
   updateNotification: (key: keyof NotificationSettings, value: boolean) => void;
+  updatePrivacy: (key: keyof PrivacySettings, value: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -34,12 +42,21 @@ export const useSettingsStore = create<SettingsState>()(
         groupNotifications: true,
         reminderAlerts: true,
       },
+      privacy: {
+        showOnlineStatus: true,
+        readReceipts: true,
+        typingIndicators: true,
+      },
 
       setTheme: (theme) => set({ theme }),
       setAccentColor: (accentColor) => set({ accentColor }),
       updateNotification: (key, value) =>
         set((state) => ({
           notifications: { ...state.notifications, [key]: value },
+        })),
+      updatePrivacy: (key, value) =>
+        set((state) => ({
+          privacy: { ...state.privacy, [key]: value },
         })),
     }),
     {

@@ -6,13 +6,13 @@ import {
   Modal,
   Pressable,
   ScrollView,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useGroupsStore } from '../../stores/useGroupsStore';
+import { useToastStore } from '../../stores/useToastStore';
 import type { Group, GroupType } from '../../types';
 
 interface Props {
@@ -70,7 +70,7 @@ export function EditGroupModal({ group, visible, onClose, onSaved }: Props) {
       onSaved();
       onClose();
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update group');
+      useToastStore.getState().show({ message: err instanceof Error ? err.message : 'Failed to update group', type: 'error' });
       setIsSaving(false);
     }
   };

@@ -129,14 +129,14 @@ export default function SettingsScreen() {
             icon="lock-closed-outline"
             title="Privacy"
             subtitle="Online status, read receipts"
-            disabled
+            onPress={() => router.push('/(tabs)/settings/privacy')}
           />
           <Divider />
           <SettingItem
             icon="cloud-outline"
             title="Storage & Data"
             subtitle="Manage cache and downloads"
-            disabled
+            onPress={() => router.push('/(tabs)/settings/storage')}
           />
         </View>
 
@@ -145,13 +145,13 @@ export default function SettingsScreen() {
           <SettingItem
             icon="help-circle-outline"
             title="Help & Support"
-            disabled
+            onPress={() => router.push('/(tabs)/settings/help')}
           />
           <Divider />
           <SettingItem
             icon="chatbubble-ellipses-outline"
             title="Send Feedback"
-            disabled
+            onPress={() => router.push('/(tabs)/settings/feedback')}
           />
           <Divider />
           <SettingItem

@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, View, Text, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { useToastStore } from '../../stores/useToastStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 import { isSameDay, differenceInMinutes } from 'date-fns';
@@ -316,7 +317,7 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
   const handlePickPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission Required', 'Please allow access to your photo library to send images.');
+      useToastStore.getState().show({ message: 'Please allow access to your photo library to send images.', type: 'warning' });
       return;
     }
 
@@ -341,7 +342,7 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
   const handlePickCamera = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission Required', 'Please allow camera access to take photos.');
+      useToastStore.getState().show({ message: 'Please allow camera access to take photos.', type: 'warning' });
       return;
     }
 
@@ -383,7 +384,7 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
         },
       });
     } catch {
-      Alert.alert('Error', 'Failed to pick document. Please try again.');
+      useToastStore.getState().show({ message: 'Failed to pick document. Please try again.', type: 'error' });
     }
   };
 
@@ -433,10 +434,7 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
     try {
       const { status } = await Contacts.requestPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(
-          'Permission Required',
-          'Please allow access to your contacts to share them.',
-        );
+        useToastStore.getState().show({ message: 'Please allow access to your contacts to share them.', type: 'warning' });
         return;
       }
 
@@ -459,7 +457,7 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
         },
       });
     } catch {
-      Alert.alert('Error', 'Failed to pick contact. Please try again.');
+      useToastStore.getState().show({ message: 'Failed to pick contact. Please try again.', type: 'error' });
     }
   };
 
@@ -642,12 +640,14 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
           isLoadingMore ? (
             <View className="py-3 items-center">
               <ActivityIndicator color="#D4764E" />
+              <Text className="text-text-tertiary text-xs mt-1.5">Loading earlier messages...</Text>
             </View>
           ) : null
         }
       />
       <TypingIndicator typingUserIds={typingUserIds} />
       <MessageInput
+        conversationId={groupId}
         onSend={handleSend}
         onPickImage={handleOpenAttachments}
         onScheduleSend={handleScheduleSend}

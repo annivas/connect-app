@@ -8,6 +8,7 @@ interface HomeState {
   error: string | null;
 
   init: () => Promise<void>;
+  reset: () => void;
 }
 
 export const useHomeStore = create<HomeState>((set) => ({
@@ -26,5 +27,9 @@ export const useHomeStore = create<HomeState>((set) => ({
         isLoading: false,
       });
     }
+  },
+
+  reset: () => {
+    set({ collections: [], isLoading: false, error: null });
   },
 }));
