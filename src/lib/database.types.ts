@@ -94,6 +94,9 @@ export type Database = {
       conversation_participants: {
         Row: {
           conversation_id: string
+          disappearing_duration: string | null
+          is_archived: boolean
+          is_marked_unread: boolean
           is_muted: boolean
           is_pinned: boolean
           joined_at: string
@@ -102,6 +105,9 @@ export type Database = {
         }
         Insert: {
           conversation_id: string
+          disappearing_duration?: string | null
+          is_archived?: boolean
+          is_marked_unread?: boolean
           is_muted?: boolean
           is_pinned?: boolean
           joined_at?: string
@@ -110,6 +116,9 @@ export type Database = {
         }
         Update: {
           conversation_id?: string
+          disappearing_duration?: string | null
+          is_archived?: boolean
+          is_marked_unread?: boolean
           is_muted?: boolean
           is_pinned?: boolean
           joined_at?: string
@@ -246,27 +255,39 @@ export type Database = {
       }
       group_members: {
         Row: {
+          disappearing_duration: string | null
           group_id: string
           is_admin: boolean
+          is_archived: boolean
+          is_marked_unread: boolean
           is_muted: boolean
           is_pinned: boolean
           joined_at: string
+          unread_count: number
           user_id: string
         }
         Insert: {
+          disappearing_duration?: string | null
           group_id: string
           is_admin?: boolean
+          is_archived?: boolean
+          is_marked_unread?: boolean
           is_muted?: boolean
           is_pinned?: boolean
           joined_at?: string
+          unread_count?: number
           user_id: string
         }
         Update: {
+          disappearing_duration?: string | null
           group_id?: string
           is_admin?: boolean
+          is_archived?: boolean
+          is_marked_unread?: boolean
           is_muted?: boolean
           is_pinned?: boolean
           joined_at?: string
+          unread_count?: number
           user_id?: string
         }
         Relationships: [
@@ -378,9 +399,10 @@ export type Database = {
         Row: {
           amount: number
           category: string | null
-          conversation_id: string
+          conversation_id: string | null
           date: string
           description: string
+          group_id: string | null
           id: string
           is_settled: boolean
           paid_by: string
@@ -389,9 +411,10 @@ export type Database = {
         Insert: {
           amount: number
           category?: string | null
-          conversation_id: string
+          conversation_id?: string | null
           date?: string
           description: string
+          group_id?: string | null
           id?: string
           is_settled?: boolean
           paid_by: string
@@ -400,9 +423,10 @@ export type Database = {
         Update: {
           amount?: number
           category?: string | null
-          conversation_id?: string
+          conversation_id?: string | null
           date?: string
           description?: string
+          group_id?: string | null
           id?: string
           is_settled?: boolean
           paid_by?: string
@@ -414,6 +438,13 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_entries_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
             referencedColumns: ["id"]
           },
           {
@@ -575,14 +606,63 @@ export type Database = {
         }
         Relationships: []
       }
+      polls: {
+        Row: {
+          created_at: string
+          created_by: string
+          group_id: string
+          id: string
+          is_closed: boolean
+          is_multiple_choice: boolean
+          options: Json
+          question: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          group_id: string
+          id?: string
+          is_closed?: boolean
+          is_multiple_choice?: boolean
+          options?: Json
+          question: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          group_id?: string
+          id?: string
+          is_closed?: boolean
+          is_multiple_choice?: boolean
+          options?: Json
+          question?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "polls_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "polls_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reminders: {
         Row: {
           assigned_to: string[] | null
-          conversation_id: string
+          conversation_id: string | null
           created_at: string
           created_by: string
           description: string | null
           due_date: string
+          group_id: string | null
           id: string
           is_completed: boolean
           priority: string
@@ -590,11 +670,12 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string[] | null
-          conversation_id: string
+          conversation_id?: string | null
           created_at?: string
           created_by: string
           description?: string | null
           due_date: string
+          group_id?: string | null
           id?: string
           is_completed?: boolean
           priority?: string
@@ -602,11 +683,12 @@ export type Database = {
         }
         Update: {
           assigned_to?: string[] | null
-          conversation_id?: string
+          conversation_id?: string | null
           created_at?: string
           created_by?: string
           description?: string | null
           due_date?: string
+          group_id?: string | null
           id?: string
           is_completed?: boolean
           priority?: string
@@ -618,6 +700,13 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reminders_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
             referencedColumns: ["id"]
           },
           {

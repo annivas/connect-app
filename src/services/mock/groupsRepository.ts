@@ -1,7 +1,7 @@
-import { Message, Group, RSVPStatus } from '../../types';
+import { Message, Group, RSVPStatus, Note, Reminder, LedgerEntry, SharedObject, SharedObjectType, Poll, DisappearingDuration, ItineraryItem, GroupEvent } from '../../types';
 import { MOCK_GROUPS } from '../../mocks/groups';
 import { MOCK_GROUP_MESSAGES } from '../../mocks/messages';
-import { IGroupsRepository, PaginationParams, CreateGroupInput, UpdateGroupInput } from '../types';
+import { IGroupsRepository, PaginationParams, CreateGroupInput, UpdateGroupInput, CreateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../types';
 
 let groups = [...MOCK_GROUPS];
 let groupMessages = [...MOCK_GROUP_MESSAGES];
@@ -183,4 +183,59 @@ export const mockGroupsRepository: IGroupsRepository = {
       (m) => m.conversationId === groupId && m.content.toLowerCase().includes(q),
     );
   },
+
+  // ─── Stub implementations for new interface methods ───
+
+  // Events
+  async createEvent(groupId: string, event: Omit<GroupEvent, 'id' | 'groupId' | 'createdBy' | 'attendees'>): Promise<GroupEvent> {
+    return { ...event, id: `evt-${Date.now()}`, groupId, createdBy: 'current-user', attendees: [] };
+  },
+
+  // Itinerary
+  async addItineraryItem(_tripId: string, item: Omit<ItineraryItem, 'id'>): Promise<ItineraryItem> {
+    return { ...item, id: `itin-${Date.now()}` };
+  },
+  async editItineraryItem(_itemId: string, _updates: Partial<ItineraryItem>): Promise<void> {},
+  async deleteItineraryItem(_itemId: string): Promise<void> {},
+
+  // Notes
+  async createNote(_groupId: string, input: CreateNoteInput): Promise<Note> {
+    return { id: `gnote-${Date.now()}`, title: input.title, content: input.content, color: input.color, isPrivate: input.isPrivate, createdBy: 'current-user', createdAt: new Date(), updatedAt: new Date() };
+  },
+  async deleteNote(_noteId: string): Promise<void> {},
+
+  // Reminders
+  async createReminder(_groupId: string, input: CreateReminderInput): Promise<Reminder> {
+    return { id: `grem-${Date.now()}`, title: input.title, description: input.description, dueDate: new Date(input.dueDate), isCompleted: false, createdBy: 'current-user', createdAt: new Date(), priority: input.priority };
+  },
+  async toggleReminderComplete(_reminderId: string): Promise<void> {},
+
+  // Ledger
+  async createLedgerEntry(_groupId: string, input: CreateLedgerEntryInput): Promise<LedgerEntry> {
+    return { id: `gled-${Date.now()}`, description: input.description, amount: input.amount, paidBy: input.paidBy, splitBetween: input.splitBetween, category: input.category, date: new Date(), isSettled: false };
+  },
+  async settleLedgerEntry(_entryId: string): Promise<void> {},
+
+  // Shared objects
+  async addSharedObject(_groupId: string, data: { type: SharedObjectType; title: string; description?: string; url?: string }): Promise<SharedObject> {
+    return { id: `gso-${Date.now()}`, type: data.type, title: data.title, description: data.description, url: data.url, sharedBy: 'current-user', sharedAt: new Date(), metadata: { url: data.url } as SharedObject['metadata'] };
+  },
+
+  // Polls
+  async createPoll(_groupId: string, question: string, options: string[], isMultipleChoice: boolean): Promise<Poll> {
+    return { id: `poll-${Date.now()}`, question, options: options.map((text, i) => ({ id: `opt-${i}`, text, voterIds: [] })), createdBy: 'current-user', createdAt: new Date(), isMultipleChoice, isClosed: false };
+  },
+  async votePoll(_pollId: string, _optionId: string): Promise<void> {},
+  async closePoll(_pollId: string): Promise<void> {},
+  async getPolls(_groupId: string): Promise<Poll[]> { return []; },
+
+  // Archive / Unread / Disappearing
+  async toggleArchive(_groupId: string): Promise<void> {},
+  async markAsUnread(_groupId: string): Promise<void> {},
+  async markAsRead(_groupId: string): Promise<void> {},
+  async setDisappearingDuration(_groupId: string, _duration: DisappearingDuration): Promise<void> {},
+
+  // Star / Pin
+  async toggleStarGroupMessage(_messageId: string, _isStarred: boolean): Promise<void> {},
+  async togglePinGroupMessage(_messageId: string, _isPinned: boolean): Promise<void> {},
 };

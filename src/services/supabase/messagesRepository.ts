@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase';
-import { Conversation, Message, MessageType, Note, Reminder, LedgerEntry } from '../../types';
+import { Conversation, Message, MessageType, Note, Reminder, LedgerEntry, SharedObject, SharedObjectType, DisappearingDuration } from '../../types';
 import { IMessagesRepository, PaginationParams, CreateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../types';
 import {
   adaptMessage,
@@ -115,6 +115,7 @@ export const supabaseMessagesRepository: IMessagesRepository = {
 
     const remindersByConv = new Map<string, typeof remindersResult.data>();
     for (const rem of remindersResult.data) {
+      if (!rem.conversation_id) continue;
       const existing = remindersByConv.get(rem.conversation_id) ?? [];
       existing.push(rem);
       remindersByConv.set(rem.conversation_id, existing);
@@ -122,6 +123,7 @@ export const supabaseMessagesRepository: IMessagesRepository = {
 
     const ledgerByConv = new Map<string, typeof ledgerResult.data>();
     for (const entry of ledgerResult.data) {
+      if (!entry.conversation_id) continue;
       const existing = ledgerByConv.get(entry.conversation_id) ?? [];
       existing.push(entry);
       ledgerByConv.set(entry.conversation_id, existing);
@@ -453,5 +455,140 @@ export const supabaseMessagesRepository: IMessagesRepository = {
 
     if (error) throw new Error(`Failed to search messages: ${error.message}`);
     return data.reverse().map(adaptMessage);
+  },
+
+  async toggleStarMessage(messageId: string, isStarred: boolean): Promise<void> {
+    // Store star state in message metadata JSONB
+    const { data, error: readError } = await supabase
+      .from('messages')
+      .select('metadata')
+      .eq('id', messageId)
+      .single();
+
+    if (readError) throw new Error(`Failed to read message: ${readError.message}`);
+
+    const meta = (data.metadata as Record<string, unknown>) ?? {};
+    const { error } = await supabase
+      .from('messages')
+      .update({ metadata: { ...meta, starred: isStarred } })
+      .eq('id', messageId);
+
+    if (error) throw new Error(`Failed to toggle star: ${error.message}`);
+  },
+
+  async togglePinMessage(messageId: string, isPinned: boolean): Promise<void> {
+    const { data, error: readError } = await supabase
+      .from('messages')
+      .select('metadata')
+      .eq('id', messageId)
+      .single();
+
+    if (readError) throw new Error(`Failed to read message: ${readError.message}`);
+
+    const meta = (data.metadata as Record<string, unknown>) ?? {};
+    const { error } = await supabase
+      .from('messages')
+      .update({ metadata: { ...meta, pinned: isPinned } })
+      .eq('id', messageId);
+
+    if (error) throw new Error(`Failed to toggle pin: ${error.message}`);
+  },
+
+  async forwardMessage(
+    targetConvId: string,
+    content: string,
+    senderId: string,
+    type: MessageType,
+    metadata: Record<string, unknown> | undefined,
+    forwardedFrom: Record<string, unknown>,
+  ): Promise<Message> {
+    const { data, error } = await supabase
+      .from('messages')
+      .insert({
+        context_type: 'conversation',
+        context_id: targetConvId,
+        sender_id: senderId,
+        content,
+        type,
+        metadata: { ...metadata, forwardedFrom } as any,
+        is_read: true,
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to forward message: ${error.message}`);
+
+    // Update conversation's updated_at
+    await supabase
+      .from('conversations')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', targetConvId);
+
+    return adaptMessage(data);
+  },
+
+  async toggleArchive(conversationId: string): Promise<void> {
+    const userId = getCurrentUserId();
+
+    const { data, error: readError } = await supabase
+      .from('conversation_participants')
+      .select('is_archived')
+      .eq('conversation_id', conversationId)
+      .eq('user_id', userId)
+      .single();
+
+    if (readError) throw new Error(`Failed to read archive state: ${readError.message}`);
+
+    const { error } = await supabase
+      .from('conversation_participants')
+      .update({ is_archived: !data.is_archived })
+      .eq('conversation_id', conversationId)
+      .eq('user_id', userId);
+
+    if (error) throw new Error(`Failed to toggle archive: ${error.message}`);
+  },
+
+  async markAsUnread(conversationId: string): Promise<void> {
+    const userId = getCurrentUserId();
+
+    const { error } = await supabase
+      .from('conversation_participants')
+      .update({ is_marked_unread: true, unread_count: 1 })
+      .eq('conversation_id', conversationId)
+      .eq('user_id', userId);
+
+    if (error) throw new Error(`Failed to mark as unread: ${error.message}`);
+  },
+
+  async setDisappearingDuration(conversationId: string, duration: DisappearingDuration): Promise<void> {
+    const userId = getCurrentUserId();
+
+    const { error } = await supabase
+      .from('conversation_participants')
+      .update({ disappearing_duration: duration })
+      .eq('conversation_id', conversationId)
+      .eq('user_id', userId);
+
+    if (error) throw new Error(`Failed to set disappearing duration: ${error.message}`);
+  },
+
+  async addSharedObject(conversationId: string, data: { type: SharedObjectType; title: string; description?: string; url?: string }): Promise<SharedObject> {
+    const userId = getCurrentUserId();
+
+    const { data: row, error } = await supabase
+      .from('shared_objects')
+      .insert({
+        conversation_id: conversationId,
+        type: data.type,
+        title: data.title,
+        description: data.description ?? null,
+        url: data.url ?? null,
+        shared_by: userId,
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to add shared object: ${error.message}`);
+    return adaptSharedObject(row);
   },
 };

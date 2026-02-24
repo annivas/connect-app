@@ -11,6 +11,7 @@ interface Props {
   onPickDocument: () => void;
   onShareLocation: () => void;
   onShareContact: () => void;
+  onShareSong?: () => void;
 }
 
 const ACTIONS = [
@@ -19,9 +20,10 @@ const ACTIONS = [
   { id: 'document', label: 'Document', icon: 'document-text' as const, color: '#5B8EC9', bg: 'bg-blue-500/15' },
   { id: 'location', label: 'Location', icon: 'location' as const, color: '#2D9F6F', bg: 'bg-green-500/15' },
   { id: 'contact', label: 'Contact', icon: 'person' as const, color: '#F59E0B', bg: 'bg-yellow-500/15' },
+  { id: 'song', label: 'Song', icon: 'musical-note' as const, color: '#1DB954', bg: 'bg-green-500/15' },
 ];
 
-export function AttachmentSheet({ visible, onClose, onPickCamera, onPickPhoto, onPickDocument, onShareLocation, onShareContact }: Props) {
+export function AttachmentSheet({ visible, onClose, onPickCamera, onPickPhoto, onPickDocument, onShareLocation, onShareContact, onShareSong }: Props) {
   const handleAction = (id: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onClose();
@@ -33,6 +35,7 @@ export function AttachmentSheet({ visible, onClose, onPickCamera, onPickPhoto, o
         case 'document': onPickDocument(); break;
         case 'location': onShareLocation(); break;
         case 'contact': onShareContact(); break;
+        case 'song': onShareSong?.(); break;
       }
     }, 150);
   };

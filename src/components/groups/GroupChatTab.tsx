@@ -18,6 +18,7 @@ import { DisappearingMessagesBanner } from '../chat/DisappearingMessagesBanner';
 import { ScheduleMessageSheet } from '../chat/ScheduleMessageSheet';
 import { AttachmentSheet } from '../chat/AttachmentSheet';
 import { LocationPickerModal } from '../chat/LocationPickerModal';
+import { SpotifyPickerModal } from '../chat/SpotifyPickerModal';
 import { UnreadJumpButton } from '../chat/UnreadJumpButton';
 import { TypingIndicator } from '../chat/TypingIndicator';
 import { CallHistoryEntry } from '../call/CallHistoryEntry';
@@ -28,7 +29,7 @@ import { useUserStore } from '../../stores/useUserStore';
 import { useCallStore } from '../../stores/useCallStore';
 import { getImageGroup } from '../../utils/imageGrouping';
 import { detectEventHint } from '../../utils/eventDetection';
-import type { Message, GroupEvent, CallEntry, DisappearingDuration } from '../../types';
+import type { Message, GroupEvent, CallEntry, DisappearingDuration, SongMetadata } from '../../types';
 
 /**
  * Dynamically measure the Y position of the GroupChatTab container to get an
@@ -412,6 +413,23 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
     });
   };
 
+  // ─── Song sharing ──────────────
+  const [showSpotifyPicker, setShowSpotifyPicker] = useState(false);
+
+  const handleShareSong = () => {
+    setShowSpotifyPicker(true);
+  };
+
+  const handleSongSelected = (song: SongMetadata) => {
+    const userId = useUserStore.getState().currentUser?.id;
+    if (!userId) return;
+
+    sendGroupMessage(groupId, `${song.title} by ${song.artist}`, userId, {
+      type: 'song',
+      metadata: { ...song },
+    });
+  };
+
   const handleShareContact = async () => {
     try {
       const { status } = await Contacts.requestPermissionsAsync();
@@ -717,6 +735,12 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
       onPickDocument={handlePickDocument}
       onShareLocation={handleShareLocation}
       onShareContact={handleShareContact}
+      onShareSong={handleShareSong}
+    />
+    <SpotifyPickerModal
+      visible={showSpotifyPicker}
+      onClose={() => setShowSpotifyPicker(false)}
+      onSelectSong={handleSongSelected}
     />
     <LocationPickerModal
       visible={showLocationPicker}

@@ -11,7 +11,7 @@ export interface User {
 }
 
 // ─── Message ─────────────────────────────────
-export type MessageType = 'text' | 'image' | 'video' | 'audio' | 'file' | 'location' | 'contact';
+export type MessageType = 'text' | 'image' | 'video' | 'audio' | 'file' | 'location' | 'contact' | 'song';
 
 export interface Reaction {
   emoji: string;
@@ -132,11 +132,13 @@ export interface PlaceMetadata {
 }
 
 export interface SongMetadata {
+  title: string;
   artist: string;
   album: string;
   albumArt: string;
   duration: number;
   spotifyUrl?: string;
+  previewUrl?: string;
 }
 
 export interface SharedObject {

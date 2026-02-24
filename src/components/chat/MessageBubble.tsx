@@ -22,9 +22,10 @@ import { VoiceMessageBubble } from './VoiceMessageBubble';
 import { LocationMessageBubble } from './LocationMessageBubble';
 import { DocumentMessageBubble } from './DocumentMessageBubble';
 import { ContactMessageBubble } from './ContactMessageBubble';
+import { SongMessageBubble } from './SongMessageBubble';
 import { renderHighlightedText } from '../../utils/highlightText';
 import { extractUrls } from '../../utils/urlDetection';
-import { Message, Reaction, VoiceMessageMetadata, LocationMessageMetadata, DocumentMessageMetadata, ContactMessageMetadata } from '../../types';
+import { Message, Reaction, VoiceMessageMetadata, LocationMessageMetadata, DocumentMessageMetadata, ContactMessageMetadata, SongMetadata } from '../../types';
 import { useUserStore } from '../../stores/useUserStore';
 
 interface Props {
@@ -439,6 +440,19 @@ export function MessageBubble({
                   >
                     <ContactMessageBubble
                       metadata={message.metadata as unknown as ContactMessageMetadata}
+                      isMine={isMine}
+                    />
+                  </View>
+                ) : message.type === 'song' ? (
+                  <View
+                    style={getBubbleRadius()}
+                    className={`px-3 py-2 ${
+                      isMine ? 'bg-accent-primary' : 'bg-surface-elevated'
+                    }`}
+                  >
+                    <SongMessageBubble
+                      messageId={message.id}
+                      metadata={message.metadata as unknown as SongMetadata}
                       isMine={isMine}
                     />
                   </View>

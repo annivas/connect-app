@@ -3,7 +3,7 @@ import { Group, Message, RSVPStatus, Poll, PollOption, Note, Reminder, LedgerEnt
 import { groupsRepository } from '../services';
 import { supabase } from '../lib/supabase';
 import { config } from '../config/env';
-import { adaptMessage } from '../services/supabase/adapters';
+import { adaptMessage, adaptPoll, PollRow } from '../services/supabase/adapters';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import type { CreateGroupInput, UpdateGroupInput } from '../services/types';
 import { getCurrentUserId, getUserById, getMessagesStoreRef } from './helpers';
@@ -127,7 +127,21 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const groups = await groupsRepository.getGroups();
-      set({ groups, isLoading: false });
+
+      // Load polls for each group in parallel
+      const pollsMap: Record<string, Poll[]> = {};
+      await Promise.all(
+        groups.map(async (g) => {
+          try {
+            const polls = await groupsRepository.getPolls(g.id);
+            if (polls.length > 0) pollsMap[g.id] = polls;
+          } catch {
+            // Polls table may not exist yet — gracefully skip
+          }
+        }),
+      );
+
+      set({ groups, groupPolls: pollsMap, isLoading: false });
 
       // Start realtime subscriptions after data is loaded
       get().subscribe();
@@ -250,6 +264,88 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
 
           set((s) => ({
             groupMessages: s.groupMessages.filter((m) => m.id !== deletedId),
+          }));
+        }
+      )
+      // ─── Polls realtime (INSERT + UPDATE) ─────────
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'polls' },
+        (payload) => {
+          const row = payload.new as unknown as PollRow;
+          const poll = adaptPoll(row);
+          const groupId = row.group_id;
+
+          // Skip if we already have this poll (optimistic)
+          const existing = get().groupPolls[groupId] ?? [];
+          if (existing.some((p) => p.id === poll.id)) return;
+
+          set((s) => ({
+            groupPolls: {
+              ...s.groupPolls,
+              [groupId]: [...(s.groupPolls[groupId] ?? []), poll],
+            },
+          }));
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'polls' },
+        (payload) => {
+          const row = payload.new as unknown as PollRow;
+          const poll = adaptPoll(row);
+          const groupId = row.group_id;
+
+          set((s) => ({
+            groupPolls: {
+              ...s.groupPolls,
+              [groupId]: (s.groupPolls[groupId] ?? []).map((p) =>
+                p.id === poll.id ? poll : p,
+              ),
+            },
+          }));
+        }
+      )
+      // ─── Group members realtime (INSERT + DELETE) ──
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'group_members' },
+        (payload) => {
+          const row = payload.new as Record<string, unknown>;
+          const groupId = row.group_id as string;
+          const userId = row.user_id as string;
+          const role = row.role as string;
+
+          set((s) => ({
+            groups: s.groups.map((g) => {
+              if (g.id !== groupId) return g;
+              if (g.members.includes(userId)) return g;
+              return {
+                ...g,
+                members: [...g.members, userId],
+                admins: role === 'admin' ? [...g.admins, userId] : g.admins,
+              };
+            }),
+          }));
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'group_members' },
+        (payload) => {
+          const row = payload.old as Record<string, unknown>;
+          const groupId = row.group_id as string;
+          const userId = row.user_id as string;
+
+          set((s) => ({
+            groups: s.groups.map((g) => {
+              if (g.id !== groupId) return g;
+              return {
+                ...g,
+                members: g.members.filter((id) => id !== userId),
+                admins: g.admins.filter((id) => id !== userId),
+              };
+            }),
           }));
         }
       )
@@ -673,6 +769,9 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
   },
 
   addItineraryItem: (groupId, item) => {
+    const group = get().groups.find((g) => g.id === groupId);
+    const tripId = group?.trip?.id;
+
     set((state) => ({
       groups: state.groups.map((g) => {
         if (g.id !== groupId || !g.trip) return g;
@@ -683,9 +782,23 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         return { ...g, trip: { ...g.trip, itinerary } };
       }),
     }));
+
+    if (tripId) {
+      groupsRepository.addItineraryItem(tripId, item).catch(() => {
+        set((state) => ({
+          groups: state.groups.map((g) => {
+            if (g.id !== groupId || !g.trip) return g;
+            return { ...g, trip: { ...g.trip, itinerary: g.trip.itinerary.filter((i) => i.id !== item.id) } };
+          }),
+        }));
+      });
+    }
   },
 
   editItineraryItem: (groupId, itemId, updates) => {
+    const group = get().groups.find((g) => g.id === groupId);
+    const originalItem = group?.trip?.itinerary.find((i) => i.id === itemId);
+
     set((state) => ({
       groups: state.groups.map((g) => {
         if (g.id !== groupId || !g.trip) return g;
@@ -698,9 +811,22 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         return { ...g, trip: { ...g.trip, itinerary } };
       }),
     }));
+
+    groupsRepository.editItineraryItem(itemId, updates).catch(() => {
+      if (!originalItem) return;
+      set((state) => ({
+        groups: state.groups.map((g) => {
+          if (g.id !== groupId || !g.trip) return g;
+          return { ...g, trip: { ...g.trip, itinerary: g.trip.itinerary.map((i) => i.id === itemId ? originalItem : i) } };
+        }),
+      }));
+    });
   },
 
   deleteItineraryItem: (groupId, itemId) => {
+    const group = get().groups.find((g) => g.id === groupId);
+    const originalItem = group?.trip?.itinerary.find((i) => i.id === itemId);
+
     set((state) => ({
       groups: state.groups.map((g) => {
         if (g.id !== groupId || !g.trip) return g;
@@ -713,13 +839,24 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         };
       }),
     }));
+
+    groupsRepository.deleteItineraryItem(itemId).catch(() => {
+      if (!originalItem) return;
+      set((state) => ({
+        groups: state.groups.map((g) => {
+          if (g.id !== groupId || !g.trip) return g;
+          return { ...g, trip: { ...g.trip, itinerary: [...g.trip.itinerary, originalItem] } };
+        }),
+      }));
+    });
   },
 
   createEvent: (groupId, eventData) => {
-    const userId = get().groups.find((g) => g.id === groupId)?.members[0] ?? '';
+    const userId = getCurrentUserId() || (get().groups.find((g) => g.id === groupId)?.members[0] ?? '');
+    const optimisticId = `evt_${Date.now()}`;
     const newEvent = {
       ...eventData,
-      id: `evt_${Date.now()}`,
+      id: optimisticId,
       groupId,
       createdBy: userId,
       attendees: [{ userId, status: 'going' as const, respondedAt: new Date() }],
@@ -730,6 +867,22 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         return { ...g, events: [...(g.events ?? []), newEvent] };
       }),
     }));
+
+    groupsRepository.createEvent(groupId, eventData).then((saved) => {
+      set((state) => ({
+        groups: state.groups.map((g) => {
+          if (g.id !== groupId) return g;
+          return { ...g, events: (g.events ?? []).map((e) => e.id === optimisticId ? saved : e) };
+        }),
+      }));
+    }).catch(() => {
+      set((state) => ({
+        groups: state.groups.map((g) => {
+          if (g.id !== groupId) return g;
+          return { ...g, events: (g.events ?? []).filter((e) => e.id !== optimisticId) };
+        }),
+      }));
+    });
   },
 
   // ─── Event Spaces ──────────────────────────────
@@ -782,9 +935,10 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
 
   createPoll: (groupId, question, options, isMultipleChoice) => {
     const currentUserId = getCurrentUserId() || 'unknown';
+    const optimisticId = `poll-${Date.now()}`;
 
     const newPoll: Poll = {
-      id: `poll-${Date.now()}`,
+      id: optimisticId,
       question,
       options: options.map((text, i) => ({
         id: `opt-${Date.now()}-${i}`,
@@ -803,11 +957,29 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         [groupId]: [...(state.groupPolls[groupId] ?? []), newPoll],
       },
     }));
+
+    groupsRepository.createPoll(groupId, question, options, isMultipleChoice).then((saved) => {
+      set((state) => ({
+        groupPolls: {
+          ...state.groupPolls,
+          [groupId]: (state.groupPolls[groupId] ?? []).map((p) => p.id === optimisticId ? saved : p),
+        },
+      }));
+    }).catch(() => {
+      set((state) => ({
+        groupPolls: {
+          ...state.groupPolls,
+          [groupId]: (state.groupPolls[groupId] ?? []).filter((p) => p.id !== optimisticId),
+        },
+      }));
+    });
   },
 
   votePoll: (groupId, pollId, optionId) => {
     const userId = getCurrentUserId();
     if (!userId) return;
+
+    const prevPolls = get().groupPolls[groupId] ?? [];
 
     set((state) => ({
       groupPolls: {
@@ -818,7 +990,6 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
             ...poll,
             options: poll.options.map((opt) => {
               if (opt.id === optionId) {
-                // Toggle vote
                 const hasVoted = opt.voterIds.includes(userId);
                 return {
                   ...opt,
@@ -827,7 +998,6 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
                     : [...opt.voterIds, userId],
                 };
               }
-              // If not multiple choice, remove vote from other options
               if (!poll.isMultipleChoice) {
                 return {
                   ...opt,
@@ -840,6 +1010,12 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         }),
       },
     }));
+
+    groupsRepository.votePoll(pollId, optionId).catch(() => {
+      set((state) => ({
+        groupPolls: { ...state.groupPolls, [groupId]: prevPolls },
+      }));
+    });
   },
 
   closePoll: (groupId, pollId) => {
@@ -851,6 +1027,17 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         ),
       },
     }));
+
+    groupsRepository.closePoll(pollId).catch(() => {
+      set((state) => ({
+        groupPolls: {
+          ...state.groupPolls,
+          [groupId]: (state.groupPolls[groupId] ?? []).map((poll) =>
+            poll.id === pollId ? { ...poll, isClosed: false } : poll,
+          ),
+        },
+      }));
+    });
   },
 
   // ─── Star / Pin / Forward for group messages ────
@@ -876,6 +1063,14 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         };
       }),
     }));
+
+    groupsRepository.toggleStarGroupMessage(messageId, willStar).catch(() => {
+      set((state) => ({
+        groupMessages: state.groupMessages.map((m) =>
+          m.id === messageId ? { ...m, isStarred: !willStar } : m,
+        ),
+      }));
+    });
   },
 
   togglePinGroupMessage: (groupId, messageId) => {
@@ -899,6 +1094,14 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         };
       }),
     }));
+
+    groupsRepository.togglePinGroupMessage(messageId, willPin).catch(() => {
+      set((state) => ({
+        groupMessages: state.groupMessages.map((m) =>
+          m.id === messageId ? { ...m, isPinned: !willPin } : m,
+        ),
+      }));
+    });
   },
 
   forwardGroupMessage: (sourceGroupId, messageId, targetConvIds, senderId) => {
@@ -969,9 +1172,10 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
 
   // Notes
   createGroupNote: (groupId, noteData) => {
+    const optimisticId = `gnote-${Date.now()}`;
     const newNote: Note = {
       ...noteData,
-      id: `gnote-${Date.now()}`,
+      id: optimisticId,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -985,9 +1189,31 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         return { ...g, metadata: { ...metadata, notes: [...metadata.notes, newNote] } };
       }),
     }));
+
+    groupsRepository.createNote(groupId, {
+      title: noteData.title, content: noteData.content,
+      color: noteData.color, isPrivate: noteData.isPrivate,
+    }).then((saved) => {
+      set((state) => ({
+        groups: state.groups.map((g) => {
+          if (g.id !== groupId || !g.metadata) return g;
+          return { ...g, metadata: { ...g.metadata, notes: g.metadata.notes.map((n) => n.id === optimisticId ? saved : n) } };
+        }),
+      }));
+    }).catch(() => {
+      set((state) => ({
+        groups: state.groups.map((g) => {
+          if (g.id !== groupId || !g.metadata) return g;
+          return { ...g, metadata: { ...g.metadata, notes: g.metadata.notes.filter((n) => n.id !== optimisticId) } };
+        }),
+      }));
+    });
   },
 
   deleteGroupNote: (groupId, noteId) => {
+    const group = get().groups.find((g) => g.id === groupId);
+    const deletedNote = group?.metadata?.notes.find((n) => n.id === noteId);
+
     set((state) => ({
       groups: state.groups.map((g) => {
         if (g.id !== groupId || !g.metadata) return g;
@@ -997,13 +1223,24 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         };
       }),
     }));
+
+    groupsRepository.deleteNote(noteId).catch(() => {
+      if (!deletedNote) return;
+      set((state) => ({
+        groups: state.groups.map((g) => {
+          if (g.id !== groupId || !g.metadata) return g;
+          return { ...g, metadata: { ...g.metadata, notes: [...g.metadata.notes, deletedNote] } };
+        }),
+      }));
+    });
   },
 
   // Reminders
   createGroupReminder: (groupId, reminderData) => {
+    const optimisticId = `grem-${Date.now()}`;
     const newReminder: Reminder = {
       ...reminderData,
-      id: `grem-${Date.now()}`,
+      id: optimisticId,
       createdAt: new Date(),
     };
     set((state) => ({
@@ -1016,9 +1253,33 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         return { ...g, metadata: { ...metadata, reminders: [...metadata.reminders, newReminder] } };
       }),
     }));
+
+    groupsRepository.createReminder(groupId, {
+      title: reminderData.title,
+      description: reminderData.description,
+      dueDate: reminderData.dueDate.toISOString(),
+      priority: reminderData.priority,
+    }).then((saved) => {
+      set((state) => ({
+        groups: state.groups.map((g) => {
+          if (g.id !== groupId || !g.metadata) return g;
+          return { ...g, metadata: { ...g.metadata, reminders: g.metadata.reminders.map((r) => r.id === optimisticId ? saved : r) } };
+        }),
+      }));
+    }).catch(() => {
+      set((state) => ({
+        groups: state.groups.map((g) => {
+          if (g.id !== groupId || !g.metadata) return g;
+          return { ...g, metadata: { ...g.metadata, reminders: g.metadata.reminders.filter((r) => r.id !== optimisticId) } };
+        }),
+      }));
+    });
   },
 
   toggleGroupReminderComplete: (groupId, reminderId) => {
+    const group = get().groups.find((g) => g.id === groupId);
+    const wasCompleted = group?.metadata?.reminders.find((r) => r.id === reminderId)?.isCompleted;
+
     set((state) => ({
       groups: state.groups.map((g) => {
         if (g.id !== groupId || !g.metadata) return g;
@@ -1033,13 +1294,31 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         };
       }),
     }));
+
+    groupsRepository.toggleReminderComplete(reminderId).catch(() => {
+      set((state) => ({
+        groups: state.groups.map((g) => {
+          if (g.id !== groupId || !g.metadata) return g;
+          return {
+            ...g,
+            metadata: {
+              ...g.metadata,
+              reminders: g.metadata.reminders.map((r) =>
+                r.id === reminderId ? { ...r, isCompleted: wasCompleted ?? false } : r,
+              ),
+            },
+          };
+        }),
+      }));
+    });
   },
 
   // Ledger
   createGroupLedgerEntry: (groupId, entryData) => {
+    const optimisticId = `gled-${Date.now()}`;
     const newEntry: LedgerEntry = {
       ...entryData,
-      id: `gled-${Date.now()}`,
+      id: optimisticId,
     };
     set((state) => ({
       groups: state.groups.map((g) => {
@@ -1051,6 +1330,28 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         return { ...g, metadata: { ...metadata, ledgerEntries: [...metadata.ledgerEntries, newEntry] } };
       }),
     }));
+
+    groupsRepository.createLedgerEntry(groupId, {
+      description: entryData.description,
+      amount: entryData.amount,
+      paidBy: entryData.paidBy,
+      splitBetween: entryData.splitBetween,
+      category: entryData.category,
+    }).then((saved) => {
+      set((state) => ({
+        groups: state.groups.map((g) => {
+          if (g.id !== groupId || !g.metadata) return g;
+          return { ...g, metadata: { ...g.metadata, ledgerEntries: g.metadata.ledgerEntries.map((e) => e.id === optimisticId ? saved : e) } };
+        }),
+      }));
+    }).catch(() => {
+      set((state) => ({
+        groups: state.groups.map((g) => {
+          if (g.id !== groupId || !g.metadata) return g;
+          return { ...g, metadata: { ...g.metadata, ledgerEntries: g.metadata.ledgerEntries.filter((e) => e.id !== optimisticId) } };
+        }),
+      }));
+    });
   },
 
   settleGroupLedgerEntry: (groupId, entryId) => {
@@ -1068,6 +1369,23 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         };
       }),
     }));
+
+    groupsRepository.settleLedgerEntry(entryId).catch(() => {
+      set((state) => ({
+        groups: state.groups.map((g) => {
+          if (g.id !== groupId || !g.metadata) return g;
+          return {
+            ...g,
+            metadata: {
+              ...g.metadata,
+              ledgerEntries: g.metadata.ledgerEntries.map((e) =>
+                e.id === entryId ? { ...e, isSettled: false } : e,
+              ),
+            },
+          };
+        }),
+      }));
+    });
   },
 
   getGroupPairBalances: (groupId) => {
@@ -1099,9 +1417,10 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
 
   // Shared objects
   addGroupSharedObject: (groupId, objData) => {
+    const optimisticId = `gso-${Date.now()}`;
     const newObj: SharedObject = {
       ...objData,
-      id: `gso-${Date.now()}`,
+      id: optimisticId,
       sharedAt: new Date(),
     };
     set((state) => ({
@@ -1114,40 +1433,99 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         return { ...g, metadata: { ...metadata, sharedObjects: [...metadata.sharedObjects, newObj] } };
       }),
     }));
+
+    groupsRepository.addSharedObject(groupId, {
+      type: objData.type, title: objData.title,
+      description: objData.description, url: objData.url,
+    }).then((saved) => {
+      set((state) => ({
+        groups: state.groups.map((g) => {
+          if (g.id !== groupId || !g.metadata) return g;
+          return { ...g, metadata: { ...g.metadata, sharedObjects: g.metadata.sharedObjects.map((o) => o.id === optimisticId ? saved : o) } };
+        }),
+      }));
+    }).catch(() => {
+      set((state) => ({
+        groups: state.groups.map((g) => {
+          if (g.id !== groupId || !g.metadata) return g;
+          return { ...g, metadata: { ...g.metadata, sharedObjects: g.metadata.sharedObjects.filter((o) => o.id !== optimisticId) } };
+        }),
+      }));
+    });
   },
 
   // Archive / Unread
   toggleGroupArchive: (groupId) => {
+    const wasArchived = get().groups.find((g) => g.id === groupId)?.isArchived ?? false;
+
     set((state) => ({
       groups: state.groups.map((g) =>
         g.id === groupId ? { ...g, isArchived: !g.isArchived } : g,
       ),
     }));
+
+    groupsRepository.toggleArchive(groupId).catch(() => {
+      set((state) => ({
+        groups: state.groups.map((g) =>
+          g.id === groupId ? { ...g, isArchived: wasArchived } : g,
+        ),
+      }));
+    });
   },
 
   markGroupAsUnread: (groupId) => {
+    const prevCount = get().groups.find((g) => g.id === groupId)?.unreadCount ?? 0;
+
     set((state) => ({
       groups: state.groups.map((g) =>
         g.id === groupId ? { ...g, isMarkedUnread: true, unreadCount: Math.max(g.unreadCount, 1) } : g,
       ),
     }));
+
+    groupsRepository.markAsUnread(groupId).catch(() => {
+      set((state) => ({
+        groups: state.groups.map((g) =>
+          g.id === groupId ? { ...g, isMarkedUnread: false, unreadCount: prevCount } : g,
+        ),
+      }));
+    });
   },
 
   markGroupAsRead: (groupId) => {
+    const prevCount = get().groups.find((g) => g.id === groupId)?.unreadCount ?? 0;
+
     set((state) => ({
       groups: state.groups.map((g) =>
         g.id === groupId ? { ...g, isMarkedUnread: false, unreadCount: 0 } : g,
       ),
     }));
+
+    groupsRepository.markAsRead(groupId).catch(() => {
+      set((state) => ({
+        groups: state.groups.map((g) =>
+          g.id === groupId ? { ...g, isMarkedUnread: true, unreadCount: prevCount } : g,
+        ),
+      }));
+    });
   },
 
   // Disappearing messages
   setGroupDisappearingDuration: (groupId, duration) => {
+    const prevDuration = get().groups.find((g) => g.id === groupId)?.disappearingDuration;
+
     set((state) => ({
       groups: state.groups.map((g) =>
         g.id === groupId ? { ...g, disappearingDuration: duration } : g,
       ),
     }));
+
+    groupsRepository.setDisappearingDuration(groupId, duration).catch(() => {
+      set((state) => ({
+        groups: state.groups.map((g) =>
+          g.id === groupId ? { ...g, disappearingDuration: prevDuration } : g,
+        ),
+      }));
+    });
   },
 
   reset: () => {

@@ -1,15 +1,19 @@
 import { supabase } from '../../lib/supabase';
-import { Group, Message, RSVPStatus } from '../../types';
-import { IGroupsRepository, PaginationParams, CreateGroupInput, UpdateGroupInput } from '../types';
+import { Group, Message, RSVPStatus, Note, Reminder, LedgerEntry, SharedObject, SharedObjectType, Poll, DisappearingDuration, ItineraryItem, GroupEvent } from '../../types';
+import { IGroupsRepository, PaginationParams, CreateGroupInput, UpdateGroupInput, CreateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../types';
 import {
   adaptMessage,
   adaptSharedObject,
   adaptNote,
+  adaptReminder,
+  adaptLedgerEntry,
   adaptGroupEvent,
   adaptEventAttendee,
   adaptTrip,
   adaptItineraryItem,
   adaptGroup,
+  adaptPoll,
+  PollRow,
 } from './adapters';
 import { getCurrentUserId } from './helpers';
 
@@ -38,6 +42,9 @@ export const supabaseGroupsRepository: IGroupsRepository = {
       itineraryResult,
       sharedObjectsResult,
       notesResult,
+      remindersResult,
+      ledgerResult,
+      pollsResult,
     ] = await Promise.all([
       supabase
         .from('groups')
@@ -75,6 +82,21 @@ export const supabaseGroupsRepository: IGroupsRepository = {
         .select('*')
         .in('group_id', groupIds)
         .order('updated_at', { ascending: false }),
+      supabase
+        .from('reminders')
+        .select('*')
+        .in('group_id', groupIds)
+        .order('due_date', { ascending: true }),
+      supabase
+        .from('ledger_entries')
+        .select('*')
+        .in('group_id', groupIds)
+        .order('date', { ascending: false }),
+      supabase
+        .from('polls')
+        .select('*')
+        .in('group_id', groupIds)
+        .order('created_at', { ascending: false }),
     ]);
 
     if (groupsResult.error) throw new Error(`Failed to fetch groups: ${groupsResult.error.message}`);
@@ -85,6 +107,10 @@ export const supabaseGroupsRepository: IGroupsRepository = {
     if (itineraryResult.error) throw new Error(`Failed to fetch itinerary: ${itineraryResult.error.message}`);
     if (sharedObjectsResult.error) throw new Error(`Failed to fetch shared objects: ${sharedObjectsResult.error.message}`);
     if (notesResult.error) throw new Error(`Failed to fetch notes: ${notesResult.error.message}`);
+    if (remindersResult.error) throw new Error(`Failed to fetch reminders: ${remindersResult.error.message}`);
+    if (ledgerResult.error) throw new Error(`Failed to fetch ledger: ${ledgerResult.error.message}`);
+    // polls table may not exist yet — treat error as empty
+    const pollsData = pollsResult.error ? [] : pollsResult.data;
 
     // Step 3: Group data by relevant IDs
     const membersByGroup = new Map<string, string[]>();
@@ -147,6 +173,29 @@ export const supabaseGroupsRepository: IGroupsRepository = {
       notesByGroup.set(note.group_id, existing);
     }
 
+    const remindersByGroup = new Map<string, typeof remindersResult.data>();
+    for (const rem of remindersResult.data) {
+      if (!rem.group_id) continue;
+      const existing = remindersByGroup.get(rem.group_id) ?? [];
+      existing.push(rem);
+      remindersByGroup.set(rem.group_id, existing);
+    }
+
+    const ledgerByGroup = new Map<string, typeof ledgerResult.data>();
+    for (const entry of ledgerResult.data) {
+      if (!entry.group_id) continue;
+      const existing = ledgerByGroup.get(entry.group_id) ?? [];
+      existing.push(entry);
+      ledgerByGroup.set(entry.group_id, existing);
+    }
+
+    const pollsByGroup = new Map<string, Poll[]>();
+    for (const poll of pollsData) {
+      const existing = pollsByGroup.get(poll.group_id) ?? [];
+      existing.push(adaptPoll(poll as PollRow));
+      pollsByGroup.set(poll.group_id, existing);
+    }
+
     // User's membership metadata
     const userMemByGroup = new Map<string, (typeof memberships)[0]>();
     for (const m of memberships) {
@@ -166,6 +215,9 @@ export const supabaseGroupsRepository: IGroupsRepository = {
         trip: tripByGroup.get(group.id),
         sharedObjects: (sharedByGroup.get(group.id) ?? []).map(adaptSharedObject),
         notes: (notesByGroup.get(group.id) ?? []).map(adaptNote),
+        reminders: (remindersByGroup.get(group.id) ?? []).map(adaptReminder),
+        ledgerEntries: (ledgerByGroup.get(group.id) ?? []).map(adaptLedgerEntry),
+        polls: pollsByGroup.get(group.id) ?? [],
       });
     });
   },
@@ -518,5 +570,392 @@ export const supabaseGroupsRepository: IGroupsRepository = {
 
     if (error) throw new Error(`Failed to search group messages: ${error.message}`);
     return data.reverse().map(adaptMessage);
+  },
+
+  // ─── Events ──────────────────────────────────────
+
+  async createEvent(groupId: string, event: Omit<GroupEvent, 'id' | 'groupId' | 'createdBy' | 'attendees'>): Promise<GroupEvent> {
+    const userId = getCurrentUserId();
+
+    const { data, error } = await supabase
+      .from('group_events')
+      .insert({
+        group_id: groupId,
+        title: event.title,
+        description: event.description ?? null,
+        start_date: event.startDate.toISOString(),
+        end_date: event.endDate?.toISOString() ?? null,
+        location: event.location ? (event.location as any) : null,
+        type: event.type,
+        created_by: userId,
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to create event: ${error.message}`);
+
+    // Auto-attend as creator
+    await supabase
+      .from('event_attendees')
+      .insert({ event_id: data.id, user_id: userId, status: 'going', responded_at: new Date().toISOString() });
+
+    return adaptGroupEvent(data, [{ userId, status: 'going', respondedAt: new Date() }]);
+  },
+
+  // ─── Itinerary ───────────────────────────────────
+
+  async addItineraryItem(tripId: string, item: Omit<ItineraryItem, 'id'>): Promise<ItineraryItem> {
+    const { data, error } = await supabase
+      .from('itinerary_items')
+      .insert({
+        trip_id: tripId,
+        day: item.day,
+        time: item.time ?? null,
+        title: item.title,
+        description: item.description ?? null,
+        location: item.location ? (item.location as any) : null,
+        type: item.type,
+        cost: item.cost ?? null,
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to add itinerary item: ${error.message}`);
+    return adaptItineraryItem(data);
+  },
+
+  async editItineraryItem(itemId: string, updates: Partial<ItineraryItem>): Promise<void> {
+    const updateData: Record<string, unknown> = {};
+    if (updates.day !== undefined) updateData.day = updates.day;
+    if (updates.time !== undefined) updateData.time = updates.time;
+    if (updates.title !== undefined) updateData.title = updates.title;
+    if (updates.description !== undefined) updateData.description = updates.description;
+    if (updates.type !== undefined) updateData.type = updates.type;
+    if (updates.cost !== undefined) updateData.cost = updates.cost;
+    if (updates.location !== undefined) updateData.location = updates.location;
+
+    const { error } = await supabase
+      .from('itinerary_items')
+      .update(updateData)
+      .eq('id', itemId);
+
+    if (error) throw new Error(`Failed to edit itinerary item: ${error.message}`);
+  },
+
+  async deleteItineraryItem(itemId: string): Promise<void> {
+    const { error } = await supabase
+      .from('itinerary_items')
+      .delete()
+      .eq('id', itemId);
+
+    if (error) throw new Error(`Failed to delete itinerary item: ${error.message}`);
+  },
+
+  // ─── Notes ───────────────────────────────────────
+
+  async createNote(groupId: string, input: CreateNoteInput): Promise<Note> {
+    const userId = getCurrentUserId();
+
+    const { data, error } = await supabase
+      .from('notes')
+      .insert({
+        group_id: groupId,
+        title: input.title,
+        content: input.content,
+        color: input.color,
+        is_private: input.isPrivate,
+        created_by: userId,
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to create group note: ${error.message}`);
+    return adaptNote(data);
+  },
+
+  async deleteNote(noteId: string): Promise<void> {
+    const { error } = await supabase
+      .from('notes')
+      .delete()
+      .eq('id', noteId);
+
+    if (error) throw new Error(`Failed to delete note: ${error.message}`);
+  },
+
+  // ─── Reminders ───────────────────────────────────
+
+  async createReminder(groupId: string, input: CreateReminderInput): Promise<Reminder> {
+    const userId = getCurrentUserId();
+
+    const { data, error } = await supabase
+      .from('reminders')
+      .insert({
+        group_id: groupId,
+        title: input.title,
+        description: input.description ?? null,
+        due_date: input.dueDate,
+        priority: input.priority,
+        created_by: userId,
+        is_completed: false,
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to create group reminder: ${error.message}`);
+    return adaptReminder(data);
+  },
+
+  async toggleReminderComplete(reminderId: string): Promise<void> {
+    const { data, error: readError } = await supabase
+      .from('reminders')
+      .select('is_completed')
+      .eq('id', reminderId)
+      .single();
+
+    if (readError) throw new Error(`Failed to read reminder state: ${readError.message}`);
+
+    const { error } = await supabase
+      .from('reminders')
+      .update({ is_completed: !data.is_completed })
+      .eq('id', reminderId);
+
+    if (error) throw new Error(`Failed to toggle reminder: ${error.message}`);
+  },
+
+  // ─── Ledger ──────────────────────────────────────
+
+  async createLedgerEntry(groupId: string, input: CreateLedgerEntryInput): Promise<LedgerEntry> {
+    const { data, error } = await supabase
+      .from('ledger_entries')
+      .insert({
+        group_id: groupId,
+        description: input.description,
+        amount: input.amount,
+        paid_by: input.paidBy,
+        split_between: input.splitBetween,
+        category: input.category ?? null,
+        is_settled: false,
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to create group ledger entry: ${error.message}`);
+    return adaptLedgerEntry(data);
+  },
+
+  async settleLedgerEntry(entryId: string): Promise<void> {
+    const { error } = await supabase
+      .from('ledger_entries')
+      .update({ is_settled: true })
+      .eq('id', entryId);
+
+    if (error) throw new Error(`Failed to settle group ledger entry: ${error.message}`);
+  },
+
+  // ─── Shared Objects ──────────────────────────────
+
+  async addSharedObject(groupId: string, data: { type: SharedObjectType; title: string; description?: string; url?: string }): Promise<SharedObject> {
+    const userId = getCurrentUserId();
+
+    const { data: row, error } = await supabase
+      .from('shared_objects')
+      .insert({
+        group_id: groupId,
+        type: data.type,
+        title: data.title,
+        description: data.description ?? null,
+        url: data.url ?? null,
+        shared_by: userId,
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to add group shared object: ${error.message}`);
+    return adaptSharedObject(row);
+  },
+
+  // ─── Polls ───────────────────────────────────────
+
+  async createPoll(groupId: string, question: string, options: string[], isMultipleChoice: boolean): Promise<Poll> {
+    const userId = getCurrentUserId();
+
+    const pollOptions = options.map((text, i) => ({
+      id: `opt-${Date.now()}-${i}`,
+      text,
+      voterIds: [],
+    }));
+
+    const { data, error } = await supabase
+      .from('polls')
+      .insert({
+        group_id: groupId,
+        question,
+        options: pollOptions as any,
+        created_by: userId,
+        is_multiple_choice: isMultipleChoice,
+        is_closed: false,
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to create poll: ${error.message}`);
+    return adaptPoll(data as PollRow);
+  },
+
+  async votePoll(pollId: string, optionId: string): Promise<void> {
+    const userId = getCurrentUserId();
+
+    // Read current poll options
+    const { data, error: readError } = await supabase
+      .from('polls')
+      .select('options, is_multiple_choice')
+      .eq('id', pollId)
+      .single();
+
+    if (readError) throw new Error(`Failed to read poll: ${readError.message}`);
+
+    const options = data.options as Array<{ id: string; text: string; voterIds: string[] }>;
+    const isMultipleChoice = data.is_multiple_choice;
+
+    const updatedOptions = options.map((opt) => {
+      if (opt.id === optionId) {
+        const hasVoted = opt.voterIds.includes(userId);
+        return {
+          ...opt,
+          voterIds: hasVoted
+            ? opt.voterIds.filter((id: string) => id !== userId)
+            : [...opt.voterIds, userId],
+        };
+      }
+      // If not multiple choice, remove vote from other options
+      if (!isMultipleChoice) {
+        return { ...opt, voterIds: opt.voterIds.filter((id: string) => id !== userId) };
+      }
+      return opt;
+    });
+
+    const { error } = await supabase
+      .from('polls')
+      .update({ options: updatedOptions as any })
+      .eq('id', pollId);
+
+    if (error) throw new Error(`Failed to vote on poll: ${error.message}`);
+  },
+
+  async closePoll(pollId: string): Promise<void> {
+    const { error } = await supabase
+      .from('polls')
+      .update({ is_closed: true })
+      .eq('id', pollId);
+
+    if (error) throw new Error(`Failed to close poll: ${error.message}`);
+  },
+
+  async getPolls(groupId: string): Promise<Poll[]> {
+    const { data, error } = await supabase
+      .from('polls')
+      .select('*')
+      .eq('group_id', groupId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw new Error(`Failed to fetch polls: ${error.message}`);
+    return data.map((row) => adaptPoll(row as PollRow));
+  },
+
+  // ─── Archive / Unread / Disappearing ─────────────
+
+  async toggleArchive(groupId: string): Promise<void> {
+    const userId = getCurrentUserId();
+
+    const { data, error: readError } = await supabase
+      .from('group_members')
+      .select('is_archived')
+      .eq('group_id', groupId)
+      .eq('user_id', userId)
+      .single();
+
+    if (readError) throw new Error(`Failed to read archive state: ${readError.message}`);
+
+    const { error } = await supabase
+      .from('group_members')
+      .update({ is_archived: !data.is_archived })
+      .eq('group_id', groupId)
+      .eq('user_id', userId);
+
+    if (error) throw new Error(`Failed to toggle group archive: ${error.message}`);
+  },
+
+  async markAsUnread(groupId: string): Promise<void> {
+    const userId = getCurrentUserId();
+
+    const { error } = await supabase
+      .from('group_members')
+      .update({ is_marked_unread: true, unread_count: 1 })
+      .eq('group_id', groupId)
+      .eq('user_id', userId);
+
+    if (error) throw new Error(`Failed to mark group as unread: ${error.message}`);
+  },
+
+  async markAsRead(groupId: string): Promise<void> {
+    const userId = getCurrentUserId();
+
+    const { error } = await supabase
+      .from('group_members')
+      .update({ is_marked_unread: false, unread_count: 0 })
+      .eq('group_id', groupId)
+      .eq('user_id', userId);
+
+    if (error) throw new Error(`Failed to mark group as read: ${error.message}`);
+  },
+
+  async setDisappearingDuration(groupId: string, duration: DisappearingDuration): Promise<void> {
+    const userId = getCurrentUserId();
+
+    const { error } = await supabase
+      .from('group_members')
+      .update({ disappearing_duration: duration })
+      .eq('group_id', groupId)
+      .eq('user_id', userId);
+
+    if (error) throw new Error(`Failed to set disappearing duration: ${error.message}`);
+  },
+
+  // ─── Star / Pin for group messages ───────────────
+
+  async toggleStarGroupMessage(messageId: string, isStarred: boolean): Promise<void> {
+    const { data, error: readError } = await supabase
+      .from('messages')
+      .select('metadata')
+      .eq('id', messageId)
+      .single();
+
+    if (readError) throw new Error(`Failed to read message: ${readError.message}`);
+
+    const meta = (data.metadata as Record<string, unknown>) ?? {};
+    const { error } = await supabase
+      .from('messages')
+      .update({ metadata: { ...meta, starred: isStarred } })
+      .eq('id', messageId);
+
+    if (error) throw new Error(`Failed to toggle star: ${error.message}`);
+  },
+
+  async togglePinGroupMessage(messageId: string, isPinned: boolean): Promise<void> {
+    const { data, error: readError } = await supabase
+      .from('messages')
+      .select('metadata')
+      .eq('id', messageId)
+      .single();
+
+    if (readError) throw new Error(`Failed to read message: ${readError.message}`);
+
+    const meta = (data.metadata as Record<string, unknown>) ?? {};
+    const { error } = await supabase
+      .from('messages')
+      .update({ metadata: { ...meta, pinned: isPinned } })
+      .eq('id', messageId);
+
+    if (error) throw new Error(`Failed to toggle pin: ${error.message}`);
   },
 };

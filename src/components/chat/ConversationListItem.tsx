@@ -12,6 +12,8 @@ import { Conversation } from '../../types';
 import { useUserStore } from '../../stores/useUserStore';
 import { useMessagesStore } from '../../stores/useMessagesStore';
 
+const EMPTY_TYPING_USERS: string[] = [];
+
 interface Props {
   conversation: Conversation;
   highlightText?: string;
@@ -27,7 +29,7 @@ export function ConversationListItem({ conversation, highlightText }: Props) {
   const router = useRouter();
   const getUserById = useUserStore((s) => s.getUserById);
   const swipeableRef = useRef<Swipeable>(null);
-  const typingUserIds = useMessagesStore((s) => s.typingUsers[conversation.id] ?? []);
+  const typingUserIds = useMessagesStore((s) => s.typingUsers[conversation.id] ?? EMPTY_TYPING_USERS);
   const draft = useMessagesStore((s) => s.drafts?.[conversation.id]);
 
   const otherUserId = conversation.participants.find(

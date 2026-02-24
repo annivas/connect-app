@@ -1,10 +1,14 @@
 import { create } from 'zustand';
+import { Audio } from 'expo-av';
 
 interface PlaybackState {
   messageId: string;
+  contentType: 'voice' | 'song';
+  audioUri?: string;
   isPlaying: boolean;
   progress: number;
   speed: number;
+  durationMs: number;
 }
 
 interface VoiceState {
@@ -26,10 +30,26 @@ interface VoiceState {
 
   // Playback methods
   playVoice: (messageId: string) => void;
+  playSong: (messageId: string, previewUrl: string, durationMs: number) => void;
   pauseVoice: () => void;
   setPlaybackSpeed: (speed: number) => void;
   seekVoice: (progress: number) => void;
   stopPlayback: () => void;
+}
+
+// Module-level sound reference for cleanup
+let currentSound: Audio.Sound | null = null;
+
+async function unloadCurrentSound() {
+  if (currentSound) {
+    try {
+      await currentSound.stopAsync();
+      await currentSound.unloadAsync();
+    } catch {
+      // Ignore cleanup errors
+    }
+    currentSound = null;
+  }
 }
 
 export const useVoiceStore = create<VoiceState>((set, get) => ({
@@ -82,19 +102,89 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
   },
 
   playVoice: (messageId) => {
+    // Stop any currently playing audio
+    unloadCurrentSound();
     set({
       playbackState: {
         messageId,
+        contentType: 'voice',
         isPlaying: true,
         progress: 0,
         speed: 1,
+        durationMs: 0,
       },
     });
   },
 
-  pauseVoice: () => {
+  playSong: async (messageId, previewUrl, durationMs) => {
+    // Stop any currently playing audio
+    await unloadCurrentSound();
+
+    try {
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+      });
+
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: previewUrl },
+        { shouldPlay: true },
+        (status) => {
+          // onPlaybackStatusUpdate — drives real progress
+          if (!status.isLoaded) return;
+
+          const state = get();
+          if (state.playbackState?.messageId !== messageId) return;
+
+          if (status.didJustFinish) {
+            get().stopPlayback();
+            return;
+          }
+
+          if (status.isPlaying && status.durationMillis) {
+            const newProgress =
+              status.positionMillis / status.durationMillis;
+            set({
+              playbackState: {
+                ...state.playbackState!,
+                progress: newProgress,
+                isPlaying: true,
+              },
+            });
+          }
+        },
+      );
+
+      currentSound = sound;
+
+      set({
+        playbackState: {
+          messageId,
+          contentType: 'song',
+          audioUri: previewUrl,
+          isPlaying: true,
+          progress: 0,
+          speed: 1,
+          durationMs,
+        },
+      });
+    } catch {
+      // If audio fails to load, still show the bubble but without playback
+      set({ playbackState: null });
+    }
+  },
+
+  pauseVoice: async () => {
     const { playbackState } = get();
     if (!playbackState) return;
+
+    if (currentSound && playbackState.contentType === 'song') {
+      try {
+        await currentSound.pauseAsync();
+      } catch {
+        // Ignore
+      }
+    }
+
     set({
       playbackState: { ...playbackState, isPlaying: false },
     });
@@ -117,6 +207,7 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
   },
 
   stopPlayback: () => {
+    unloadCurrentSound();
     set({ playbackState: null });
   },
 }));
