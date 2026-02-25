@@ -191,7 +191,7 @@ export default function MessagesScreen() {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           setShowNewConversation(true);
         }}
-        className="absolute bottom-4 right-4 w-14 h-14 bg-accent-primary rounded-full items-center justify-center shadow-lg"
+        className="absolute bottom-28 right-4 w-14 h-14 bg-accent-primary rounded-full items-center justify-center shadow-lg"
       >
         <Ionicons name="add" size={28} color="#FFFFFF" />
       </Pressable>
