@@ -15,7 +15,7 @@ import {
   adaptPoll,
   PollRow,
 } from './adapters';
-import { getCurrentUserId } from './helpers';
+import { getCurrentUserId, generateUUID } from './helpers';
 
 export const supabaseGroupsRepository: IGroupsRepository = {
   async getGroups(): Promise<Group[]> {
@@ -364,27 +364,35 @@ export const supabaseGroupsRepository: IGroupsRepository = {
   async createGroup(input: CreateGroupInput): Promise<Group> {
     const userId = getCurrentUserId();
 
-    // Step 1: Insert the group row
-    const { data: groupRow, error: groupError } = await supabase
+    // Generate UUID client-side so we can INSERT without .select().
+    // The SELECT policy requires the user to be a group member, but
+    // members aren't added until Step 2 — same chicken-and-egg as conversations.
+    const groupId = generateUUID();
+    const now = new Date().toISOString();
+
+    // Step 1: Insert the group row (no .select() to avoid SELECT policy)
+    const groupRow = {
+      id: groupId,
+      name: input.name,
+      description: input.description ?? null,
+      type: input.type,
+      created_by: userId,
+      avatar: '',
+      last_activity: now,
+      created_at: now,
+    };
+
+    const { error: groupError } = await supabase
       .from('groups')
-      .insert({
-        name: input.name,
-        description: input.description ?? null,
-        type: input.type,
-        created_by: userId,
-        avatar: '',
-        last_activity: new Date().toISOString(),
-      })
-      .select()
-      .single();
+      .insert(groupRow);
 
     if (groupError) throw new Error(`Failed to create group: ${groupError.message}`);
 
     // Step 2: Insert group_members — creator as admin + other members
     const memberRows = [
-      { group_id: groupRow.id, user_id: userId, is_admin: true, is_pinned: false, is_muted: false },
+      { group_id: groupId, user_id: userId, is_admin: true, is_pinned: false, is_muted: false },
       ...input.memberIds.map((memberId) => ({
-        group_id: groupRow.id,
+        group_id: groupId,
         user_id: memberId,
         is_admin: false,
         is_pinned: false,
