@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -25,6 +26,7 @@ interface Props {
 export function NewConversationModal({ visible, onClose, onConversationReady }: Props) {
   const [search, setSearch] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const pendingConvId = useRef<string | null>(null);
 
   const currentUser = useUserStore((s) => s.currentUser);
   const users = useUserStore((s) => s.users);
@@ -42,11 +44,20 @@ export function NewConversationModal({ visible, onClose, onConversationReady }: 
     );
   }, [otherUsers, search]);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setSearch('');
     setIsCreating(false);
     onClose();
-  };
+  }, [onClose]);
+
+  // Navigate after modal dismiss completes to avoid iOS pageSheet race condition
+  const handleDismiss = useCallback(() => {
+    if (pendingConvId.current) {
+      const id = pendingConvId.current;
+      pendingConvId.current = null;
+      onConversationReady(id);
+    }
+  }, [onConversationReady]);
 
   const handleSelectUser = async (user: User) => {
     if (!currentUser || isCreating) return;
@@ -64,18 +75,29 @@ export function NewConversationModal({ visible, onClose, onConversationReady }: 
           c.participants.includes(user.id),
       );
 
+      let conversationId: string;
+
       if (existing) {
-        handleClose();
-        onConversationReady(existing.id);
-        return;
+        conversationId = existing.id;
+      } else {
+        // Create new conversation
+        conversationId = await useMessagesStore.getState().createConversation([currentUser.id, user.id]);
       }
 
-      // Create new conversation
-      const newId = await useMessagesStore.getState().createConversation([currentUser.id, user.id]);
+      // Store ID and close modal — navigation happens in handleDismiss
+      pendingConvId.current = conversationId;
       handleClose();
-      onConversationReady(newId);
-    } catch {
+
+      // Android doesn't fire onDismiss, so use setTimeout fallback
+      if (Platform.OS !== 'ios') {
+        setTimeout(handleDismiss, 0);
+      }
+    } catch (err) {
       setIsCreating(false);
+      Alert.alert(
+        'Could not start conversation',
+        err instanceof Error ? err.message : 'Something went wrong. Please try again.',
+      );
     }
   };
 
@@ -99,6 +121,7 @@ export function NewConversationModal({ visible, onClose, onConversationReady }: 
       animationType="slide"
       presentationStyle="pageSheet"
       onRequestClose={handleClose}
+      onDismiss={handleDismiss}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
