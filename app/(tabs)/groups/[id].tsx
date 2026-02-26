@@ -1,4 +1,4 @@
-import React, { useLayoutEffect } from 'react';
+import React, { useLayoutEffect, useEffect } from 'react';
 import { View, Text, Pressable, Platform, ActionSheetIOS, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,6 +21,13 @@ export default function GroupDetailScreen() {
   const navigation = useNavigation();
   const [showCreatePoll, setShowCreatePoll] = React.useState(false);
   const [showDisappearingSheet, setShowDisappearingSheet] = React.useState(false);
+
+  // Mark group as read when screen opens
+  useEffect(() => {
+    if (id) {
+      useGroupsStore.getState().markGroupAsRead(id);
+    }
+  }, [id]);
 
   // Hide the bottom tab bar when this screen is focused
   const parentNavigation = navigation.getParent();

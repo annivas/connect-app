@@ -13,6 +13,7 @@ import { QuickActions } from '../../../src/components/chat/QuickActions';
 import { useMessagesStore } from '../../../src/stores/useMessagesStore';
 import { useUserStore } from '../../../src/stores/useUserStore';
 import { useCallStore } from '../../../src/stores/useCallStore';
+import { useToastStore } from '../../../src/stores/useToastStore';
 import type { DisappearingDuration } from '../../../src/types';
 
 export default function ConversationInfoScreen() {
@@ -302,7 +303,12 @@ export default function ConversationInfoScreen() {
                 'You will no longer receive messages from this person.',
                 [
                   { text: 'Cancel', style: 'cancel' },
-                  { text: 'Block', style: 'destructive', onPress: () => {} },
+                  { text: 'Block', style: 'destructive', onPress: () => {
+                    useMessagesStore.getState().toggleArchive(id!);
+                    useToastStore.getState().show({ message: `${otherUser.name} has been blocked`, type: 'success' });
+                    router.back();
+                    router.back();
+                  } },
                 ],
               );
             }}

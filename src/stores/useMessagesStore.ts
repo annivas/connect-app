@@ -56,6 +56,7 @@ interface MessagesState {
 
   // Write operations
   createNote: (conversationId: string, input: CreateNoteInput) => Promise<Note>;
+  deleteNote: (conversationId: string, noteId: string) => void;
   createReminder: (conversationId: string, input: CreateReminderInput) => Promise<Reminder>;
   toggleReminderComplete: (conversationId: string, reminderId: string) => void;
   createLedgerEntry: (conversationId: string, input: CreateLedgerEntryInput) => Promise<LedgerEntry>;
@@ -569,6 +570,16 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
       ),
     }));
     return note;
+  },
+
+  deleteNote: (conversationId, noteId) => {
+    set((state) => ({
+      conversations: state.conversations.map((c) =>
+        c.id === conversationId && c.metadata
+          ? { ...c, metadata: { ...c.metadata, notes: c.metadata.notes.filter((n) => n.id !== noteId) } }
+          : c,
+      ),
+    }));
   },
 
   createReminder: async (conversationId, input) => {

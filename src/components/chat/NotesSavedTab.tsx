@@ -8,6 +8,7 @@ import { Card } from '../ui/Card';
 import { EmptyState } from '../ui/EmptyState';
 import { CreateNoteModal } from './CreateNoteModal';
 import { useUserStore } from '../../stores/useUserStore';
+import { useToastStore } from '../../stores/useToastStore';
 import type { Note, Message } from '../../types';
 
 // ─── Segment control ────────────────────────
@@ -207,7 +208,8 @@ export function NotesSavedTab({ notes, starredMessageIds, allMessages, onCreateN
               <SavedMessageCard
                 message={item}
                 onJump={() => {
-                  // In a full app, would switch to Chat tab and scroll to message
+                  useToastStore.getState().show({ message: 'Navigating to message...', type: 'info' });
+                  router.back();
                 }}
               />
             )}

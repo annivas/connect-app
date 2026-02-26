@@ -27,6 +27,15 @@ export function NotesTab({ conversationId }: Props) {
     setIsModalVisible(true);
   };
 
+  const handleCreateNote = async (note: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>) => {
+    await useMessagesStore.getState().createNote(conversationId, {
+      title: note.title,
+      content: note.content,
+      color: note.color,
+      isPrivate: note.isPrivate,
+    });
+  };
+
   if (notes.length === 0) {
     return (
       <View className="flex-1 bg-background-primary">
@@ -40,6 +49,7 @@ export function NotesTab({ conversationId }: Props) {
           visible={isModalVisible}
           conversationId={conversationId}
           onClose={() => setIsModalVisible(false)}
+          onSave={handleCreateNote}
         />
       </View>
     );
@@ -58,7 +68,7 @@ export function NotesTab({ conversationId }: Props) {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.push({
                 pathname: '/(tabs)/messages/note-detail',
-                params: { data: JSON.stringify(item) },
+                params: { data: JSON.stringify(item), conversationId },
               });
             }}
           >
@@ -85,6 +95,7 @@ export function NotesTab({ conversationId }: Props) {
         visible={isModalVisible}
         conversationId={conversationId}
         onClose={() => setIsModalVisible(false)}
+        onSave={handleCreateNote}
       />
     </View>
   );

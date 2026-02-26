@@ -12,6 +12,7 @@ interface CardProps extends ViewProps {
   children: React.ReactNode;
   onPress?: () => void;
   variant?: 'default' | 'elevated';
+  className?: string;
 }
 
 export function Card({

@@ -51,6 +51,7 @@ export default function SectionDetailScreen() {
             pinnedMessageIds={conversation.metadata?.pinnedMessages ?? []}
             sharedObjects={conversation.metadata?.sharedObjects ?? []}
             allMessages={messages}
+            onAddSharedObject={(obj) => useMessagesStore.getState().addSharedObject(id!, obj)}
             contextId={id!}
             contextType="conversation"
           />
@@ -75,6 +76,7 @@ export default function SectionDetailScreen() {
               dueDate: rem.dueDate instanceof Date ? rem.dueDate.toISOString() : String(rem.dueDate),
               priority: rem.priority,
             })}
+            members={members}
           />
         );
       case 'ledger':
