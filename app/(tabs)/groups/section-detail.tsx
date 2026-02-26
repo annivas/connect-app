@@ -302,6 +302,7 @@ export default function GroupSectionDetailScreen() {
             sharedObjects={group.metadata?.sharedObjects ?? []}
             allMessages={groupMessages}
             onAddSharedObject={(obj) => useGroupsStore.getState().addGroupSharedObject(id!, obj)}
+            onDeleteSharedObject={(oid) => useGroupsStore.getState().deleteGroupSharedObject(id!, oid)}
             contextId={id!}
             contextType="group"
           />
@@ -313,6 +314,9 @@ export default function GroupSectionDetailScreen() {
             starredMessageIds={group.metadata?.starredMessages ?? []}
             allMessages={groupMessages}
             onCreateNote={(note) => useGroupsStore.getState().createGroupNote(id!, note)}
+            onDeleteNote={(noteId) => useGroupsStore.getState().deleteGroupNote(id!, noteId)}
+            contextId={id!}
+            contextType="group"
           />
         );
       case 'reminders':
@@ -321,6 +325,7 @@ export default function GroupSectionDetailScreen() {
             reminders={group.metadata?.reminders ?? []}
             onToggleComplete={(rid) => useGroupsStore.getState().toggleGroupReminderComplete(id!, rid)}
             onCreateReminder={(rem) => useGroupsStore.getState().createGroupReminder(id!, rem)}
+            onDeleteReminder={(rid) => useGroupsStore.getState().deleteGroupReminder(id!, rid)}
             members={memberUsers}
           />
         );
@@ -333,6 +338,7 @@ export default function GroupSectionDetailScreen() {
             members={memberUsers}
             onSettle={(eid) => useGroupsStore.getState().settleGroupLedgerEntry(id!, eid)}
             onCreateEntry={(entry) => useGroupsStore.getState().createGroupLedgerEntry(id!, entry)}
+            onDeleteEntry={(eid) => useGroupsStore.getState().deleteGroupLedgerEntry(id!, eid)}
           />
         );
       default:

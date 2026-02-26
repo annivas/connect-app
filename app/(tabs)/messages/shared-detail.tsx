@@ -1,11 +1,15 @@
 import React from 'react';
-import { View, Text, Pressable, Linking } from 'react-native';
+import { View, Text, Pressable, Linking, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { format } from 'date-fns';
+import * as Haptics from 'expo-haptics';
 import { IconButton } from '../../../src/components/ui/IconButton';
+import { useMessagesStore } from '../../../src/stores/useMessagesStore';
+import { useGroupsStore } from '../../../src/stores/useGroupsStore';
+import { useToastStore } from '../../../src/stores/useToastStore';
 import type { SharedObject, SharedObjectType, PlaceMetadata, LinkMetadata, SongMetadata } from '../../../src/types';
 
 const typeIcons: Record<SharedObjectType, keyof typeof Ionicons.glyphMap> = {
@@ -28,7 +32,7 @@ const typeColors: Record<SharedObjectType, string> = {
 
 export default function SharedDetailScreen() {
   const router = useRouter();
-  const { data } = useLocalSearchParams<{ data: string }>();
+  const { data, conversationId, groupId } = useLocalSearchParams<{ data: string; conversationId?: string; groupId?: string }>();
 
   const item: SharedObject | null = React.useMemo(() => {
     try {
@@ -64,6 +68,33 @@ export default function SharedDetailScreen() {
     Linking.openURL(url);
   };
 
+  const canDelete = !!(conversationId || groupId);
+
+  const handleDelete = () => {
+    if (!item || !canDelete) return;
+    Alert.alert(
+      'Delete Shared Item',
+      `Are you sure you want to delete "${item.title}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            if (conversationId) {
+              useMessagesStore.getState().deleteSharedObject(conversationId, item.id);
+            } else if (groupId) {
+              useGroupsStore.getState().deleteGroupSharedObject(groupId, item.id);
+            }
+            useToastStore.getState().show({ message: 'Shared item deleted', type: 'success' });
+            router.back();
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-background-primary">
       {/* Header */}
@@ -80,6 +111,9 @@ export default function SharedDetailScreen() {
             {item.type.charAt(0).toUpperCase() + item.type.slice(1)}
           </Text>
         </View>
+        {canDelete && (
+          <IconButton icon="trash-outline" onPress={handleDelete} color="#C94F4F" />
+        )}
       </View>
 
       <View className="flex-1 px-4 pt-6">

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, FlatList, Pressable } from 'react-native';
+import { View, Text, FlatList, Pressable, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
@@ -134,9 +134,11 @@ interface NotesSavedTabProps {
   allMessages: Message[];
   onCreateNote: (note: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>) => void;
   onDeleteNote?: (noteId: string) => void;
+  contextId?: string;
+  contextType?: 'conversation' | 'group';
 }
 
-export function NotesSavedTab({ notes, starredMessageIds, allMessages, onCreateNote }: NotesSavedTabProps) {
+export function NotesSavedTab({ notes, starredMessageIds, allMessages, onCreateNote, onDeleteNote, contextId, contextType }: NotesSavedTabProps) {
   const router = useRouter();
   const [activeSegment, setActiveSegment] = useState<Segment>('saved');
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -147,6 +149,26 @@ export function NotesSavedTab({ notes, starredMessageIds, allMessages, onCreateN
     const idSet = new Set(starredMessageIds);
     return allMessages.filter((m) => idSet.has(m.id));
   }, [allMessages, starredMessageIds]);
+
+  const handleDeleteNote = (note: Note) => {
+    if (!onDeleteNote) return;
+    Alert.alert(
+      'Delete Note',
+      `Are you sure you want to delete "${note.title}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            onDeleteNote(note.id);
+            useToastStore.getState().show({ message: 'Note deleted', type: 'success' });
+          },
+        },
+      ],
+    );
+  };
 
   const handleFABPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -229,16 +251,22 @@ export function NotesSavedTab({ notes, starredMessageIds, allMessages, onCreateN
             keyExtractor={(item) => item.id}
             contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80 }}
             renderItem={({ item }: { item: Note }) => (
-              <NoteCard
-                note={item}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  router.push({
-                    pathname: '/(tabs)/messages/note-detail',
-                    params: { data: JSON.stringify(item) },
-                  });
-                }}
-              />
+              <Pressable onLongPress={() => handleDeleteNote(item)} delayLongPress={500}>
+                <NoteCard
+                  note={item}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    router.push({
+                      pathname: '/(tabs)/messages/note-detail',
+                      params: {
+                        data: JSON.stringify(item),
+                        ...(contextType === 'conversation' ? { conversationId: contextId } : {}),
+                        ...(contextType === 'group' ? { groupId: contextId } : {}),
+                      },
+                    });
+                  }}
+                />
+              </Pressable>
             )}
             showsVerticalScrollIndicator={false}
           />
