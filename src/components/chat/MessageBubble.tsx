@@ -23,6 +23,7 @@ import { LocationMessageBubble } from './LocationMessageBubble';
 import { DocumentMessageBubble } from './DocumentMessageBubble';
 import { ContactMessageBubble } from './ContactMessageBubble';
 import { SongMessageBubble } from './SongMessageBubble';
+import { ImageViewerModal } from './ImageViewerModal';
 import { renderHighlightedText } from '../../utils/highlightText';
 import { extractUrls } from '../../utils/urlDetection';
 import { Message, Reaction, VoiceMessageMetadata, LocationMessageMetadata, DocumentMessageMetadata, ContactMessageMetadata, SongMetadata } from '../../types';
@@ -219,6 +220,35 @@ export function MessageBubble({
   const isFailed = message.sendStatus === 'failed';
 
   const sender = !isMine ? getUserById(message.senderId) : null;
+
+  // ─── Image viewer state ───
+  const [imageViewerVisible, setImageViewerVisible] = useState(false);
+  const [imageViewerIndex, setImageViewerIndex] = useState(0);
+
+  const handleImagePress = useCallback((index: number = 0) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setImageViewerIndex(index);
+    setImageViewerVisible(true);
+  }, []);
+
+  // Build image list for viewer
+  const viewerImages = React.useMemo(() => {
+    if (imageGroup && imageGroup.length > 1) {
+      return imageGroup.map((img) => ({
+        uri: img.content,
+        width: img.metadata?.width as number | undefined,
+        height: img.metadata?.height as number | undefined,
+      }));
+    }
+    if (message.type === 'image') {
+      return [{
+        uri: message.content,
+        width: message.metadata?.width as number | undefined,
+        height: message.metadata?.height as number | undefined,
+      }];
+    }
+    return [];
+  }, [message, imageGroup]);
 
   // ─── Double-tap heart animation ───
   const heartScale = useSharedValue(0);
@@ -458,9 +488,10 @@ export function MessageBubble({
                   </View>
                 ) : message.type === 'image' ? (
                   imageGroup && imageGroup.length > 1 ? (
-                    <PhotoGrid images={imageGroup} isMine={isMine} />
+                    <PhotoGrid images={imageGroup} isMine={isMine} onImagePress={handleImagePress} />
                   ) : (
-                    <View
+                    <Pressable
+                      onPress={() => handleImagePress(0)}
                       style={getBubbleRadius()}
                       className={`overflow-hidden ${isFailed ? 'opacity-60' : ''}`}
                     >
@@ -476,7 +507,7 @@ export function MessageBubble({
                         contentFit="cover"
                         transition={200}
                       />
-                    </View>
+                    </Pressable>
                   )
                 ) : (
                   <View
@@ -610,6 +641,15 @@ export function MessageBubble({
         )}
       </View>
 
+      {/* Image viewer modal */}
+      {viewerImages.length > 0 && (
+        <ImageViewerModal
+          visible={imageViewerVisible}
+          images={viewerImages}
+          initialIndex={imageViewerIndex}
+          onClose={() => setImageViewerVisible(false)}
+        />
+      )}
     </>
   );
 }

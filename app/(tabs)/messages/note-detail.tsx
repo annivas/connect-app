@@ -1,15 +1,19 @@
 import React from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import { View, Text, ScrollView, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
+import * as Haptics from 'expo-haptics';
 import { IconButton } from '../../../src/components/ui/IconButton';
+import { useMessagesStore } from '../../../src/stores/useMessagesStore';
+import { useGroupsStore } from '../../../src/stores/useGroupsStore';
+import { useToastStore } from '../../../src/stores/useToastStore';
 import type { Note } from '../../../src/types';
 
 export default function NoteDetailScreen() {
   const router = useRouter();
-  const { data } = useLocalSearchParams<{ data: string }>();
+  const { data, conversationId, groupId } = useLocalSearchParams<{ data: string; conversationId?: string; groupId?: string }>();
 
   const note: Note | null = React.useMemo(() => {
     try {
@@ -23,6 +27,33 @@ export default function NoteDetailScreen() {
       return null;
     }
   }, [data]);
+
+  const canDelete = !!(conversationId || groupId);
+
+  const handleDelete = () => {
+    if (!note || !canDelete) return;
+    Alert.alert(
+      'Delete Note',
+      `Are you sure you want to delete "${note.title}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            if (conversationId) {
+              useMessagesStore.getState().deleteNote(conversationId, note.id);
+            } else if (groupId) {
+              useGroupsStore.getState().deleteGroupNote(groupId, note.id);
+            }
+            useToastStore.getState().show({ message: 'Note deleted', type: 'success' });
+            router.back();
+          },
+        },
+      ],
+    );
+  };
 
   if (!note) {
     return (
@@ -48,6 +79,9 @@ export default function NoteDetailScreen() {
             <Ionicons name="lock-closed" size={12} color="#A8937F" />
             <Text className="text-text-tertiary text-xs ml-1">Private</Text>
           </View>
+        )}
+        {canDelete && (
+          <IconButton icon="trash-outline" onPress={handleDelete} color="#C94F4F" />
         )}
       </View>
 

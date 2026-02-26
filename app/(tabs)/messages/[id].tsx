@@ -1,4 +1,4 @@
-import React, { useLayoutEffect } from 'react';
+import React, { useLayoutEffect, useEffect } from 'react';
 import { View, Text, Pressable, Platform, ActionSheetIOS, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,6 +20,13 @@ export default function ConversationDetailScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const [showDisappearingSheet, setShowDisappearingSheet] = React.useState(false);
+
+  // Mark conversation as read when screen opens
+  useEffect(() => {
+    if (id) {
+      useMessagesStore.getState().markAsRead(id);
+    }
+  }, [id]);
 
   // Hide the bottom tab bar when this screen is focused
   const parentNavigation = navigation.getParent();

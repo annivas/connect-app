@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, FlatList, Pressable, ScrollView } from 'react-native';
+import { View, Text, FlatList, Pressable, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -8,6 +8,7 @@ import * as Haptics from 'expo-haptics';
 import { EmptyState } from '../ui/EmptyState';
 import { ShareLinkModal } from './ShareLinkModal';
 import { useUserStore } from '../../stores/useUserStore';
+import { useToastStore } from '../../stores/useToastStore';
 import type { SharedObject, SharedObjectType, PlaceMetadata, Message } from '../../types';
 
 // ─── Filter chips ────────────────────────────
@@ -203,14 +204,35 @@ interface MediaPinsTabProps {
   sharedObjects: SharedObject[];
   allMessages: Message[];
   onAddSharedObject?: (obj: Omit<SharedObject, 'id' | 'sharedAt'>) => void;
+  onDeleteSharedObject?: (objectId: string) => void;
   contextId: string;
   contextType: 'conversation' | 'group';
 }
 
-export function MediaPinsTab({ pinnedMessageIds, sharedObjects, allMessages, contextId, contextType }: MediaPinsTabProps) {
+export function MediaPinsTab({ pinnedMessageIds, sharedObjects, allMessages, onDeleteSharedObject, contextId, contextType }: MediaPinsTabProps) {
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
   const [isModalVisible, setIsModalVisible] = useState(false);
+
+  const handleDeleteSharedObject = (item: SharedObject) => {
+    if (!onDeleteSharedObject) return;
+    Alert.alert(
+      'Delete Shared Item',
+      `Are you sure you want to delete "${item.title}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            onDeleteSharedObject(item.id);
+            useToastStore.getState().show({ message: 'Shared item deleted', type: 'success' });
+          },
+        },
+      ],
+    );
+  };
 
   // Resolve pinned messages from the message list
   const pinnedMessages = useMemo(() => {
@@ -325,16 +347,21 @@ export function MediaPinsTab({ pinnedMessageIds, sharedObjects, allMessages, con
           </View>
         }
         renderItem={({ item }) => (
-          <SharedItemCard
-            item={item}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push({
-                pathname: '/(tabs)/messages/shared-detail',
-                params: { data: JSON.stringify(item) },
-              });
-            }}
-          />
+          <Pressable onLongPress={() => handleDeleteSharedObject(item)} delayLongPress={500}>
+            <SharedItemCard
+              item={item}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push({
+                  pathname: '/(tabs)/messages/shared-detail',
+                  params: {
+                    data: JSON.stringify(item),
+                    ...(contextType === 'conversation' ? { conversationId: contextId } : { groupId: contextId }),
+                  },
+                });
+              }}
+            />
+          </Pressable>
         )}
         ListEmptyComponent={
           sharedObjects.length > 0 ? (

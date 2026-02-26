@@ -51,6 +51,8 @@ export default function SectionDetailScreen() {
             pinnedMessageIds={conversation.metadata?.pinnedMessages ?? []}
             sharedObjects={conversation.metadata?.sharedObjects ?? []}
             allMessages={messages}
+            onAddSharedObject={(obj) => useMessagesStore.getState().addSharedObject(id!, obj)}
+            onDeleteSharedObject={(oid) => useMessagesStore.getState().deleteSharedObject(id!, oid)}
             contextId={id!}
             contextType="conversation"
           />
@@ -62,6 +64,9 @@ export default function SectionDetailScreen() {
             starredMessageIds={conversation.metadata?.starredMessages ?? []}
             allMessages={messages}
             onCreateNote={(note) => useMessagesStore.getState().createNote(id!, note)}
+            onDeleteNote={(noteId) => useMessagesStore.getState().deleteNote(id!, noteId)}
+            contextId={id!}
+            contextType="conversation"
           />
         );
       case 'reminders':
@@ -75,6 +80,8 @@ export default function SectionDetailScreen() {
               dueDate: rem.dueDate instanceof Date ? rem.dueDate.toISOString() : String(rem.dueDate),
               priority: rem.priority,
             })}
+            onDeleteReminder={(rid) => useMessagesStore.getState().deleteReminder(id!, rid)}
+            members={members}
           />
         );
       case 'ledger':
@@ -86,6 +93,7 @@ export default function SectionDetailScreen() {
             otherUser={otherUser ?? undefined}
             onSettle={(eid) => useMessagesStore.getState().settleLedgerEntry(id!, eid)}
             onCreateEntry={(entry) => useMessagesStore.getState().createLedgerEntry(id!, entry)}
+            onDeleteEntry={(eid) => useMessagesStore.getState().deleteLedgerEntry(id!, eid)}
             members={members}
           />
         );

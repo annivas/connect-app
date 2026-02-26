@@ -8,6 +8,7 @@ interface Props {
   images: Message[];
   isMine: boolean;
   borderRadius?: number;
+  onImagePress?: (index: number) => void;
 }
 
 const GAP = 2;
@@ -22,7 +23,7 @@ const MAX_DISPLAY = 4;
  * - 3 images: 1 large on left + 2 stacked on right
  * - 4+: 2x2 grid with "+N" overlay on the last cell
  */
-export function PhotoGrid({ images, isMine, borderRadius = 16 }: Props) {
+export function PhotoGrid({ images, isMine, borderRadius = 16, onImagePress }: Props) {
   const { width: screenWidth } = useWindowDimensions();
   const maxWidth = screenWidth * 0.75 - 24; // account for horizontal padding
   const count = images.length;
@@ -39,14 +40,14 @@ export function PhotoGrid({ images, isMine, borderRadius = 16 }: Props) {
     const img = images[0];
     const aspect = getAspectRatio(img);
     return (
-      <View style={{ borderRadius, overflow: 'hidden', maxWidth }}>
+      <Pressable onPress={() => onImagePress?.(0)} style={{ borderRadius, overflow: 'hidden', maxWidth }}>
         <Image
           source={{ uri: img.content }}
           style={{ width: maxWidth, aspectRatio: aspect }}
           contentFit="cover"
           transition={200}
         />
-      </View>
+      </Pressable>
     );
   }
 
@@ -54,19 +55,23 @@ export function PhotoGrid({ images, isMine, borderRadius = 16 }: Props) {
     const cellWidth = (maxWidth - GAP) / 2;
     return (
       <View style={{ flexDirection: 'row', borderRadius, overflow: 'hidden', maxWidth }}>
-        <Image
-          source={{ uri: images[0].content }}
-          style={{ width: cellWidth, height: cellWidth, borderTopLeftRadius: borderRadius, borderBottomLeftRadius: borderRadius }}
-          contentFit="cover"
-          transition={200}
-        />
+        <Pressable onPress={() => onImagePress?.(0)}>
+          <Image
+            source={{ uri: images[0].content }}
+            style={{ width: cellWidth, height: cellWidth, borderTopLeftRadius: borderRadius, borderBottomLeftRadius: borderRadius }}
+            contentFit="cover"
+            transition={200}
+          />
+        </Pressable>
         <View style={{ width: GAP }} />
-        <Image
-          source={{ uri: images[1].content }}
-          style={{ width: cellWidth, height: cellWidth, borderTopRightRadius: borderRadius, borderBottomRightRadius: borderRadius }}
-          contentFit="cover"
-          transition={200}
-        />
+        <Pressable onPress={() => onImagePress?.(1)}>
+          <Image
+            source={{ uri: images[1].content }}
+            style={{ width: cellWidth, height: cellWidth, borderTopRightRadius: borderRadius, borderBottomRightRadius: borderRadius }}
+            contentFit="cover"
+            transition={200}
+          />
+        </Pressable>
       </View>
     );
   }
@@ -77,27 +82,33 @@ export function PhotoGrid({ images, isMine, borderRadius = 16 }: Props) {
     const rightHeight = (leftWidth - GAP) / 2;
     return (
       <View style={{ flexDirection: 'row', borderRadius, overflow: 'hidden', maxWidth }}>
-        <Image
-          source={{ uri: images[0].content }}
-          style={{ width: leftWidth, height: leftWidth, borderTopLeftRadius: borderRadius, borderBottomLeftRadius: borderRadius }}
-          contentFit="cover"
-          transition={200}
-        />
+        <Pressable onPress={() => onImagePress?.(0)}>
+          <Image
+            source={{ uri: images[0].content }}
+            style={{ width: leftWidth, height: leftWidth, borderTopLeftRadius: borderRadius, borderBottomLeftRadius: borderRadius }}
+            contentFit="cover"
+            transition={200}
+          />
+        </Pressable>
         <View style={{ width: GAP }} />
         <View style={{ justifyContent: 'space-between' }}>
-          <Image
-            source={{ uri: images[1].content }}
-            style={{ width: rightWidth, height: rightHeight, borderTopRightRadius: borderRadius }}
-            contentFit="cover"
-            transition={200}
-          />
+          <Pressable onPress={() => onImagePress?.(1)}>
+            <Image
+              source={{ uri: images[1].content }}
+              style={{ width: rightWidth, height: rightHeight, borderTopRightRadius: borderRadius }}
+              contentFit="cover"
+              transition={200}
+            />
+          </Pressable>
           <View style={{ height: GAP }} />
-          <Image
-            source={{ uri: images[2].content }}
-            style={{ width: rightWidth, height: rightHeight, borderBottomRightRadius: borderRadius }}
-            contentFit="cover"
-            transition={200}
-          />
+          <Pressable onPress={() => onImagePress?.(2)}>
+            <Image
+              source={{ uri: images[2].content }}
+              style={{ width: rightWidth, height: rightHeight, borderBottomRightRadius: borderRadius }}
+              contentFit="cover"
+              transition={200}
+            />
+          </Pressable>
         </View>
       </View>
     );
@@ -108,30 +119,36 @@ export function PhotoGrid({ images, isMine, borderRadius = 16 }: Props) {
   return (
     <View style={{ borderRadius, overflow: 'hidden', maxWidth }}>
       <View style={{ flexDirection: 'row' }}>
-        <Image
-          source={{ uri: images[0].content }}
-          style={{ width: cellSize, height: cellSize, borderTopLeftRadius: borderRadius }}
-          contentFit="cover"
-          transition={200}
-        />
+        <Pressable onPress={() => onImagePress?.(0)}>
+          <Image
+            source={{ uri: images[0].content }}
+            style={{ width: cellSize, height: cellSize, borderTopLeftRadius: borderRadius }}
+            contentFit="cover"
+            transition={200}
+          />
+        </Pressable>
         <View style={{ width: GAP }} />
-        <Image
-          source={{ uri: images[1].content }}
-          style={{ width: cellSize, height: cellSize, borderTopRightRadius: borderRadius }}
-          contentFit="cover"
-          transition={200}
-        />
+        <Pressable onPress={() => onImagePress?.(1)}>
+          <Image
+            source={{ uri: images[1].content }}
+            style={{ width: cellSize, height: cellSize, borderTopRightRadius: borderRadius }}
+            contentFit="cover"
+            transition={200}
+          />
+        </Pressable>
       </View>
       <View style={{ height: GAP }} />
       <View style={{ flexDirection: 'row' }}>
-        <Image
-          source={{ uri: images[2].content }}
-          style={{ width: cellSize, height: cellSize, borderBottomLeftRadius: borderRadius }}
-          contentFit="cover"
-          transition={200}
-        />
+        <Pressable onPress={() => onImagePress?.(2)}>
+          <Image
+            source={{ uri: images[2].content }}
+            style={{ width: cellSize, height: cellSize, borderBottomLeftRadius: borderRadius }}
+            contentFit="cover"
+            transition={200}
+          />
+        </Pressable>
         <View style={{ width: GAP }} />
-        <View>
+        <Pressable onPress={() => onImagePress?.(3)}>
           <Image
             source={{ uri: images[3].content }}
             style={{ width: cellSize, height: cellSize, borderBottomRightRadius: borderRadius }}
@@ -140,6 +157,7 @@ export function PhotoGrid({ images, isMine, borderRadius = 16 }: Props) {
           />
           {overflow > 0 && (
             <View
+              pointerEvents="none"
               style={{
                 position: 'absolute',
                 top: 0,
@@ -157,7 +175,7 @@ export function PhotoGrid({ images, isMine, borderRadius = 16 }: Props) {
               </Text>
             </View>
           )}
-        </View>
+        </Pressable>
       </View>
     </View>
   );

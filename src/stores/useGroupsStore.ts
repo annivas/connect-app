@@ -90,14 +90,17 @@ interface GroupsState {
   // Reminders CRUD
   createGroupReminder: (groupId: string, reminder: Omit<Reminder, 'id' | 'createdAt'>) => void;
   toggleGroupReminderComplete: (groupId: string, reminderId: string) => void;
+  deleteGroupReminder: (groupId: string, reminderId: string) => void;
 
   // Ledger CRUD
   createGroupLedgerEntry: (groupId: string, entry: Omit<LedgerEntry, 'id'>) => void;
   settleGroupLedgerEntry: (groupId: string, entryId: string) => void;
+  deleteGroupLedgerEntry: (groupId: string, entryId: string) => void;
   getGroupPairBalances: (groupId: string) => GroupPairBalance[];
 
   // Shared objects
   addGroupSharedObject: (groupId: string, obj: Omit<SharedObject, 'id' | 'sharedAt'>) => void;
+  deleteGroupSharedObject: (groupId: string, objectId: string) => void;
 
   // List operations
   toggleGroupArchive: (groupId: string) => void;
@@ -1313,6 +1316,18 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
     });
   },
 
+  deleteGroupReminder: (groupId, reminderId) => {
+    set((state) => ({
+      groups: state.groups.map((g) => {
+        if (g.id !== groupId || !g.metadata) return g;
+        return {
+          ...g,
+          metadata: { ...g.metadata, reminders: g.metadata.reminders.filter((r) => r.id !== reminderId) },
+        };
+      }),
+    }));
+  },
+
   // Ledger
   createGroupLedgerEntry: (groupId, entryData) => {
     const optimisticId = `gled-${Date.now()}`;
@@ -1388,6 +1403,19 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
     });
   },
 
+  deleteGroupLedgerEntry: (groupId, entryId) => {
+    set((state) => ({
+      groups: state.groups.map((g) => {
+        if (g.id !== groupId || !g.metadata) return g;
+        const remaining = g.metadata.ledgerEntries.filter((e) => e.id !== entryId);
+        return {
+          ...g,
+          metadata: { ...g.metadata, ledgerEntries: remaining },
+        };
+      }),
+    }));
+  },
+
   getGroupPairBalances: (groupId) => {
     const group = get().groups.find((g) => g.id === groupId);
     const entries = group?.metadata?.ledgerEntries ?? [];
@@ -1452,6 +1480,15 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         }),
       }));
     });
+  },
+
+  deleteGroupSharedObject: (groupId, objectId) => {
+    set((state) => ({
+      groups: state.groups.map((g) => {
+        if (g.id !== groupId || !g.metadata) return g;
+        return { ...g, metadata: { ...g.metadata, sharedObjects: g.metadata.sharedObjects.filter((o) => o.id !== objectId) } };
+      }),
+    }));
   },
 
   // Archive / Unread

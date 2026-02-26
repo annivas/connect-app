@@ -56,14 +56,18 @@ interface MessagesState {
 
   // Write operations
   createNote: (conversationId: string, input: CreateNoteInput) => Promise<Note>;
+  deleteNote: (conversationId: string, noteId: string) => void;
   createReminder: (conversationId: string, input: CreateReminderInput) => Promise<Reminder>;
   toggleReminderComplete: (conversationId: string, reminderId: string) => void;
+  deleteReminder: (conversationId: string, reminderId: string) => void;
   createLedgerEntry: (conversationId: string, input: CreateLedgerEntryInput) => Promise<LedgerEntry>;
   settleLedgerEntry: (conversationId: string, entryId: string) => void;
+  deleteLedgerEntry: (conversationId: string, entryId: string) => void;
   addSharedObject: (
     conversationId: string,
     data: { type: 'link'; title: string; description?: string; url: string },
   ) => void;
+  deleteSharedObject: (conversationId: string, objectId: string) => void;
 
   // ─── New: Star, Pin, Forward, Archive, Search ──────
   scheduledMessages: ScheduledMessage[];
@@ -571,6 +575,16 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     return note;
   },
 
+  deleteNote: (conversationId, noteId) => {
+    set((state) => ({
+      conversations: state.conversations.map((c) =>
+        c.id === conversationId && c.metadata
+          ? { ...c, metadata: { ...c.metadata, notes: c.metadata.notes.filter((n) => n.id !== noteId) } }
+          : c,
+      ),
+    }));
+  },
+
   createReminder: async (conversationId, input) => {
     const reminder = await messagesRepository.createReminder(conversationId, input);
     set((state) => ({
@@ -619,6 +633,16 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
         ),
       }));
     });
+  },
+
+  deleteReminder: (conversationId, reminderId) => {
+    set((state) => ({
+      conversations: state.conversations.map((c) =>
+        c.id === conversationId && c.metadata
+          ? { ...c, metadata: { ...c.metadata, reminders: c.metadata.reminders.filter((r) => r.id !== reminderId) } }
+          : c,
+      ),
+    }));
   },
 
   createLedgerEntry: async (conversationId, input) => {
@@ -680,6 +704,23 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     });
   },
 
+  deleteLedgerEntry: (conversationId, entryId) => {
+    set((state) => ({
+      conversations: state.conversations.map((c) => {
+        if (c.id !== conversationId || !c.metadata) return c;
+        const remaining = c.metadata.ledgerEntries.filter((e) => e.id !== entryId);
+        const newBalance = remaining.reduce(
+          (sum, e) => (e.isSettled ? sum : sum + e.amount),
+          0,
+        );
+        return {
+          ...c,
+          metadata: { ...c.metadata, ledgerEntries: remaining, ledgerBalance: newBalance },
+        };
+      }),
+    }));
+  },
+
   addSharedObject: (conversationId, data) => {
     const currentUserId = getCurrentUserId() || 'unknown';
 
@@ -720,6 +761,16 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
         ),
       }));
     });
+  },
+
+  deleteSharedObject: (conversationId, objectId) => {
+    set((state) => ({
+      conversations: state.conversations.map((c) =>
+        c.id === conversationId && c.metadata
+          ? { ...c, metadata: { ...c.metadata, sharedObjects: c.metadata.sharedObjects.filter((o) => o.id !== objectId) } }
+          : c,
+      ),
+    }));
   },
 
   // ─── Star / Pin / Forward / Archive / Search ──────

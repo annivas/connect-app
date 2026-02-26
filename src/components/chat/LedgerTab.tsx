@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, Pressable } from 'react-native';
+import { View, Text, FlatList, Pressable, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import * as Haptics from 'expo-haptics';
 import { Card } from '../ui/Card';
 import { EmptyState } from '../ui/EmptyState';
 import { CreateExpenseModal } from './CreateExpenseModal';
+import { useToastStore } from '../../stores/useToastStore';
 import type { LedgerEntry, User, GroupPairBalance } from '../../types';
 import { useUserStore } from '../../stores/useUserStore';
 
@@ -21,15 +22,36 @@ interface Props {
   // Callbacks
   onSettle: (entryId: string) => void;
   onCreateEntry: (entry: Omit<LedgerEntry, 'id'>) => void;
+  onDeleteEntry?: (entryId: string) => void;
 }
 
-export function LedgerTab({ mode, entries, balance = 0, otherUser, pairBalances, members, onSettle, onCreateEntry }: Props) {
+export function LedgerTab({ mode, entries, balance = 0, otherUser, pairBalances, members, onSettle, onCreateEntry, onDeleteEntry }: Props) {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const getUserById = useUserStore((s) => s.getUserById);
 
   const handleSettle = (entryId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     onSettle(entryId);
+  };
+
+  const handleDelete = (entry: LedgerEntry) => {
+    if (!onDeleteEntry) return;
+    Alert.alert(
+      'Delete Expense',
+      `Are you sure you want to delete "${entry.description}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            onDeleteEntry(entry.id);
+            useToastStore.getState().show({ message: 'Expense deleted', type: 'success' });
+          },
+        },
+      ],
+    );
   };
 
   const handleFABPress = () => {
@@ -118,6 +140,7 @@ export function LedgerTab({ mode, entries, balance = 0, otherUser, pairBalances,
         renderItem={({ item }: { item: LedgerEntry }) => {
           const paidBy = getUserById(item.paidBy);
           return (
+            <Pressable onLongPress={() => handleDelete(item)} delayLongPress={500}>
             <Card className="mb-3">
               <View className="flex-row justify-between items-start mb-2">
                 <View className="flex-1 mr-3">
@@ -166,6 +189,7 @@ export function LedgerTab({ mode, entries, balance = 0, otherUser, pairBalances,
                 )}
               </View>
             </Card>
+            </Pressable>
           );
         }}
       />

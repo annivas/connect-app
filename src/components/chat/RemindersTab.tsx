@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, Pressable } from 'react-native';
+import { View, Text, FlatList, Pressable, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import * as Haptics from 'expo-haptics';
@@ -8,12 +8,14 @@ import { EmptyState } from '../ui/EmptyState';
 import { Avatar } from '../ui/Avatar';
 import { CreateReminderModal } from './CreateReminderModal';
 import { useUserStore } from '../../stores/useUserStore';
+import { useToastStore } from '../../stores/useToastStore';
 import type { Reminder, User } from '../../types';
 
 interface Props {
   reminders: Reminder[];
   onToggleComplete: (reminderId: string) => void;
   onCreateReminder: (reminder: Omit<Reminder, 'id' | 'createdAt'>) => void;
+  onDeleteReminder?: (reminderId: string) => void;
   members?: User[];
 }
 
@@ -23,13 +25,33 @@ const priorityColors = {
   high: '#C94F4F',
 };
 
-export function RemindersTab({ reminders, onToggleComplete, onCreateReminder, members }: Props) {
+export function RemindersTab({ reminders, onToggleComplete, onCreateReminder, onDeleteReminder, members }: Props) {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const getUserById = useUserStore((s) => s.getUserById);
 
   const handleToggle = (reminderId: string) => {
     Haptics.selectionAsync();
     onToggleComplete(reminderId);
+  };
+
+  const handleDelete = (reminder: Reminder) => {
+    if (!onDeleteReminder) return;
+    Alert.alert(
+      'Delete Reminder',
+      `Are you sure you want to delete "${reminder.title}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            onDeleteReminder(reminder.id);
+            useToastStore.getState().show({ message: 'Reminder deleted', type: 'success' });
+          },
+        },
+      ],
+    );
   };
 
   const handleFABPress = () => {
@@ -63,68 +85,70 @@ export function RemindersTab({ reminders, onToggleComplete, onCreateReminder, me
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
         renderItem={({ item }: { item: Reminder }) => (
-          <Card className="mb-3">
-            <View className="flex-row items-start">
-              <Pressable
-                onPress={() => handleToggle(item.id)}
-                hitSlop={8}
-                className="mr-3 mt-0.5"
-              >
-                <View
-                  className="w-5 h-5 rounded-full border-2 items-center justify-center"
-                  style={{
-                    borderColor: priorityColors[item.priority],
-                    backgroundColor: item.isCompleted
-                      ? priorityColors[item.priority] + '30'
-                      : 'transparent',
-                  }}
+          <Pressable onLongPress={() => handleDelete(item)} delayLongPress={500}>
+            <Card className="mb-3">
+              <View className="flex-row items-start">
+                <Pressable
+                  onPress={() => handleToggle(item.id)}
+                  hitSlop={8}
+                  className="mr-3 mt-0.5"
                 >
-                  {item.isCompleted && (
-                    <Ionicons name="checkmark" size={12} color="#2D9F6F" />
-                  )}
-                </View>
-              </Pressable>
-              <View className="flex-1">
-                <Text
-                  className={`text-[15px] font-medium ${
-                    item.isCompleted
-                      ? 'text-text-tertiary line-through'
-                      : 'text-text-primary'
-                  }`}
-                >
-                  {item.title}
-                </Text>
-                <Text className="text-text-tertiary text-xs mt-1">
-                  {format(item.dueDate, 'MMM d, yyyy · HH:mm')}
-                </Text>
-                {item.assignedTo && item.assignedTo.length > 0 && members && (
-                  <View className="flex-row items-center mt-1.5">
-                    {item.assignedTo.slice(0, 4).map((userId) => {
-                      const user = getUserById(userId);
-                      return user ? (
-                        <View key={userId} className="-mr-1">
-                          <Avatar uri={user.avatar} size="sm" />
-                        </View>
-                      ) : null;
-                    })}
-                    {item.assignedTo.length > 4 && (
-                      <Text className="text-text-tertiary text-[10px] ml-2">
-                        +{item.assignedTo.length - 4}
-                      </Text>
+                  <View
+                    className="w-5 h-5 rounded-full border-2 items-center justify-center"
+                    style={{
+                      borderColor: priorityColors[item.priority],
+                      backgroundColor: item.isCompleted
+                        ? priorityColors[item.priority] + '30'
+                        : 'transparent',
+                    }}
+                  >
+                    {item.isCompleted && (
+                      <Ionicons name="checkmark" size={12} color="#2D9F6F" />
                     )}
                   </View>
-                )}
-                {item.linkedMessageId && (
-                  <View className="flex-row items-center mt-1.5">
-                    <Ionicons name="chatbubble-outline" size={11} color="#D4764E" />
-                    <Text className="text-accent-primary text-[11px] font-medium ml-1">
-                      From message
-                    </Text>
-                  </View>
-                )}
+                </Pressable>
+                <View className="flex-1">
+                  <Text
+                    className={`text-[15px] font-medium ${
+                      item.isCompleted
+                        ? 'text-text-tertiary line-through'
+                        : 'text-text-primary'
+                    }`}
+                  >
+                    {item.title}
+                  </Text>
+                  <Text className="text-text-tertiary text-xs mt-1">
+                    {format(item.dueDate, 'MMM d, yyyy · HH:mm')}
+                  </Text>
+                  {item.assignedTo && item.assignedTo.length > 0 && members && (
+                    <View className="flex-row items-center mt-1.5">
+                      {item.assignedTo.slice(0, 4).map((userId) => {
+                        const user = getUserById(userId);
+                        return user ? (
+                          <View key={userId} className="-mr-1">
+                            <Avatar uri={user.avatar} size="sm" />
+                          </View>
+                        ) : null;
+                      })}
+                      {item.assignedTo.length > 4 && (
+                        <Text className="text-text-tertiary text-[10px] ml-2">
+                          +{item.assignedTo.length - 4}
+                        </Text>
+                      )}
+                    </View>
+                  )}
+                  {item.linkedMessageId && (
+                    <View className="flex-row items-center mt-1.5">
+                      <Ionicons name="chatbubble-outline" size={11} color="#D4764E" />
+                      <Text className="text-accent-primary text-[11px] font-medium ml-1">
+                        From message
+                      </Text>
+                    </View>
+                  )}
+                </View>
               </View>
-            </View>
-          </Card>
+            </Card>
+          </Pressable>
         )}
       />
       <FAB onPress={handleFABPress} />

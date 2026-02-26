@@ -13,6 +13,7 @@ import { QuickActions } from '../../../src/components/chat/QuickActions';
 import { MemberListItem } from '../../../src/components/groups/MemberListItem';
 import { EditGroupModal } from '../../../src/components/groups/EditGroupModal';
 import { AddMembersModal } from '../../../src/components/groups/AddMembersModal';
+import { useToastStore } from '../../../src/stores/useToastStore';
 import { useGroupsStore } from '../../../src/stores/useGroupsStore';
 import { useUserStore } from '../../../src/stores/useUserStore';
 import { useCallStore } from '../../../src/stores/useCallStore';
@@ -395,7 +396,10 @@ export default function GroupInfoScreen() {
         existingMemberIds={group.members}
         visible={showAddMembers}
         onClose={() => setShowAddMembers(false)}
-        onAdded={() => {}}
+        onAdded={() => {
+          setShowAddMembers(false);
+          useToastStore.getState().show({ message: 'Members added successfully', type: 'success' });
+        }}
       />
     </SafeAreaView>
   );
