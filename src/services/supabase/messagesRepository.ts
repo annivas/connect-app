@@ -209,18 +209,23 @@ export const supabaseMessagesRepository: IMessagesRepository = {
   async createConversation(participantIds: string[]): Promise<Conversation> {
     const userId = getCurrentUserId();
 
-    // Create conversation
-    const { data: conv, error: convError } = await supabase
+    // Generate UUID client-side so we can INSERT without .select().
+    // The SELECT policy requires the user to be a participant, but
+    // participants aren't added until the next step — a chicken-and-egg
+    // problem with RLS. By generating the ID here, we skip RETURNING
+    // entirely and avoid triggering the SELECT policy.
+    const conversationId = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    const { error: convError } = await supabase
       .from('conversations')
-      .insert({ type: 'individual' })
-      .select()
-      .single();
+      .insert({ id: conversationId, type: 'individual', created_at: now, updated_at: now });
 
     if (convError) throw new Error(`Failed to create conversation: ${convError.message}`);
 
     // Add participants
     const participantRows = participantIds.map((uid) => ({
-      conversation_id: conv.id,
+      conversation_id: conversationId,
       user_id: uid,
       is_pinned: false,
       is_muted: false,
@@ -234,7 +239,7 @@ export const supabaseMessagesRepository: IMessagesRepository = {
     if (partError) throw new Error(`Failed to add participants: ${partError.message}`);
 
     return adaptConversation({
-      conversation: conv,
+      conversation: { id: conversationId, type: 'individual', created_at: now, updated_at: now },
       participantIds,
       isPinned: false,
       isMuted: false,
