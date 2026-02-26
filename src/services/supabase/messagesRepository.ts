@@ -9,7 +9,7 @@ import {
   adaptLedgerEntry,
   adaptConversation,
 } from './adapters';
-import { getCurrentUserId } from './helpers';
+import { getCurrentUserId, generateUUID } from './helpers';
 
 export const supabaseMessagesRepository: IMessagesRepository = {
   async getConversations(): Promise<Conversation[]> {
@@ -214,7 +214,7 @@ export const supabaseMessagesRepository: IMessagesRepository = {
     // participants aren't added until the next step — a chicken-and-egg
     // problem with RLS. By generating the ID here, we skip RETURNING
     // entirely and avoid triggering the SELECT policy.
-    const conversationId = crypto.randomUUID();
+    const conversationId = generateUUID();
     const now = new Date().toISOString();
 
     const { error: convError } = await supabase
