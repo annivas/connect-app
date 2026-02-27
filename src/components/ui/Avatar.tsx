@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, Text } from 'react-native';
 import { Image } from 'expo-image';
 
 interface AvatarProps {
@@ -7,6 +7,7 @@ interface AvatarProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   status?: 'online' | 'offline' | 'away';
   showStatus?: boolean;
+  statusEmoji?: string;
 }
 
 const sizeMap = { sm: 32, md: 40, lg: 52, xl: 80 };
@@ -22,9 +23,12 @@ export function Avatar({
   size = 'md',
   status = 'offline',
   showStatus = false,
+  statusEmoji,
 }: AvatarProps) {
   const px = sizeMap[size];
   const dot = size === 'sm' ? 10 : size === 'md' ? 12 : 16;
+  const emojiFontSize = size === 'sm' ? 9 : size === 'md' ? 10 : 14;
+  const emojiSize = size === 'sm' ? 14 : size === 'md' ? 16 : 22;
 
   return (
     <View style={{ width: px, height: px }}>
@@ -34,7 +38,23 @@ export function Avatar({
         contentFit="cover"
         transition={200}
       />
-      {showStatus && (
+      {showStatus && statusEmoji ? (
+        <View
+          style={{
+            position: 'absolute',
+            bottom: -2,
+            right: -2,
+            width: emojiSize,
+            height: emojiSize,
+            borderRadius: emojiSize / 2,
+            backgroundColor: '#FFF8F0',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text style={{ fontSize: emojiFontSize }}>{statusEmoji}</Text>
+        </View>
+      ) : showStatus ? (
         <View
           style={{
             position: 'absolute',
@@ -48,7 +68,7 @@ export function Avatar({
             borderColor: '#FFF8F0',
           }}
         />
-      )}
+      ) : null}
     </View>
   );
 }

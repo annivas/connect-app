@@ -24,6 +24,7 @@ const TYPE_INFO: Record<GroupType, { label: string; icon: keyof typeof Ionicons.
   trip: { label: 'Trip', icon: 'airplane' },
   sports: { label: 'Sports', icon: 'basketball' },
   project: { label: 'Project', icon: 'briefcase' },
+  household: { label: 'Household', icon: 'home' },
 };
 
 export default function GroupInfoScreen() {

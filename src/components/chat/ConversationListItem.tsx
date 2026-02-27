@@ -154,6 +154,7 @@ export function ConversationListItem({ conversation, highlightText }: Props) {
           size="lg"
           status={otherUser.status}
           showStatus
+          statusEmoji={otherUser.richStatus?.emoji && (!otherUser.richStatus.expiresAt || otherUser.richStatus.expiresAt > new Date()) ? otherUser.richStatus.emoji : undefined}
         />
 
         <View className="flex-1 ml-3">
@@ -165,6 +166,19 @@ export function ConversationListItem({ conversation, highlightText }: Props) {
               >
                 {otherUser.name}
               </Text>
+              {otherUser.richStatus?.focusMode?.enabled && (!otherUser.richStatus.expiresAt || otherUser.richStatus.expiresAt > new Date()) && (
+                <View
+                  style={{
+                    marginLeft: 6,
+                    backgroundColor: '#D4964E20',
+                    borderRadius: 4,
+                    paddingHorizontal: 4,
+                    paddingVertical: 1,
+                  }}
+                >
+                  <Text style={{ fontSize: 9, color: '#D4964E', fontWeight: '700' }}>DND</Text>
+                </View>
+              )}
               {conversation.isMuted && (
                 <Ionicons
                   name="notifications-off"

@@ -1,12 +1,14 @@
-import React, { useLayoutEffect, useEffect } from 'react';
+import React, { useLayoutEffect, useEffect, useState } from 'react';
 import { View, Text, Pressable, Platform, ActionSheetIOS, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useShallow } from 'zustand/react/shallow';
 import { IconButton } from '../../../src/components/ui/IconButton';
 import { Avatar } from '../../../src/components/ui/Avatar';
 import { GroupChatTab } from '../../../src/components/groups/GroupChatTab';
+import { HouseholdTab } from '../../../src/components/groups/HouseholdTab';
 import { InChatSearchBar } from '../../../src/components/chat/InChatSearchBar';
 import { DisappearingMessagesSheet } from '../../../src/components/chat/DisappearingMessagesSheet';
 import { CreatePollModal } from '../../../src/components/groups/CreatePollModal';
@@ -14,6 +16,7 @@ import { useMessageSearch } from '../../../src/hooks/useMessageSearch';
 import { useGroupsStore } from '../../../src/stores/useGroupsStore';
 import { useUserStore } from '../../../src/stores/useUserStore';
 import { useCallStore } from '../../../src/stores/useCallStore';
+import { CURRENT_USER_ID } from '../../../src/mocks/users';
 
 export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -21,6 +24,7 @@ export default function GroupDetailScreen() {
   const navigation = useNavigation();
   const [showCreatePoll, setShowCreatePoll] = React.useState(false);
   const [showDisappearingSheet, setShowDisappearingSheet] = React.useState(false);
+  const [householdActiveTab, setHouseholdActiveTab] = useState<'chat' | 'household'>('chat');
 
   // Mark group as read when screen opens
   useEffect(() => {
@@ -153,12 +157,97 @@ export default function GroupDetailScreen() {
         onClose={clearSearch}
       />
 
-      {/* Full-screen chat */}
-      <GroupChatTab
-        groupId={id!}
-        highlightText={isSearching ? chatSearchQuery : undefined}
-        matchingMessageIds={isSearching ? matchingMessageIds : undefined}
-      />
+      {/* Household tab toggle */}
+      {group.type === 'household' && group.household && (
+        <View className="flex-row px-4 pt-2 pb-1 gap-2">
+          {(['chat', 'household'] as const).map((tab) => (
+            <Pressable
+              key={tab}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setHouseholdActiveTab(tab);
+              }}
+              className="flex-1"
+            >
+              <View
+                className={`flex-row items-center justify-center rounded-xl py-2 ${
+                  householdActiveTab === tab ? 'bg-accent-primary' : 'bg-surface'
+                }`}
+              >
+                <Ionicons
+                  name={tab === 'chat' ? 'chatbubbles-outline' : 'home-outline'}
+                  size={15}
+                  color={householdActiveTab === tab ? '#FFFFFF' : '#7A6355'}
+                />
+                <Text
+                  className={`text-xs font-medium ml-1.5 ${
+                    householdActiveTab === tab ? 'text-white' : 'text-text-secondary'
+                  }`}
+                >
+                  {tab === 'chat' ? 'Chat' : 'Home'}
+                </Text>
+              </View>
+            </Pressable>
+          ))}
+        </View>
+      )}
+
+      {/* Main content area */}
+      {group.type === 'household' && group.household && householdActiveTab === 'household' ? (
+        <HouseholdTab
+          data={group.household}
+          getUserName={(uid) => useUserStore.getState().getUserById(uid)?.name ?? 'Unknown'}
+          getUserAvatar={(uid) => useUserStore.getState().getUserById(uid)?.avatar ?? ''}
+          currentUserId={CURRENT_USER_ID}
+          onToggleChore={(choreId) => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            const g = useGroupsStore.getState().getGroupById(id!);
+            if (!g?.household) return;
+            const updatedChores = g.household.chores.map((c) =>
+              c.id === choreId ? { ...c, isCompleted: !c.isCompleted, lastCompleted: !c.isCompleted ? new Date() : c.lastCompleted } : c
+            );
+            useGroupsStore.getState().updateGroup(id!, { household: { ...g.household, chores: updatedChores } } as any);
+          }}
+          onToggleShoppingItem={(itemId) => {
+            Haptics.selectionAsync();
+            const g = useGroupsStore.getState().getGroupById(id!);
+            if (!g?.household) return;
+            const updatedItems = g.household.shoppingList.map((item) =>
+              item.id === itemId ? { ...item, isChecked: !item.isChecked, checkedBy: !item.isChecked ? CURRENT_USER_ID : undefined } : item
+            );
+            useGroupsStore.getState().updateGroup(id!, { household: { ...g.household, shoppingList: updatedItems } } as any);
+          }}
+          onAddShoppingItem={(name) => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            const g = useGroupsStore.getState().getGroupById(id!);
+            if (!g?.household) return;
+            const newItem = { id: `shop-${Date.now()}`, name, isChecked: false, addedBy: CURRENT_USER_ID };
+            useGroupsStore.getState().updateGroup(id!, { household: { ...g.household, shoppingList: [...g.household.shoppingList, newItem] } } as any);
+          }}
+          onDeleteShoppingItem={(itemId) => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            const g = useGroupsStore.getState().getGroupById(id!);
+            if (!g?.household) return;
+            const updatedItems = g.household.shoppingList.filter((item) => item.id !== itemId);
+            useGroupsStore.getState().updateGroup(id!, { household: { ...g.household, shoppingList: updatedItems } } as any);
+          }}
+          onToggleBillPaid={(billId) => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            const g = useGroupsStore.getState().getGroupById(id!);
+            if (!g?.household) return;
+            const updatedBills = g.household.recurringBills.map((b) =>
+              b.id === billId ? { ...b, isPaid: !b.isPaid, paidBy: !b.isPaid ? CURRENT_USER_ID : undefined } : b
+            );
+            useGroupsStore.getState().updateGroup(id!, { household: { ...g.household, recurringBills: updatedBills } } as any);
+          }}
+        />
+      ) : (
+        <GroupChatTab
+          groupId={id!}
+          highlightText={isSearching ? chatSearchQuery : undefined}
+          matchingMessageIds={isSearching ? matchingMessageIds : undefined}
+        />
+      )}
 
       <CreatePollModal
         visible={showCreatePoll}

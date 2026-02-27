@@ -26,7 +26,9 @@ import { SongMessageBubble } from './SongMessageBubble';
 import { ImageViewerModal } from './ImageViewerModal';
 import { renderHighlightedText } from '../../utils/highlightText';
 import { extractUrls } from '../../utils/urlDetection';
-import { Message, Reaction, VoiceMessageMetadata, LocationMessageMetadata, DocumentMessageMetadata, ContactMessageMetadata, SongMetadata } from '../../types';
+import { detectActions } from '../../utils/actionDetector';
+import { ActionSuggestionChip } from './ActionSuggestionChip';
+import { Message, Reaction, DetectedAction, VoiceMessageMetadata, LocationMessageMetadata, DocumentMessageMetadata, ContactMessageMetadata, SongMetadata } from '../../types';
 import { useUserStore } from '../../stores/useUserStore';
 
 interface Props {
@@ -46,6 +48,8 @@ interface Props {
   onContextMenu?: (message: Message) => void;
   /** Grouped image messages for photo grid rendering */
   imageGroup?: Message[];
+  /** Called when a smart action suggestion chip is pressed */
+  onActionSuggestion?: (action: DetectedAction) => void;
 }
 
 // ─── Date Divider ────────────────────────────
@@ -213,6 +217,7 @@ export function MessageBubble({
   isSearchMatch,
   onContextMenu,
   imageGroup,
+  onActionSuggestion,
 }: Props) {
   const currentUserId = useUserStore((s) => s.currentUser?.id);
   const getUserById = useUserStore((s) => s.getUserById);
@@ -623,6 +628,17 @@ export function MessageBubble({
             onToggle={(emoji) => onReact?.(message.id, emoji)}
           />
         )}
+
+        {/* Smart action suggestions */}
+        {!isMine && message.type === 'text' && onActionSuggestion && (() => {
+          const actions = detectActions(message.id, message.content);
+          if (actions.length === 0) return null;
+          return (
+            <View className="mt-1" style={{ alignItems: isMine ? 'flex-end' : 'flex-start' }}>
+              <ActionSuggestionChip actions={actions} onPress={onActionSuggestion} />
+            </View>
+          );
+        })()}
 
         {/* Failed to send banner */}
         {isFailed && isMine && (

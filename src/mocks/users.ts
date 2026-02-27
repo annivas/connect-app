@@ -12,6 +12,11 @@ export const MOCK_USERS: User[] = [
     statusMessage: 'Building the future',
     email: 'you@connect.app',
     phone: '+1 (415) 555-0123',
+    richStatus: {
+      emoji: '🚀',
+      text: 'Building the future',
+    },
+    lastSeenAt: new Date(),
   },
   {
     id: 'user-1',
@@ -20,6 +25,13 @@ export const MOCK_USERS: User[] = [
     avatar: 'https://i.pravatar.cc/150?img=47',
     status: 'online',
     statusMessage: 'Building cool stuff',
+    richStatus: {
+      emoji: '💻',
+      text: 'Deep work mode',
+      expiresAt: new Date('2026-02-27T17:00:00'),
+      focusMode: { enabled: true, autoReply: 'Heads down coding — will reply after 5pm!' },
+    },
+    lastSeenAt: new Date(),
   },
   {
     id: 'user-2',
@@ -28,6 +40,11 @@ export const MOCK_USERS: User[] = [
     avatar: 'https://i.pravatar.cc/150?img=12',
     status: 'online',
     statusMessage: 'Coffee first',
+    richStatus: {
+      emoji: '☕',
+      text: 'Coffee first, then the world',
+    },
+    lastSeenAt: new Date(),
   },
   {
     id: 'user-3',
@@ -36,6 +53,13 @@ export const MOCK_USERS: User[] = [
     avatar: 'https://i.pravatar.cc/150?img=32',
     status: 'away',
     statusMessage: 'In a meeting',
+    richStatus: {
+      emoji: '📅',
+      text: 'In a meeting',
+      expiresAt: new Date('2026-02-27T15:00:00'),
+      focusMode: { enabled: true, autoReply: 'In a meeting until 3pm' },
+    },
+    lastSeenAt: new Date('2026-02-27T13:00:00'),
   },
   {
     id: 'user-4',
@@ -43,6 +67,7 @@ export const MOCK_USERS: User[] = [
     username: '@morgant',
     avatar: 'https://i.pravatar.cc/150?img=56',
     status: 'offline',
+    lastSeenAt: new Date('2026-02-25T22:00:00'),
   },
   {
     id: 'user-5',
@@ -51,6 +76,12 @@ export const MOCK_USERS: User[] = [
     avatar: 'https://i.pravatar.cc/150?img=15',
     status: 'online',
     statusMessage: 'Exploring the world',
+    richStatus: {
+      emoji: '🏃',
+      text: 'At the gym',
+      expiresAt: new Date('2026-02-27T18:00:00'),
+    },
+    lastSeenAt: new Date(),
   },
   {
     id: 'user-6',
@@ -59,6 +90,11 @@ export const MOCK_USERS: User[] = [
     avatar: 'https://i.pravatar.cc/150?img=29',
     status: 'online',
     statusMessage: 'Reading between the lines',
+    richStatus: {
+      emoji: '📚',
+      text: 'Reading between the lines',
+    },
+    lastSeenAt: new Date(),
   },
   {
     id: 'user-7',
@@ -67,6 +103,12 @@ export const MOCK_USERS: User[] = [
     avatar: 'https://i.pravatar.cc/150?img=53',
     status: 'away',
     statusMessage: 'On a call',
+    richStatus: {
+      emoji: '📞',
+      text: 'On a call',
+      expiresAt: new Date('2026-02-27T14:30:00'),
+    },
+    lastSeenAt: new Date('2026-02-27T14:00:00'),
   },
   {
     id: 'user-8',
@@ -74,6 +116,8 @@ export const MOCK_USERS: User[] = [
     username: '@emmaw',
     avatar: 'https://i.pravatar.cc/150?img=44',
     status: 'offline',
+    lastSeenAt: new Date('2026-02-20T19:00:00'),
+    birthday: new Date('1995-03-15'),
   },
   {
     id: 'user-9',
@@ -82,6 +126,11 @@ export const MOCK_USERS: User[] = [
     avatar: 'https://i.pravatar.cc/150?img=60',
     status: 'online',
     statusMessage: 'Photography is life',
+    richStatus: {
+      emoji: '📸',
+      text: 'Photography is life',
+    },
+    lastSeenAt: new Date(),
   },
   {
     id: 'user-10',
@@ -90,6 +139,11 @@ export const MOCK_USERS: User[] = [
     avatar: 'https://i.pravatar.cc/150?img=21',
     status: 'online',
     statusMessage: 'Creating magic',
+    richStatus: {
+      emoji: '✨',
+      text: 'Creating magic',
+    },
+    lastSeenAt: new Date(),
   },
   {
     id: 'user-11',
@@ -98,6 +152,11 @@ export const MOCK_USERS: User[] = [
     avatar: 'https://i.pravatar.cc/150?img=8',
     status: 'away',
     statusMessage: 'Cooking something up',
+    richStatus: {
+      emoji: '🍳',
+      text: 'Cooking something up',
+    },
+    lastSeenAt: new Date('2026-02-27T12:00:00'),
   },
 ];
 

@@ -30,6 +30,7 @@ const GROUP_TYPES: { key: GroupType; label: string; icon: keyof typeof Ionicons.
   { key: 'trip', label: 'Trip', icon: 'airplane' },
   { key: 'sports', label: 'Sports', icon: 'basketball' },
   { key: 'project', label: 'Project', icon: 'briefcase' },
+  { key: 'household', label: 'Household', icon: 'home' },
 ];
 
 export function CreateGroupModal({ visible, onClose, onCreated }: Props) {

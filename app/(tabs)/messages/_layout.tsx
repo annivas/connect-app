@@ -18,6 +18,7 @@ export default function MessagesLayout() {
       <Stack.Screen name="section-detail" />
       <Stack.Screen name="shared-detail" />
       <Stack.Screen name="note-detail" />
+      <Stack.Screen name="contact-insights" />
     </Stack>
   );
 }

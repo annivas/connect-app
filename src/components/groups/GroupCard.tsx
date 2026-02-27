@@ -15,6 +15,7 @@ const typeIcons: Record<string, keyof typeof Ionicons.glyphMap> = {
   trip: 'airplane',
   sports: 'basketball',
   project: 'briefcase',
+  household: 'home',
 };
 
 function formatTimestamp(date: Date): string {
