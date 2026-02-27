@@ -201,18 +201,44 @@ export default function GroupDetailScreen() {
           currentUserId={CURRENT_USER_ID}
           onToggleChore={(choreId) => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            const g = useGroupsStore.getState().getGroupById(id!);
+            if (!g?.household) return;
+            const updatedChores = g.household.chores.map((c) =>
+              c.id === choreId ? { ...c, isCompleted: !c.isCompleted, lastCompleted: !c.isCompleted ? new Date() : c.lastCompleted } : c
+            );
+            useGroupsStore.getState().updateGroup(id!, { household: { ...g.household, chores: updatedChores } } as any);
           }}
           onToggleShoppingItem={(itemId) => {
             Haptics.selectionAsync();
+            const g = useGroupsStore.getState().getGroupById(id!);
+            if (!g?.household) return;
+            const updatedItems = g.household.shoppingList.map((item) =>
+              item.id === itemId ? { ...item, isChecked: !item.isChecked, checkedBy: !item.isChecked ? CURRENT_USER_ID : undefined } : item
+            );
+            useGroupsStore.getState().updateGroup(id!, { household: { ...g.household, shoppingList: updatedItems } } as any);
           }}
           onAddShoppingItem={(name) => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            const g = useGroupsStore.getState().getGroupById(id!);
+            if (!g?.household) return;
+            const newItem = { id: `shop-${Date.now()}`, name, isChecked: false, addedBy: CURRENT_USER_ID };
+            useGroupsStore.getState().updateGroup(id!, { household: { ...g.household, shoppingList: [...g.household.shoppingList, newItem] } } as any);
           }}
           onDeleteShoppingItem={(itemId) => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            const g = useGroupsStore.getState().getGroupById(id!);
+            if (!g?.household) return;
+            const updatedItems = g.household.shoppingList.filter((item) => item.id !== itemId);
+            useGroupsStore.getState().updateGroup(id!, { household: { ...g.household, shoppingList: updatedItems } } as any);
           }}
           onToggleBillPaid={(billId) => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            const g = useGroupsStore.getState().getGroupById(id!);
+            if (!g?.household) return;
+            const updatedBills = g.household.recurringBills.map((b) =>
+              b.id === billId ? { ...b, isPaid: !b.isPaid, paidBy: !b.isPaid ? CURRENT_USER_ID : undefined } : b
+            );
+            useGroupsStore.getState().updateGroup(id!, { household: { ...g.household, recurringBills: updatedBills } } as any);
           }}
         />
       ) : (

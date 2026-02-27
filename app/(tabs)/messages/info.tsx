@@ -145,12 +145,12 @@ export default function ConversationInfoScreen() {
       >
         {/* Profile card */}
         <View className="items-center pt-8 pb-4">
-          <Avatar uri={otherUser.avatar} size="xl" status={otherUser.status} showStatus />
+          <Avatar uri={otherUser.avatar} size="xl" status={otherUser.status} showStatus statusEmoji={otherUser.richStatus?.emoji} />
           <Text className="text-text-primary text-2xl font-bold mt-4">
             {otherUser.name}
           </Text>
           <Text className="text-text-secondary text-[15px] mt-0.5">
-            @{otherUser.username}
+            {otherUser.username}
           </Text>
           {/* Status pill */}
           <View className="flex-row items-center bg-surface-elevated rounded-full px-3 py-1.5 mt-2">
@@ -167,7 +167,7 @@ export default function ConversationInfoScreen() {
                otherUser.status === 'away' ? 'Away' : 'Offline'}
             </Text>
           </View>
-          {otherUser.richStatus ? (
+          {otherUser.richStatus && (!otherUser.richStatus.expiresAt || otherUser.richStatus.expiresAt > new Date()) ? (
             <View className="flex-row items-center bg-background-tertiary rounded-full px-3 py-1.5 mt-2">
               <Text className="text-sm mr-1">{otherUser.richStatus.emoji}</Text>
               <Text className="text-text-secondary text-sm">{otherUser.richStatus.text}</Text>

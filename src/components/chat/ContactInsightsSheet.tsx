@@ -71,7 +71,7 @@ export function ContactInsightsSheet({ user, conversation, messages, currentUser
     const currentBalance = ledgerEntries
       .filter((e) => !e.isSettled)
       .reduce((sum, e) => {
-        if (e.paidBy === currentUserId) return sum + e.amount;
+        if (e.paidBy === currentUserId) return sum + e.amount - e.amount / e.splitBetween.length;
         return sum - e.amount / e.splitBetween.length;
       }, 0);
 

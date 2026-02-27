@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, Pressable, TextInput, Modal, ScrollView, Switch } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -41,6 +41,17 @@ export function StatusPicker({ visible, currentStatus, onSave, onClear, onClose 
   const [selectedDuration, setSelectedDuration] = useState(4); // Default: "Don't clear"
   const [focusEnabled, setFocusEnabled] = useState(currentStatus?.focusMode?.enabled || false);
   const [autoReply, setAutoReply] = useState(currentStatus?.focusMode?.autoReply || '');
+
+  // Sync form state when modal opens
+  useEffect(() => {
+    if (visible) {
+      setEmoji(currentStatus?.emoji || '');
+      setText(currentStatus?.text || '');
+      setSelectedDuration(4);
+      setFocusEnabled(currentStatus?.focusMode?.enabled || false);
+      setAutoReply(currentStatus?.focusMode?.autoReply || '');
+    }
+  }, [visible, currentStatus]);
 
   const handlePresetSelect = (preset: { emoji: string; text: string }) => {
     Haptics.selectionAsync();

@@ -6,7 +6,6 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  withTiming,
 } from 'react-native-reanimated';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -137,7 +136,7 @@ export function QuickComposeFAB({ onNewMessage, onNewGroup, onNewNote, onNewRemi
           },
         ]}
       >
-        <Ionicons name={isOpen ? 'close' : 'add'} size={28} color="#FFFFFF" />
+        <Ionicons name="add" size={28} color="#FFFFFF" />
       </AnimatedPressable>
     </>
   );

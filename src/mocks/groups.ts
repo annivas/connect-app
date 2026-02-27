@@ -1,4 +1,4 @@
-import { Group, SharedObject, Reminder, LedgerEntry, Note, CallEntry, HouseholdData } from '../types';
+import { Group, SharedObject, Reminder, LedgerEntry, Note, CallEntry } from '../types';
 import { CURRENT_USER_ID } from './users';
 import { MOCK_HOUSEHOLD_DATA } from './household';
 

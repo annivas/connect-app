@@ -101,7 +101,7 @@ export function detectActions(messageId: string, text: string): DetectedAction[]
   return actions;
 }
 
-export function getActionIcon(type: DetectedActionType): string {
+export function getActionIcon(type: DetectedActionType): 'alarm-outline' | 'calendar-outline' | 'wallet-outline' | 'bookmark-outline' {
   switch (type) {
     case 'reminder': return 'alarm-outline';
     case 'event': return 'calendar-outline';

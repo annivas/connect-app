@@ -61,7 +61,7 @@ export function BillTracker({ bills, getUserName, onTogglePaid, currentUserId }:
           <View className="flex-1 h-1.5 bg-background-tertiary rounded-full overflow-hidden">
             <View
               className="h-full bg-accent-primary rounded-full"
-              style={{ width: `${(paid.length / bills.length) * 100}%` }}
+              style={{ width: `${bills.length > 0 ? (paid.length / bills.length) * 100 : 0}%` }}
             />
           </View>
           <Text className="text-text-tertiary text-[10px] ml-2">

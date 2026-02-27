@@ -73,6 +73,7 @@ export default function HomeScreen() {
   const collections = useHomeStore((s) => s.collections);
   const conversations = useMessagesStore((s) => s.conversations);
   const groups = useGroupsStore((s) => s.groups);
+  const groupPolls = useGroupsStore((s) => s.groupPolls);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -131,11 +132,12 @@ export default function HomeScreen() {
     [allEvents],
   );
 
-  // Count unvoted polls
+  // Count unvoted polls (from both conversations and groups)
   const unvotedPolls = useMemo(
     () => {
       const allPolls = [
         ...conversations.flatMap((c) => c.metadata?.polls ?? []),
+        ...Object.values(groupPolls).flat(),
       ];
       return allPolls.filter(
         (p) =>
@@ -143,7 +145,7 @@ export default function HomeScreen() {
           !p.options.some((o) => o.voterIds.includes(CURRENT_USER_ID)),
       ).length;
     },
-    [conversations],
+    [conversations, groupPolls],
   );
 
   const getUserName = useCallback(

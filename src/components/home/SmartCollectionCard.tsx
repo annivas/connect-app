@@ -12,10 +12,10 @@ interface Props {
 export function SmartCollectionCard({ collection, onPress }: Props) {
   return (
     <Pressable
-      onPress={() => {
+      onPress={onPress ? () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        onPress?.();
-      }}
+        onPress();
+      } : undefined}
       className="active:opacity-80"
     >
       <View

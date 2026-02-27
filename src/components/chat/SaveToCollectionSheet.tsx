@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, Pressable, Modal, TextInput, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -15,6 +15,14 @@ interface Props {
 export function SaveToCollectionSheet({ visible, collections, onSave, onCreateNew, onClose }: Props) {
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState('');
+
+  // Reset state when modal opens
+  useEffect(() => {
+    if (visible) {
+      setIsCreating(false);
+      setNewName('');
+    }
+  }, [visible]);
 
   const handleCreate = () => {
     if (!newName.trim()) return;

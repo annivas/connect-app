@@ -9,6 +9,7 @@ interface AgendaItem {
   id: string;
   title: string;
   time: string;
+  sortTime: number;
   type: 'reminder' | 'event';
   priority?: 'low' | 'medium' | 'high';
   contextName: string;
@@ -31,7 +32,7 @@ function getPriorityColor(priority: string): string {
   }
 }
 
-export function TodayAgenda({ reminders, events, getGroupName }: Props) {
+export function TodayAgenda({ reminders, events, getUserName, getGroupName }: Props) {
   const todayReminders = reminders.filter(
     (r) => !r.isCompleted && isToday(r.dueDate)
   );
@@ -42,6 +43,7 @@ export function TodayAgenda({ reminders, events, getGroupName }: Props) {
       id: e.id,
       title: e.title,
       time: format(e.startDate, 'h:mm a'),
+      sortTime: new Date(e.startDate).getTime(),
       type: 'event' as const,
       contextName: getGroupName(e.groupId),
     })),
@@ -49,11 +51,12 @@ export function TodayAgenda({ reminders, events, getGroupName }: Props) {
       id: r.id,
       title: r.title,
       time: format(r.dueDate, 'h:mm a'),
+      sortTime: new Date(r.dueDate).getTime(),
       type: 'reminder' as const,
       priority: r.priority,
-      contextName: 'Due today',
+      contextName: getUserName(r.createdBy),
     })),
-  ].sort((a, b) => a.time.localeCompare(b.time));
+  ].sort((a, b) => a.sortTime - b.sortTime);
 
   if (agendaItems.length === 0) {
     return (

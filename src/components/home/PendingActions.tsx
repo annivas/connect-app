@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { LedgerEntry, Poll, GroupEvent, RSVPStatus } from '../../types';
 
 interface Props {
   unsettledExpenses: { total: number; count: number };
