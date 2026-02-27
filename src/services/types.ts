@@ -32,7 +32,7 @@ export type CreateLedgerEntryInput = {
 export type CreateGroupInput = {
   name: string;
   description?: string;
-  type: 'general' | 'trip' | 'sports' | 'project';
+  type: 'general' | 'trip' | 'sports' | 'project' | 'household';
   memberIds: string[]; // excluding creator — creator auto-added as admin
 };
 

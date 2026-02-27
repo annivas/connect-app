@@ -167,11 +167,38 @@ export default function ConversationInfoScreen() {
                otherUser.status === 'away' ? 'Away' : 'Offline'}
             </Text>
           </View>
-          {otherUser.statusMessage && (
+          {otherUser.richStatus ? (
+            <View className="flex-row items-center bg-background-tertiary rounded-full px-3 py-1.5 mt-2">
+              <Text className="text-sm mr-1">{otherUser.richStatus.emoji}</Text>
+              <Text className="text-text-secondary text-sm">{otherUser.richStatus.text}</Text>
+              {otherUser.richStatus.focusMode?.enabled && (
+                <View className="ml-1.5 bg-status-warning/20 rounded-full px-1.5 py-0.5">
+                  <Text style={{ fontSize: 9, color: '#D4964E', fontWeight: '700' }}>DND</Text>
+                </View>
+              )}
+            </View>
+          ) : otherUser.statusMessage ? (
             <Text className="text-text-tertiary text-sm mt-2 italic px-8 text-center">
               &ldquo;{otherUser.statusMessage}&rdquo;
             </Text>
-          )}
+          ) : null}
+
+          {/* View Insights Button */}
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push({
+                pathname: '/(tabs)/messages/contact-insights',
+                params: { conversationId: id! },
+              } as any);
+            }}
+            className="mt-3 active:opacity-80"
+          >
+            <View className="flex-row items-center bg-accent-primary/10 rounded-full px-4 py-2">
+              <Ionicons name="analytics-outline" size={16} color="#D4764E" />
+              <Text className="text-accent-primary text-sm font-medium ml-1.5">View Insights</Text>
+            </View>
+          </Pressable>
         </View>
 
         {/* Contact info */}

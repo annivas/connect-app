@@ -6,8 +6,10 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Avatar } from '../../../src/components/ui/Avatar';
 import { IconButton } from '../../../src/components/ui/IconButton';
+import { StatusPicker } from '../../../src/components/ui/StatusPicker';
+import { RichStatusBadge } from '../../../src/components/ui/RichStatusBadge';
 import { useUserStore } from '../../../src/stores/useUserStore';
-import type { User } from '../../../src/types';
+import type { User, RichStatus } from '../../../src/types';
 
 function InfoRow({
   icon,
@@ -64,6 +66,7 @@ export default function ProfileScreen() {
   const currentUser = useUserStore((s) => s.currentUser)!;
 
   const [isEditing, setIsEditing] = useState(false);
+  const [showStatusPicker, setShowStatusPicker] = useState(false);
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editPhone, setEditPhone] = useState('');
@@ -168,6 +171,7 @@ export default function ProfileScreen() {
             size="xl"
             status={isEditing ? editStatus : currentUser.status}
             showStatus
+            statusEmoji={!isEditing ? currentUser.richStatus?.emoji : undefined}
           />
           {isEditing ? (
             <TextInput
@@ -185,12 +189,37 @@ export default function ProfileScreen() {
           <Text className="text-text-secondary text-sm mt-1">
             {currentUser.username}
           </Text>
-          {!isEditing && currentUser.statusMessage && (
+          {!isEditing && currentUser.richStatus ? (
+            <Pressable
+              onPress={() => setShowStatusPicker(true)}
+              className="mt-2 active:opacity-80"
+            >
+              <RichStatusBadge richStatus={currentUser.richStatus} size="md" />
+            </Pressable>
+          ) : !isEditing && currentUser.statusMessage ? (
             <View className="flex-row items-center mt-2 bg-surface px-4 py-2 rounded-full">
               <Text className="text-text-tertiary text-sm">
                 {currentUser.statusMessage}
               </Text>
             </View>
+          ) : null}
+
+          {/* Set/Change Status Button */}
+          {!isEditing && (
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowStatusPicker(true);
+              }}
+              className="mt-2 active:opacity-80"
+            >
+              <View className="flex-row items-center bg-accent-primary/10 rounded-full px-4 py-2">
+                <Ionicons name="happy-outline" size={16} color="#D4764E" />
+                <Text className="text-accent-primary text-sm font-medium ml-1.5">
+                  {currentUser.richStatus ? 'Update status' : 'Set a status'}
+                </Text>
+              </View>
+            </Pressable>
           )}
         </View>
 
@@ -230,6 +259,19 @@ export default function ProfileScreen() {
           />
         </View>
       </ScrollView>
+
+      {/* Status Picker */}
+      <StatusPicker
+        visible={showStatusPicker}
+        currentStatus={currentUser.richStatus}
+        onSave={(status: RichStatus) => {
+          useUserStore.getState().updateCurrentUser({ richStatus: status });
+        }}
+        onClear={() => {
+          useUserStore.getState().updateCurrentUser({ richStatus: undefined });
+        }}
+        onClose={() => setShowStatusPicker(false)}
+      />
     </SafeAreaView>
   );
 }
