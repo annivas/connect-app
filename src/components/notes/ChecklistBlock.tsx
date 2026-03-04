@@ -12,6 +12,8 @@ interface Props {
   onBackspace: () => void;
   onFocus?: () => void;
   autoFocus?: boolean;
+  selection?: { start: number; end: number };
+  onSelectionChange?: (selection: { start: number; end: number }) => void;
 }
 
 export function ChecklistBlock({
@@ -23,6 +25,8 @@ export function ChecklistBlock({
   onBackspace,
   onFocus,
   autoFocus,
+  selection,
+  onSelectionChange,
 }: Props) {
   const inputRef = useRef<TextInput>(null);
 
@@ -48,6 +52,8 @@ export function ChecklistBlock({
         onChangeText={onChangeText}
         onSubmitEditing={onSubmitEditing}
         onFocus={onFocus}
+        selection={selection}
+        onSelectionChange={(e) => onSelectionChange?.(e.nativeEvent.selection)}
         onKeyPress={({ nativeEvent }) => {
           if (nativeEvent.key === 'Backspace' && content === '') {
             onBackspace();

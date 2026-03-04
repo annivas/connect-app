@@ -10,6 +10,8 @@ interface Props {
   onBackspace: () => void;
   onFocus?: () => void;
   autoFocus?: boolean;
+  selection?: { start: number; end: number };
+  onSelectionChange?: (selection: { start: number; end: number }) => void;
 }
 
 function getBlockStyle(type: NoteBlock['type']) {
@@ -62,6 +64,8 @@ export function NoteBlockInput({
   onBackspace,
   onFocus,
   autoFocus,
+  selection,
+  onSelectionChange,
 }: Props) {
   const inputRef = useRef<TextInput>(null);
   const blockStyle = getBlockStyle(block.type);
@@ -80,6 +84,8 @@ export function NoteBlockInput({
         onChangeText={onChangeText}
         onSubmitEditing={onSubmitEditing}
         onFocus={onFocus}
+        selection={selection}
+        onSelectionChange={(e) => onSelectionChange?.(e.nativeEvent.selection)}
         onKeyPress={({ nativeEvent }) => {
           if (nativeEvent.key === 'Backspace' && block.content === '') {
             onBackspace();

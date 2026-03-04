@@ -7,6 +7,8 @@ import { NoteBlockInput } from './NoteBlockInput';
 import { ChecklistBlock } from './ChecklistBlock';
 import { AttachmentBlock } from './AttachmentBlock';
 import type { NoteBlock, NoteBlockType } from '../../types';
+import { applyInlineFormat } from '../../utils/inlineFormatting';
+import type { InlineFormat } from '../../utils/inlineFormatting';
 
 interface Props {
   title: string;
@@ -42,6 +44,8 @@ export function NoteEditor({ title, blocks, onTitleChange, onBlocksChange }: Pro
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [newBlockIndex, setNewBlockIndex] = useState<number | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+  const selectionRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
+  const [controlledSelection, setControlledSelection] = useState<{ blockIndex: number; selection: { start: number; end: number } } | null>(null);
 
   useEffect(() => {
     const showSub = Keyboard.addListener(
@@ -205,6 +209,17 @@ export function NoteEditor({ title, blocks, onTitleChange, onBlocksChange }: Pro
     }
   }, [blocks, focusedBlockIndex, onBlocksChange]);
 
+  const handleInlineFormat = useCallback((format: InlineFormat) => {
+    if (focusedBlockIndex == null) return;
+    const block = blocks[focusedBlockIndex];
+    if (!block || block.type === 'image' || block.type === 'file' || block.type === 'link') return;
+
+    const result = applyInlineFormat(block.content, selectionRef.current, format);
+    updateBlock(focusedBlockIndex, { content: result.text });
+    setControlledSelection({ blockIndex: focusedBlockIndex, selection: result.selection });
+    setTimeout(() => setControlledSelection(null), 50);
+  }, [focusedBlockIndex, blocks, updateBlock]);
+
   const currentBlockType = focusedBlockIndex != null ? blocks[focusedBlockIndex]?.type ?? 'paragraph' : 'paragraph';
 
   // Track numbered list indices for proper numbering
@@ -276,6 +291,8 @@ export function NoteEditor({ title, blocks, onTitleChange, onBlocksChange }: Pro
                 onBackspace={() => removeBlock(index)}
                 onFocus={handleFocus}
                 autoFocus={isAutoFocus}
+                selection={controlledSelection?.blockIndex === index ? controlledSelection.selection : undefined}
+                onSelectionChange={(sel) => { selectionRef.current = sel; }}
               />
             );
           }
@@ -291,6 +308,8 @@ export function NoteEditor({ title, blocks, onTitleChange, onBlocksChange }: Pro
               onBackspace={() => removeBlock(index)}
               onFocus={handleFocus}
               autoFocus={isAutoFocus}
+              selection={controlledSelection?.blockIndex === index ? controlledSelection.selection : undefined}
+              onSelectionChange={(sel) => { selectionRef.current = sel; }}
             />
           );
         })}
@@ -302,6 +321,7 @@ export function NoteEditor({ title, blocks, onTitleChange, onBlocksChange }: Pro
         onAddImage={handleAddImage}
         onAddFile={handleAddFile}
         onAddLink={handleAddLink}
+        onInlineFormat={handleInlineFormat}
         keyboardVisible={keyboardVisible}
         hasFocusedBlock={focusedBlockIndex != null}
       />
