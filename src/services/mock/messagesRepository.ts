@@ -29,7 +29,7 @@ export const mockMessagesRepository: IMessagesRepository = {
     conversationId: string,
     content: string,
     senderId: string,
-    options?: { type?: MessageType; metadata?: Record<string, unknown> },
+    options?: { type?: MessageType; metadata?: Record<string, unknown>; isPrivate?: boolean },
   ) {
     const newMessage: Message = {
       id: `msg-${Date.now()}`,
@@ -40,6 +40,7 @@ export const mockMessagesRepository: IMessagesRepository = {
       type: options?.type ?? 'text',
       metadata: options?.metadata,
       isRead: true,
+      isPrivate: options?.isPrivate,
     };
     messages = [...messages, newMessage];
     conversations = conversations.map((c) =>
