@@ -30,13 +30,13 @@ interface GroupsState {
   subscribe: () => void;
   unsubscribe: () => void;
   getGroupById: (id: string) => Group | undefined;
-  getGroupMessages: (groupId: string) => Message[];
+  getGroupMessages: (groupId: string, isPrivate?: boolean) => Message[];
 
   // Pagination
   loadGroupMessages: (groupId: string) => Promise<void>;
   loadMoreGroupMessages: (groupId: string) => Promise<void>;
 
-  sendGroupMessage: (groupId: string, content: string, senderId: string, options?: { type?: import('../types').MessageType; metadata?: Record<string, unknown> }) => void;
+  sendGroupMessage: (groupId: string, content: string, senderId: string, options?: { type?: import('../types').MessageType; metadata?: Record<string, unknown>; isPrivate?: boolean }) => void;
   retryGroupMessage: (messageId: string) => void;
   deleteGroupMessage: (groupId: string, messageId: string) => void;
   toggleGroupReaction: (groupId: string, messageId: string, emoji: string) => void;
@@ -367,8 +367,10 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
 
   getGroupById: (id) => get().groups.find((g) => g.id === id),
 
-  getGroupMessages: (groupId) =>
-    get().groupMessages.filter((m) => m.conversationId === groupId),
+  getGroupMessages: (groupId, isPrivate = false) =>
+    get().groupMessages.filter(
+      (m) => m.conversationId === groupId && (isPrivate ? m.isPrivate === true : !m.isPrivate)
+    ),
 
   loadGroupMessages: async (groupId) => {
     const state = get();
@@ -451,6 +453,7 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
       replyTo,
       isRead: true,
       sendStatus: 'sending',
+      isPrivate: options?.isPrivate,
     };
 
     set((s) => ({
