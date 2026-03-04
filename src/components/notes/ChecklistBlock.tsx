@@ -10,6 +10,7 @@ interface Props {
   onToggleCheck: () => void;
   onSubmitEditing: () => void;
   onBackspace: () => void;
+  onFocus?: () => void;
   autoFocus?: boolean;
 }
 
@@ -20,6 +21,7 @@ export function ChecklistBlock({
   onToggleCheck,
   onSubmitEditing,
   onBackspace,
+  onFocus,
   autoFocus,
 }: Props) {
   const inputRef = useRef<TextInput>(null);
@@ -45,6 +47,7 @@ export function ChecklistBlock({
         value={content}
         onChangeText={onChangeText}
         onSubmitEditing={onSubmitEditing}
+        onFocus={onFocus}
         onKeyPress={({ nativeEvent }) => {
           if (nativeEvent.key === 'Backspace' && content === '') {
             onBackspace();

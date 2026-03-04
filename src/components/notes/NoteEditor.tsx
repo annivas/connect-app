@@ -246,6 +246,12 @@ export function NoteEditor({ title, blocks, onTitleChange, onBlocksChange }: Pro
             numberedIndex = count - 1;
           }
 
+          const handleFocus = () => {
+            setFocusedBlockIndex(index);
+            // Clear newBlockIndex once focus has landed
+            if (isAutoFocus) setNewBlockIndex(null);
+          };
+
           // Attachment blocks (image, file, link)
           if (block.type === 'image' || block.type === 'file' || block.type === 'link') {
             return (
@@ -268,6 +274,7 @@ export function NoteEditor({ title, blocks, onTitleChange, onBlocksChange }: Pro
                 onToggleCheck={() => updateBlock(index, { checked: !block.checked })}
                 onSubmitEditing={() => insertBlockAfter(index)}
                 onBackspace={() => removeBlock(index)}
+                onFocus={handleFocus}
                 autoFocus={isAutoFocus}
               />
             );
@@ -282,6 +289,7 @@ export function NoteEditor({ title, blocks, onTitleChange, onBlocksChange }: Pro
               onChangeText={(text) => updateBlock(index, { content: text })}
               onSubmitEditing={() => insertBlockAfter(index)}
               onBackspace={() => removeBlock(index)}
+              onFocus={handleFocus}
               autoFocus={isAutoFocus}
             />
           );
@@ -295,6 +303,7 @@ export function NoteEditor({ title, blocks, onTitleChange, onBlocksChange }: Pro
         onAddFile={handleAddFile}
         onAddLink={handleAddLink}
         keyboardVisible={keyboardVisible}
+        hasFocusedBlock={focusedBlockIndex != null}
       />
     </View>
   );
