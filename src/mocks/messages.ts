@@ -490,6 +490,41 @@ export const MOCK_MESSAGES: Message[] = [
       { userId: 'user-3', displayName: 'Jamie', offset: 36, length: 6 },
     ],
   },
+
+  // ─── Private messages for conv-1 (Sarah) ──────
+  {
+    id: 'msg-priv-1',
+    conversationId: 'conv-1',
+    senderId: CURRENT_USER_ID,
+    content: 'Hey, this conversation is just between us — no AI here.',
+    timestamp: today(11, 0),
+    type: 'text',
+    isRead: true,
+    sendStatus: 'sent',
+    isPrivate: true,
+  },
+  {
+    id: 'msg-priv-2',
+    conversationId: 'conv-1',
+    senderId: 'user-1',
+    content: 'Perfect for sensitive stuff. Love the private mode!',
+    timestamp: today(11, 2),
+    type: 'text',
+    isRead: true,
+    sendStatus: 'sent',
+    isPrivate: true,
+  },
+  {
+    id: 'msg-priv-3',
+    conversationId: 'conv-1',
+    senderId: CURRENT_USER_ID,
+    content: 'Yeah, no suggestions or summaries — just us.',
+    timestamp: today(11, 5),
+    type: 'text',
+    isRead: true,
+    sendStatus: 'sent',
+    isPrivate: true,
+  },
 ];
 
 // ─── Group messages ──────────────────────────
@@ -921,5 +956,29 @@ export const MOCK_GROUP_MESSAGES: Message[] = [
     reactions: [
       { emoji: '🍜', userId: CURRENT_USER_ID, timestamp: daysAgo(5, 19, 16) },
     ],
+  },
+
+  // ─── Private messages for group-1 (Weekend Warriors) ──────
+  {
+    id: 'gmsg-priv-1',
+    conversationId: 'group-1',
+    senderId: 'user-2',
+    content: "Let's discuss the surprise party for Sarah here.",
+    timestamp: today(13, 0),
+    type: 'text',
+    isRead: true,
+    sendStatus: 'sent',
+    isPrivate: true,
+  },
+  {
+    id: 'gmsg-priv-2',
+    conversationId: 'group-1',
+    senderId: CURRENT_USER_ID,
+    content: 'Good idea — AI won\'t pick this up or suggest anything about it.',
+    timestamp: today(13, 2),
+    type: 'text',
+    isRead: true,
+    sendStatus: 'sent',
+    isPrivate: true,
   },
 ];

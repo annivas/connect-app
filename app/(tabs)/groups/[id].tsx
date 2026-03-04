@@ -8,6 +8,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { IconButton } from '../../../src/components/ui/IconButton';
 import { Avatar } from '../../../src/components/ui/Avatar';
 import { GroupChatTab } from '../../../src/components/groups/GroupChatTab';
+import { ChatModeToggle, type ChatMode } from '../../../src/components/chat/ChatModeToggle';
 import { HouseholdTab } from '../../../src/components/groups/HouseholdTab';
 import { InChatSearchBar } from '../../../src/components/chat/InChatSearchBar';
 import { DisappearingMessagesSheet } from '../../../src/components/chat/DisappearingMessagesSheet';
@@ -25,6 +26,7 @@ export default function GroupDetailScreen() {
   const [showCreatePoll, setShowCreatePoll] = React.useState(false);
   const [showDisappearingSheet, setShowDisappearingSheet] = React.useState(false);
   const [householdActiveTab, setHouseholdActiveTab] = useState<'chat' | 'household'>('chat');
+  const [chatMode, setChatMode] = useState<ChatMode>('chat');
 
   // Mark group as read when screen opens
   useEffect(() => {
@@ -52,7 +54,7 @@ export default function GroupDetailScreen() {
   }, [parentNavigation]);
 
   const group = useGroupsStore(useShallow((s) => s.getGroupById(id!)));
-  const groupMessages = useGroupsStore(useShallow((s) => s.getGroupMessages(id!)));
+  const groupMessages = useGroupsStore(useShallow((s) => s.getGroupMessages(id!, chatMode === 'private')));
 
   const {
     searchQuery: chatSearchQuery,
@@ -63,6 +65,11 @@ export default function GroupDetailScreen() {
     matchingMessageIds,
     matchCount,
   } = useMessageSearch(groupMessages);
+
+  // Clear search when switching chat modes
+  useEffect(() => {
+    clearSearch();
+  }, [chatMode]);
 
   const handleStartGroupCall = (type: 'voice' | 'video') => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -147,6 +154,9 @@ export default function GroupDetailScreen() {
         <IconButton icon="search" onPress={openSearch} />
         <IconButton icon="ellipsis-horizontal" onPress={showMenu} />
       </View>
+
+      {/* Chat / Private mode toggle */}
+      <ChatModeToggle activeMode={chatMode} onModeChange={setChatMode} />
 
       {/* In-chat search bar */}
       <InChatSearchBar
@@ -244,6 +254,7 @@ export default function GroupDetailScreen() {
       ) : (
         <GroupChatTab
           groupId={id!}
+          isPrivate={chatMode === 'private'}
           highlightText={isSearching ? chatSearchQuery : undefined}
           matchingMessageIds={isSearching ? matchingMessageIds : undefined}
         />

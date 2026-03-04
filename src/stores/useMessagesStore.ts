@@ -36,14 +36,14 @@ interface MessagesState {
   subscribe: () => void;
   unsubscribe: () => void;
   getConversationById: (id: string) => Conversation | undefined;
-  getMessagesByConversationId: (conversationId: string) => Message[];
+  getMessagesByConversationId: (conversationId: string, isPrivate?: boolean) => Message[];
   getUnreadCount: () => number;
 
   // Pagination
   loadMessages: (conversationId: string) => Promise<void>;
   loadMoreMessages: (conversationId: string) => Promise<void>;
 
-  sendMessage: (conversationId: string, content: string, senderId: string, options?: { type?: import('../types').MessageType; metadata?: Record<string, unknown> }) => void;
+  sendMessage: (conversationId: string, content: string, senderId: string, options?: { type?: import('../types').MessageType; metadata?: Record<string, unknown>; isPrivate?: boolean }) => void;
   retryMessage: (messageId: string) => void;
   createConversation: (participantIds: string[]) => Promise<string>;
   deleteMessage: (conversationId: string, messageId: string) => void;
@@ -274,8 +274,10 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
 
   getConversationById: (id) => get().conversations.find((c) => c.id === id),
 
-  getMessagesByConversationId: (conversationId) =>
-    get().messages.filter((m) => m.conversationId === conversationId),
+  getMessagesByConversationId: (conversationId, isPrivate = false) =>
+    get().messages.filter(
+      (m) => m.conversationId === conversationId && (isPrivate ? m.isPrivate === true : !m.isPrivate)
+    ),
 
   getUnreadCount: () =>
     get().conversations.reduce((acc, conv) => acc + conv.unreadCount, 0),
@@ -363,6 +365,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
       replyTo,
       isRead: true,
       sendStatus: 'sending',
+      isPrivate: options?.isPrivate,
     };
 
     set((s) => ({
