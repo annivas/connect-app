@@ -384,7 +384,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
         // Replace optimistic message with the saved one
         set((state) => ({
           messages: state.messages.map((m) =>
-            m.id === messageId ? { ...savedMessage, sendStatus: 'sent' as const } : m,
+            m.id === messageId ? { ...savedMessage, sendStatus: 'sent' as const, isPrivate: m.isPrivate } : m,
           ),
         }));
       })
