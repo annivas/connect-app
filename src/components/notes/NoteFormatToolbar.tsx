@@ -11,6 +11,7 @@ interface Props {
   onAddFile: () => void;
   onAddLink: () => void;
   keyboardVisible: boolean;
+  hasFocusedBlock?: boolean;
 }
 
 interface ToolButton {
@@ -28,8 +29,10 @@ export function NoteFormatToolbar({
   onAddFile,
   onAddLink,
   keyboardVisible,
+  hasFocusedBlock,
 }: Props) {
-  if (!keyboardVisible) return null;
+  // Show toolbar when keyboard is visible OR a block is focused
+  if (!keyboardVisible && !hasFocusedBlock) return null;
 
   const buttons: ToolButton[] = [
     { icon: 'text', label: 'H1', blockType: 'heading1', isActive: currentBlockType === 'heading1' },
@@ -51,6 +54,7 @@ export function NoteFormatToolbar({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        keyboardShouldPersistTaps="always"
         contentContainerStyle={{ paddingHorizontal: 8, paddingVertical: 8, gap: 4 }}
       >
         {buttons.map((btn) => (

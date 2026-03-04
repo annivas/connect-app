@@ -8,6 +8,7 @@ interface Props {
   onChangeText: (text: string) => void;
   onSubmitEditing: () => void;
   onBackspace: () => void;
+  onFocus?: () => void;
   autoFocus?: boolean;
 }
 
@@ -59,6 +60,7 @@ export function NoteBlockInput({
   onChangeText,
   onSubmitEditing,
   onBackspace,
+  onFocus,
   autoFocus,
 }: Props) {
   const inputRef = useRef<TextInput>(null);
@@ -77,6 +79,7 @@ export function NoteBlockInput({
         value={block.content}
         onChangeText={onChangeText}
         onSubmitEditing={onSubmitEditing}
+        onFocus={onFocus}
         onKeyPress={({ nativeEvent }) => {
           if (nativeEvent.key === 'Backspace' && block.content === '') {
             onBackspace();
