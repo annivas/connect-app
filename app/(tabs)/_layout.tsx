@@ -4,11 +4,13 @@ import { View, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Badge } from '../../src/components/ui/Badge';
 import { useMessagesStore } from '../../src/stores/useMessagesStore';
+import { useAIStore } from '../../src/stores/useAIStore';
 import { useThemeColors } from '../../src/hooks/useThemeColors';
 import { useColorScheme } from 'nativewind';
 
 export default function TabLayout() {
   const unreadCount = useMessagesStore((s) => s.getUnreadCount());
+  const aiUnreadCount = useAIStore((s) => s.getUnreadCount());
   const themeColors = useThemeColors();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -73,6 +75,22 @@ export default function TabLayout() {
           title: 'Groups',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="people" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="ai"
+        options={{
+          title: 'AI',
+          tabBarIcon: ({ color, size }) => (
+            <View>
+              <Ionicons name="sparkles" size={size} color={color} />
+              {aiUnreadCount > 0 && (
+                <View style={{ position: 'absolute', top: -4, right: -10 }}>
+                  <Badge count={aiUnreadCount} />
+                </View>
+              )}
+            </View>
           ),
         }}
       />
