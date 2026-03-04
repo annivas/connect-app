@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import { Conversation, Message, MessageType, Note, Reminder, LedgerEntry, SharedObject, SharedObjectType, DisappearingDuration } from '../../types';
-import { IMessagesRepository, PaginationParams, CreateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../types';
+import { IMessagesRepository, PaginationParams, CreateNoteInput, UpdateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../types';
 import {
   adaptMessage,
   adaptSharedObject,
@@ -378,6 +378,34 @@ export const supabaseMessagesRepository: IMessagesRepository = {
 
     if (error) throw new Error(`Failed to create note: ${error.message}`);
     return adaptNote(data);
+  },
+
+  async updateNote(_conversationId: string, noteId: string, input: UpdateNoteInput): Promise<Note> {
+    const updates: Record<string, unknown> = {};
+    if (input.title !== undefined) updates.title = input.title;
+    if (input.content !== undefined) updates.content = input.content;
+    if (input.color !== undefined) updates.color = input.color;
+    if (input.isPrivate !== undefined) updates.is_private = input.isPrivate;
+    updates.updated_at = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from('notes')
+      .update(updates)
+      .eq('id', noteId)
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to update note: ${error.message}`);
+    return adaptNote(data);
+  },
+
+  async deleteNote(_conversationId: string, noteId: string): Promise<void> {
+    const { error } = await supabase.from('notes').delete().eq('id', noteId);
+    if (error) throw new Error(`Failed to delete note: ${error.message}`);
+  },
+
+  async toggleNotePin(_conversationId: string, _noteId: string): Promise<void> {
+    // Pin state is managed client-side for now
   },
 
   async createReminder(conversationId: string, input: CreateReminderInput): Promise<Reminder> {

@@ -1,7 +1,7 @@
 import { Message, Group, RSVPStatus, Note, Reminder, LedgerEntry, SharedObject, SharedObjectType, Poll, DisappearingDuration, ItineraryItem, GroupEvent } from '../../types';
 import { MOCK_GROUPS } from '../../mocks/groups';
 import { MOCK_GROUP_MESSAGES } from '../../mocks/messages';
-import { IGroupsRepository, PaginationParams, CreateGroupInput, UpdateGroupInput, CreateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../types';
+import { IGroupsRepository, PaginationParams, CreateGroupInput, UpdateGroupInput, CreateNoteInput, UpdateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../types';
 
 let groups = [...MOCK_GROUPS];
 let groupMessages = [...MOCK_GROUP_MESSAGES];
@@ -200,9 +200,13 @@ export const mockGroupsRepository: IGroupsRepository = {
 
   // Notes
   async createNote(_groupId: string, input: CreateNoteInput): Promise<Note> {
-    return { id: `gnote-${Date.now()}`, title: input.title, content: input.content, color: input.color, isPrivate: input.isPrivate, createdBy: 'current-user', createdAt: new Date(), updatedAt: new Date() };
+    return { id: `gnote-${Date.now()}`, title: input.title, content: input.content, blocks: input.blocks ?? [{ id: `block-${Date.now()}`, type: 'paragraph', content: '' }], color: input.color, isPrivate: input.isPrivate, isPinned: input.isPinned ?? false, createdBy: 'current-user', createdAt: new Date(), updatedAt: new Date(), templateId: input.templateId };
+  },
+  async updateNote(_groupId: string, _noteId: string, _input: UpdateNoteInput): Promise<Note> {
+    return {} as Note;
   },
   async deleteNote(_noteId: string): Promise<void> {},
+  async toggleNotePin(_groupId: string, _noteId: string): Promise<void> {},
 
   // Reminders
   async createReminder(_groupId: string, input: CreateReminderInput): Promise<Reminder> {

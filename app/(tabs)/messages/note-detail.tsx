@@ -1,58 +1,146 @@
-import React from 'react';
-import { View, Text, ScrollView, Alert } from 'react-native';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { View, Text, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { format } from 'date-fns';
 import * as Haptics from 'expo-haptics';
+import { useShallow } from 'zustand/react/shallow';
 import { IconButton } from '../../../src/components/ui/IconButton';
+import { NoteEditor, blocksToPlainText } from '../../../src/components/notes/NoteEditor';
 import { useMessagesStore } from '../../../src/stores/useMessagesStore';
 import { useGroupsStore } from '../../../src/stores/useGroupsStore';
 import { useToastStore } from '../../../src/stores/useToastStore';
-import type { Note } from '../../../src/types';
+import type { Note, NoteBlock } from '../../../src/types';
 
 export default function NoteDetailScreen() {
   const router = useRouter();
-  const { data, conversationId, groupId } = useLocalSearchParams<{ data: string; conversationId?: string; groupId?: string }>();
+  const { noteId, conversationId, groupId, data } = useLocalSearchParams<{
+    noteId?: string;
+    conversationId?: string;
+    groupId?: string;
+    data?: string;
+  }>();
 
-  const note: Note | null = React.useMemo(() => {
+  // Get live note from store
+  const conversationNote = useMessagesStore(
+    useShallow((s) => {
+      if (!conversationId || !noteId) return undefined;
+      const conv = s.getConversationById(conversationId);
+      return conv?.metadata?.notes.find((n) => n.id === noteId);
+    }),
+  );
+
+  const groupNote = useGroupsStore(
+    useShallow((s) => {
+      if (!groupId || !noteId) return undefined;
+      const group = s.groups.find((g) => g.id === groupId);
+      return group?.metadata?.notes.find((n) => n.id === noteId);
+    }),
+  );
+
+  // Fallback: parse from route params (legacy navigation)
+  const parsedNote: Note | undefined = React.useMemo(() => {
+    if (!data) return undefined;
     try {
-      const parsed = JSON.parse(data ?? '');
-      return {
-        ...parsed,
-        createdAt: new Date(parsed.createdAt),
-        updatedAt: new Date(parsed.updatedAt),
-      } as Note;
+      const p = JSON.parse(data);
+      return { ...p, createdAt: new Date(p.createdAt), updatedAt: new Date(p.updatedAt) } as Note;
     } catch {
-      return null;
+      return undefined;
     }
   }, [data]);
 
-  const canDelete = !!(conversationId || groupId);
+  const note = conversationNote ?? groupNote ?? parsedNote;
+
+  // Local editing state
+  const [title, setTitle] = useState(note?.title ?? '');
+  const [blocks, setBlocks] = useState<NoteBlock[]>(
+    note?.blocks ?? [{ id: `block-${Date.now()}`, type: 'paragraph', content: '' }],
+  );
+
+  // Sync from store when note first loads
+  const initializedRef = useRef(false);
+  useEffect(() => {
+    if (note && !initializedRef.current) {
+      setTitle(note.title);
+      setBlocks(note.blocks ?? [{ id: `block-${Date.now()}`, type: 'paragraph', content: '' }]);
+      initializedRef.current = true;
+    }
+  }, [note]);
+
+  // Autosave with debounce
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const doSave = useCallback(() => {
+    if (!note) return;
+    const content = blocksToPlainText(blocks);
+    const updates = { title, content, blocks };
+
+    if (conversationId) {
+      useMessagesStore.getState().updateNote(conversationId, note.id, updates);
+    } else if (groupId) {
+      useGroupsStore.getState().updateGroupNote(groupId, note.id, updates);
+    }
+  }, [note, title, blocks, conversationId, groupId]);
+
+  const scheduleAutosave = useCallback(() => {
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(doSave, 500);
+  }, [doSave]);
+
+  // Trigger autosave on changes (skip initial mount)
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      return;
+    }
+    scheduleAutosave();
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, [title, blocks, scheduleAutosave]);
+
+  // Save on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      // Immediate save
+      doSave();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleDelete = () => {
-    if (!note || !canDelete) return;
-    Alert.alert(
-      'Delete Note',
-      `Are you sure you want to delete "${note.title}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            if (conversationId) {
-              useMessagesStore.getState().deleteNote(conversationId, note.id);
-            } else if (groupId) {
-              useGroupsStore.getState().deleteGroupNote(groupId, note.id);
-            }
-            useToastStore.getState().show({ message: 'Note deleted', type: 'success' });
-            router.back();
-          },
+    if (!note) return;
+    Alert.alert('Delete Note', `Delete "${note.title || 'Untitled'}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          if (conversationId) {
+            useMessagesStore.getState().deleteNote(conversationId, note.id);
+          } else if (groupId) {
+            useGroupsStore.getState().deleteGroupNote(groupId, note.id);
+          }
+          useToastStore.getState().show({ message: 'Note deleted', type: 'success' });
+          router.back();
         },
-      ],
-    );
+      },
+    ]);
+  };
+
+  const handleTogglePin = () => {
+    if (!note) return;
+    Haptics.selectionAsync();
+    if (conversationId) {
+      useMessagesStore.getState().toggleNotePin(conversationId, note.id);
+    } else if (groupId) {
+      useGroupsStore.getState().toggleGroupNotePin(groupId, note.id);
+    }
   };
 
   if (!note) {
@@ -69,66 +157,38 @@ export default function NoteDetailScreen() {
       <View className="flex-row items-center px-2 pb-2 border-b border-border-subtle">
         <IconButton icon="chevron-back" onPress={() => router.back()} />
         <View className="flex-1 flex-row items-center ml-1">
-          <Ionicons name="document-text" size={20} color="#D4764E" />
-          <Text className="text-text-primary text-[17px] font-semibold ml-2 flex-1" numberOfLines={1}>
-            Note
-          </Text>
+          {note.isPrivate ? (
+            <View className="flex-row items-center bg-background-tertiary rounded-full px-2.5 py-1">
+              <Ionicons name="lock-closed" size={11} color="#7A6355" />
+              <Text className="text-text-secondary text-[11px] font-medium ml-1">Private to you</Text>
+            </View>
+          ) : (
+            <View className="flex-row items-center bg-accent-primary/10 rounded-full px-2.5 py-1">
+              <Ionicons name="people" size={11} color="#D4764E" />
+              <Text className="text-accent-primary text-[11px] font-medium ml-1">Shared</Text>
+            </View>
+          )}
         </View>
-        {note.isPrivate && (
-          <View className="flex-row items-center bg-surface-elevated rounded-full px-3 py-1 mr-2">
-            <Ionicons name="lock-closed" size={12} color="#A8937F" />
-            <Text className="text-text-tertiary text-xs ml-1">Private</Text>
-          </View>
-        )}
-        {canDelete && (
-          <IconButton icon="trash-outline" onPress={handleDelete} color="#C94F4F" />
-        )}
+        <IconButton
+          icon={note.isPinned ? 'pin' : 'pin-outline'}
+          onPress={handleTogglePin}
+          color={note.isPinned ? '#D4764E' : '#7A6355'}
+        />
+        <IconButton icon="trash-outline" onPress={handleDelete} color="#C94F4F" />
       </View>
 
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 16 }}>
-        {/* Color banner */}
-        <View
-          className="h-2 rounded-full mb-6"
-          style={{ backgroundColor: note.color }}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        className="flex-1"
+        keyboardVerticalOffset={0}
+      >
+        <NoteEditor
+          title={title}
+          blocks={blocks}
+          onTitleChange={setTitle}
+          onBlocksChange={setBlocks}
         />
-
-        {/* Title */}
-        <Text className="text-text-primary text-2xl font-bold mb-4">
-          {note.title}
-        </Text>
-
-        {/* Content */}
-        <Text className="text-text-secondary text-[15px] leading-6 mb-6">
-          {note.content}
-        </Text>
-
-        {/* Tags */}
-        {note.tags && note.tags.length > 0 && (
-          <View className="flex-row flex-wrap mb-6">
-            {note.tags.map((tag) => (
-              <View key={tag} className="bg-surface-elevated rounded-full px-3 py-1.5 mr-2 mb-2">
-                <Text className="text-text-secondary text-xs">#{tag}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Metadata */}
-        <View className="border-t border-border-subtle pt-4">
-          <View className="flex-row items-center mb-2">
-            <Ionicons name="time-outline" size={14} color="#A8937F" />
-            <Text className="text-text-tertiary text-xs ml-2">
-              Created {format(note.createdAt, 'MMM d, yyyy \'at\' h:mm a')}
-            </Text>
-          </View>
-          <View className="flex-row items-center">
-            <Ionicons name="create-outline" size={14} color="#A8937F" />
-            <Text className="text-text-tertiary text-xs ml-2">
-              Updated {format(note.updatedAt, 'MMM d, yyyy \'at\' h:mm a')}
-            </Text>
-          </View>
-        </View>
-      </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

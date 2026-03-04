@@ -85,7 +85,9 @@ interface GroupsState {
 
   // Notes CRUD
   createGroupNote: (groupId: string, note: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateGroupNote: (groupId: string, noteId: string, input: import('../services/types').UpdateNoteInput) => void;
   deleteGroupNote: (groupId: string, noteId: string) => void;
+  toggleGroupNotePin: (groupId: string, noteId: string) => void;
 
   // Reminders CRUD
   createGroupReminder: (groupId: string, reminder: Omit<Reminder, 'id' | 'createdAt'>) => void;
@@ -1236,6 +1238,42 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         }),
       }));
     });
+  },
+
+  updateGroupNote: (groupId, noteId, input) => {
+    set((state) => ({
+      groups: state.groups.map((g) => {
+        if (g.id !== groupId || !g.metadata) return g;
+        return {
+          ...g,
+          metadata: {
+            ...g.metadata,
+            notes: g.metadata.notes.map((n) =>
+              n.id === noteId ? { ...n, ...input, updatedAt: new Date() } : n,
+            ),
+          },
+        };
+      }),
+    }));
+    groupsRepository.updateNote(groupId, noteId, input).catch(() => {});
+  },
+
+  toggleGroupNotePin: (groupId, noteId) => {
+    set((state) => ({
+      groups: state.groups.map((g) => {
+        if (g.id !== groupId || !g.metadata) return g;
+        return {
+          ...g,
+          metadata: {
+            ...g.metadata,
+            notes: g.metadata.notes.map((n) =>
+              n.id === noteId ? { ...n, isPinned: !n.isPinned } : n,
+            ),
+          },
+        };
+      }),
+    }));
+    groupsRepository.toggleNotePin(groupId, noteId).catch(() => {});
   },
 
   // Reminders

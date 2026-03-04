@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import { Group, Message, RSVPStatus, Note, Reminder, LedgerEntry, SharedObject, SharedObjectType, Poll, DisappearingDuration, ItineraryItem, GroupEvent } from '../../types';
-import { IGroupsRepository, PaginationParams, CreateGroupInput, UpdateGroupInput, CreateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../types';
+import { IGroupsRepository, PaginationParams, CreateGroupInput, UpdateGroupInput, CreateNoteInput, UpdateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../types';
 import {
   adaptMessage,
   adaptSharedObject,
@@ -681,6 +681,25 @@ export const supabaseGroupsRepository: IGroupsRepository = {
     return adaptNote(data);
   },
 
+  async updateNote(_groupId: string, noteId: string, input: UpdateNoteInput): Promise<Note> {
+    const updates: Record<string, unknown> = {};
+    if (input.title !== undefined) updates.title = input.title;
+    if (input.content !== undefined) updates.content = input.content;
+    if (input.color !== undefined) updates.color = input.color;
+    if (input.isPrivate !== undefined) updates.is_private = input.isPrivate;
+    updates.updated_at = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from('notes')
+      .update(updates)
+      .eq('id', noteId)
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to update group note: ${error.message}`);
+    return adaptNote(data);
+  },
+
   async deleteNote(noteId: string): Promise<void> {
     const { error } = await supabase
       .from('notes')
@@ -688,6 +707,10 @@ export const supabaseGroupsRepository: IGroupsRepository = {
       .eq('id', noteId);
 
     if (error) throw new Error(`Failed to delete note: ${error.message}`);
+  },
+
+  async toggleNotePin(_groupId: string, _noteId: string): Promise<void> {
+    // Pin state is managed client-side for now
   },
 
   // ─── Reminders ───────────────────────────────────

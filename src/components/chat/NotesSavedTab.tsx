@@ -6,10 +6,14 @@ import { format } from 'date-fns';
 import * as Haptics from 'expo-haptics';
 import { Card } from '../ui/Card';
 import { EmptyState } from '../ui/EmptyState';
-import { CreateNoteModal } from './CreateNoteModal';
+import { NoteListItem } from '../notes/NoteListItem';
+import { NoteSearchHeader } from '../notes/NoteSearchHeader';
+import { NoteTemplateSheet } from '../notes/NoteTemplateSheet';
 import { useUserStore } from '../../stores/useUserStore';
 import { useToastStore } from '../../stores/useToastStore';
-import type { Note, Message } from '../../types';
+import { useMessagesStore } from '../../stores/useMessagesStore';
+import { useGroupsStore } from '../../stores/useGroupsStore';
+import type { Note, NoteBlock, NoteTemplate, Message } from '../../types';
 
 // ─── Segment control ────────────────────────
 
@@ -88,7 +92,6 @@ function SavedMessageCard({
         {message.content}
       </Text>
 
-      {/* Jump to message */}
       <Pressable
         onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onJump(); }}
         className="flex-row items-center mt-2.5 pt-2 border-t border-border-subtle"
@@ -98,30 +101,6 @@ function SavedMessageCard({
           Jump to message
         </Text>
       </Pressable>
-    </Card>
-  );
-}
-
-// ─── Note card (reused from NotesTab) ───────
-
-function NoteCard({ note, onPress }: { note: Note; onPress: () => void }) {
-  return (
-    <Card className="mb-3" onPress={onPress}>
-      <View className="flex-row items-center mb-2">
-        <View
-          className="w-3 h-3 rounded-full mr-2"
-          style={{ backgroundColor: note.color }}
-        />
-        <Text className="text-text-primary font-semibold flex-1">
-          {note.title}
-        </Text>
-        {note.isPrivate && (
-          <Text className="text-text-tertiary text-xs">Private</Text>
-        )}
-      </View>
-      <Text className="text-text-secondary text-sm" numberOfLines={3}>
-        {note.content}
-      </Text>
     </Card>
   );
 }
@@ -141,20 +120,34 @@ interface NotesSavedTabProps {
 export function NotesSavedTab({ notes, starredMessageIds, allMessages, onCreateNote, onDeleteNote, contextId, contextType }: NotesSavedTabProps) {
   const router = useRouter();
   const [activeSegment, setActiveSegment] = useState<Segment>('saved');
-  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showTemplates, setShowTemplates] = useState(false);
 
-  // Resolve starred messages from the message list
   const starredMessages = useMemo(() => {
     if (starredMessageIds.length === 0) return [];
     const idSet = new Set(starredMessageIds);
     return allMessages.filter((m) => idSet.has(m.id));
   }, [allMessages, starredMessageIds]);
 
+  // Filter notes by search
+  const filteredNotes = useMemo(() => {
+    if (!searchQuery.trim()) return notes;
+    const q = searchQuery.toLowerCase();
+    return notes.filter(
+      (n) => n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q),
+    );
+  }, [notes, searchQuery]);
+
+  // Split into pinned/unpinned
+  const pinnedNotes = filteredNotes.filter((n) => n.isPinned);
+  const unpinnedNotes = filteredNotes.filter((n) => !n.isPinned);
+  const sortedNotes = [...pinnedNotes, ...unpinnedNotes];
+
   const handleDeleteNote = (note: Note) => {
     if (!onDeleteNote) return;
     Alert.alert(
       'Delete Note',
-      `Are you sure you want to delete "${note.title}"?`,
+      `Delete "${note.title || 'Untitled'}"?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -170,40 +163,75 @@ export function NotesSavedTab({ notes, starredMessageIds, allMessages, onCreateN
     );
   };
 
+  const handleTogglePin = (note: Note) => {
+    Haptics.selectionAsync();
+    if (contextType === 'conversation' && contextId) {
+      useMessagesStore.getState().toggleNotePin(contextId, note.id);
+    } else if (contextType === 'group' && contextId) {
+      useGroupsStore.getState().toggleGroupNotePin(contextId, note.id);
+    }
+  };
+
+  const handleNotePress = (note: Note) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push({
+      pathname: '/(tabs)/messages/note-detail',
+      params: {
+        noteId: note.id,
+        ...(contextType === 'conversation' ? { conversationId: contextId } : {}),
+        ...(contextType === 'group' ? { groupId: contextId } : {}),
+      },
+    });
+  };
+
+  const handleNoteLongPress = (note: Note) => {
+    Alert.alert(note.title || 'Untitled', undefined, [
+      {
+        text: note.isPinned ? 'Unpin' : 'Pin to Top',
+        onPress: () => handleTogglePin(note),
+      },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => handleDeleteNote(note),
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const handleCreateNote = (isPrivate: boolean, template?: NoteTemplate) => {
+    const blocks: NoteBlock[] = template
+      ? template.blocks.map((b, i) => ({ ...b, id: `block-${Date.now()}-${i}` }))
+      : [{ id: `block-${Date.now()}`, type: 'paragraph' as const, content: '' }];
+
+    const title = template?.name ?? '';
+    const content = blocks.map((b) => b.content).join('\n').trim();
+
+    const noteData = {
+      title,
+      content,
+      blocks,
+      color: '#D4764E',
+      isPrivate,
+      isPinned: false,
+      createdBy: 'current-user',
+      templateId: template?.id,
+    };
+
+    onCreateNote(noteData as Omit<Note, 'id' | 'createdAt' | 'updatedAt'>);
+  };
+
   const handleFABPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setIsModalVisible(true);
+    Alert.alert('New Note', 'Choose an option', [
+      { text: 'Blank Note (Shared)', onPress: () => handleCreateNote(false) },
+      { text: 'Blank Note (Private)', onPress: () => handleCreateNote(true) },
+      { text: 'From Template', onPress: () => setShowTemplates(true) },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   };
 
   const hasNoContent = starredMessages.length === 0 && notes.length === 0;
-
-  if (hasNoContent) {
-    return (
-      <View className="flex-1 bg-background-primary">
-        <SegmentControl
-          active={activeSegment}
-          onChange={setActiveSegment}
-          savedCount={0}
-          notesCount={0}
-        />
-        <EmptyState
-          icon={activeSegment === 'saved' ? 'star-outline' : 'document-text-outline'}
-          title={activeSegment === 'saved' ? 'No saved messages' : 'No notes yet'}
-          description={
-            activeSegment === 'saved'
-              ? 'Star messages to save them here for quick access'
-              : 'Create shared or private notes in this conversation'
-          }
-        />
-        {activeSegment === 'notes' && <FAB onPress={handleFABPress} />}
-        <CreateNoteModal
-          visible={isModalVisible}
-          onClose={() => setIsModalVisible(false)}
-          onSave={onCreateNote}
-        />
-      </View>
-    );
-  }
 
   return (
     <View className="flex-1 bg-background-primary">
@@ -213,6 +241,10 @@ export function NotesSavedTab({ notes, starredMessageIds, allMessages, onCreateN
         savedCount={starredMessages.length}
         notesCount={notes.length}
       />
+
+      {activeSegment === 'notes' && notes.length > 0 && (
+        <NoteSearchHeader query={searchQuery} onChangeQuery={setSearchQuery} />
+      )}
 
       {activeSegment === 'saved' ? (
         starredMessages.length === 0 ? (
@@ -239,66 +271,56 @@ export function NotesSavedTab({ notes, starredMessageIds, allMessages, onCreateN
           />
         )
       ) : (
-        notes.length === 0 ? (
+        sortedNotes.length === 0 ? (
           <EmptyState
             icon="document-text-outline"
-            title="No notes yet"
-            description="Create shared or private notes in this conversation"
+            title={searchQuery ? 'No matching notes' : 'No notes yet'}
+            description={searchQuery ? 'Try a different search term' : 'Create shared or private notes'}
           />
         ) : (
           <FlatList
-            data={notes}
+            data={sortedNotes}
             keyExtractor={(item) => item.id}
             contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80 }}
             renderItem={({ item }: { item: Note }) => (
-              <Pressable onLongPress={() => handleDeleteNote(item)} delayLongPress={500}>
-                <NoteCard
-                  note={item}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    router.push({
-                      pathname: '/(tabs)/messages/note-detail',
-                      params: {
-                        data: JSON.stringify(item),
-                        ...(contextType === 'conversation' ? { conversationId: contextId } : {}),
-                        ...(contextType === 'group' ? { groupId: contextId } : {}),
-                      },
-                    });
-                  }}
-                />
-              </Pressable>
+              <NoteListItem
+                note={item}
+                onPress={() => handleNotePress(item)}
+                onLongPress={() => handleNoteLongPress(item)}
+              />
             )}
             showsVerticalScrollIndicator={false}
           />
         )
       )}
 
-      {/* FAB for notes section only */}
-      {activeSegment === 'notes' && <FAB onPress={handleFABPress} />}
+      {activeSegment === 'notes' && (
+        <Pressable
+          onPress={handleFABPress}
+          className="absolute bottom-4 right-4 w-14 h-14 rounded-full bg-accent-primary items-center justify-center"
+          style={{
+            shadowColor: '#D4764E',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
+            elevation: 8,
+          }}
+        >
+          <Ionicons name="add" size={28} color="#FFFFFF" />
+        </Pressable>
+      )}
 
-      <CreateNoteModal
-        visible={isModalVisible}
-        onClose={() => setIsModalVisible(false)}
-        onSave={onCreateNote}
+      <NoteTemplateSheet
+        visible={showTemplates}
+        onClose={() => setShowTemplates(false)}
+        onSelect={(template) => {
+          Alert.alert('Note Visibility', 'Who can see this note?', [
+            { text: 'Shared', onPress: () => handleCreateNote(false, template) },
+            { text: 'Private to You', onPress: () => handleCreateNote(true, template) },
+            { text: 'Cancel', style: 'cancel' },
+          ]);
+        }}
       />
     </View>
-  );
-}
-
-function FAB({ onPress }: { onPress: () => void }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      className="absolute bottom-4 right-4 w-14 h-14 rounded-full bg-accent-primary items-center justify-center"
-      style={{
-        shadowColor: '#D4764E',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 8,
-      }}
-    >
-      <Ionicons name="add" size={28} color="#FFFFFF" />
-    </Pressable>
   );
 }

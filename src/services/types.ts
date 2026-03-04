@@ -1,4 +1,4 @@
-import { Conversation, Message, MessageType, Group, GroupType, User, Collection, Note, Reminder, LedgerEntry, RSVPStatus, SharedObject, SharedObjectType, Poll, DisappearingDuration, ItineraryItem, GroupEvent } from '../types';
+import { Conversation, Message, MessageType, Group, GroupType, User, Collection, Note, NoteBlock, Reminder, LedgerEntry, RSVPStatus, SharedObject, SharedObjectType, Poll, DisappearingDuration, ItineraryItem, GroupEvent } from '../types';
 
 // ─── Pagination ─────────────────────────────
 export interface PaginationParams {
@@ -10,8 +10,20 @@ export interface PaginationParams {
 export type CreateNoteInput = {
   title: string;
   content: string;
+  blocks?: NoteBlock[];
   color: string;
   isPrivate: boolean;
+  isPinned?: boolean;
+  templateId?: string;
+};
+
+export type UpdateNoteInput = {
+  title?: string;
+  content?: string;
+  blocks?: NoteBlock[];
+  color?: string;
+  isPrivate?: boolean;
+  isPinned?: boolean;
 };
 
 export type CreateReminderInput = {
@@ -60,6 +72,9 @@ export interface IMessagesRepository {
   togglePin(conversationId: string): Promise<void>;
   toggleMute(conversationId: string): Promise<void>;
   createNote(conversationId: string, input: CreateNoteInput): Promise<Note>;
+  updateNote(conversationId: string, noteId: string, input: UpdateNoteInput): Promise<Note>;
+  deleteNote(conversationId: string, noteId: string): Promise<void>;
+  toggleNotePin(conversationId: string, noteId: string): Promise<void>;
   createReminder(conversationId: string, input: CreateReminderInput): Promise<Reminder>;
   toggleReminderComplete(reminderId: string): Promise<void>;
   createLedgerEntry(conversationId: string, input: CreateLedgerEntryInput): Promise<LedgerEntry>;
@@ -117,7 +132,9 @@ export interface IGroupsRepository {
 
   // Notes / Reminders / Ledger / Shared Objects
   createNote(groupId: string, input: CreateNoteInput): Promise<Note>;
+  updateNote(groupId: string, noteId: string, input: UpdateNoteInput): Promise<Note>;
   deleteNote(noteId: string): Promise<void>;
+  toggleNotePin(groupId: string, noteId: string): Promise<void>;
   createReminder(groupId: string, input: CreateReminderInput): Promise<Reminder>;
   toggleReminderComplete(reminderId: string): Promise<void>;
   createLedgerEntry(groupId: string, input: CreateLedgerEntryInput): Promise<LedgerEntry>;
