@@ -372,8 +372,6 @@ export function MessageBubble({
 
   return (
     <>
-      {showDateDivider && <DateDivider date={message.timestamp} />}
-
       {/* Swipe wrapper — reply icon sits behind the bubble */}
       <View className={`${isLastInGroup ? 'mb-3' : 'mb-0.5'}`}>
         {/* Reply icon (revealed on swipe) */}
@@ -656,6 +654,10 @@ export function MessageBubble({
           </Pressable>
         )}
       </View>
+
+      {/* Date divider rendered AFTER the bubble in JSX so it appears
+          ABOVE the message visually in the inverted FlatList */}
+      {showDateDivider && <DateDivider date={message.timestamp} />}
 
       {/* Image viewer modal */}
       {viewerImages.length > 0 && (

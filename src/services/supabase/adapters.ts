@@ -104,11 +104,13 @@ export function adaptNote(row: Tables<'notes'>): Note {
     id: row.id,
     title: row.title,
     content: row.content,
+    blocks: (row as any).blocks ?? [{ id: `block-${row.id}`, type: 'paragraph', content: row.content }],
     color: row.color,
     createdBy: row.created_by,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
     isPrivate: row.is_private,
+    isPinned: (row as any).is_pinned ?? false,
     tags: row.tags ?? undefined,
   };
 }

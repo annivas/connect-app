@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Message, Conversation, Note, Reminder, LedgerEntry, SharedObject, ScheduledMessage, DisappearingDuration } from '../types';
 import { messagesRepository } from '../services';
-import { CreateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../services/types';
+import { CreateNoteInput, UpdateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../services/types';
 import { supabase } from '../lib/supabase';
 import { config } from '../config/env';
 import { adaptMessage } from '../services/supabase/adapters';
@@ -56,7 +56,9 @@ interface MessagesState {
 
   // Write operations
   createNote: (conversationId: string, input: CreateNoteInput) => Promise<Note>;
+  updateNote: (conversationId: string, noteId: string, input: UpdateNoteInput) => void;
   deleteNote: (conversationId: string, noteId: string) => void;
+  toggleNotePin: (conversationId: string, noteId: string) => void;
   createReminder: (conversationId: string, input: CreateReminderInput) => Promise<Reminder>;
   toggleReminderComplete: (conversationId: string, reminderId: string) => void;
   deleteReminder: (conversationId: string, reminderId: string) => void;
@@ -575,6 +577,24 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     return note;
   },
 
+  updateNote: (conversationId, noteId, input) => {
+    set((state) => ({
+      conversations: state.conversations.map((c) => {
+        if (c.id !== conversationId || !c.metadata) return c;
+        return {
+          ...c,
+          metadata: {
+            ...c.metadata,
+            notes: c.metadata.notes.map((n) =>
+              n.id === noteId ? { ...n, ...input, updatedAt: new Date() } : n,
+            ),
+          },
+        };
+      }),
+    }));
+    messagesRepository.updateNote(conversationId, noteId, input).catch(() => {});
+  },
+
   deleteNote: (conversationId, noteId) => {
     set((state) => ({
       conversations: state.conversations.map((c) =>
@@ -583,6 +603,25 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
           : c,
       ),
     }));
+    messagesRepository.deleteNote(conversationId, noteId).catch(() => {});
+  },
+
+  toggleNotePin: (conversationId, noteId) => {
+    set((state) => ({
+      conversations: state.conversations.map((c) => {
+        if (c.id !== conversationId || !c.metadata) return c;
+        return {
+          ...c,
+          metadata: {
+            ...c.metadata,
+            notes: c.metadata.notes.map((n) =>
+              n.id === noteId ? { ...n, isPinned: !n.isPinned } : n,
+            ),
+          },
+        };
+      }),
+    }));
+    messagesRepository.toggleNotePin(conversationId, noteId).catch(() => {});
   },
 
   createReminder: async (conversationId, input) => {

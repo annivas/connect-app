@@ -1,7 +1,7 @@
 import { Message, MessageType, Conversation, Note, Reminder, LedgerEntry, Reaction, SharedObject, SharedObjectType, DisappearingDuration } from '../../types';
 import { MOCK_CONVERSATIONS } from '../../mocks/conversations';
 import { MOCK_MESSAGES } from '../../mocks/messages';
-import { IMessagesRepository, PaginationParams, CreateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../types';
+import { IMessagesRepository, PaginationParams, CreateNoteInput, UpdateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../types';
 
 // In-memory copies so mutations don't affect the original mock data
 let conversations = [...MOCK_CONVERSATIONS];
@@ -118,11 +118,14 @@ export const mockMessagesRepository: IMessagesRepository = {
       id: `note-${Date.now()}`,
       title: input.title,
       content: input.content,
+      blocks: input.blocks ?? [{ id: `block-${Date.now()}`, type: 'paragraph', content: '' }],
       color: input.color,
       isPrivate: input.isPrivate,
+      isPinned: input.isPinned ?? false,
       createdBy: 'current-user',
       createdAt: new Date(),
       updatedAt: new Date(),
+      templateId: input.templateId,
     };
     conversations = conversations.map((c) =>
       c.id === conversationId
@@ -130,6 +133,53 @@ export const mockMessagesRepository: IMessagesRepository = {
         : c,
     );
     return newNote;
+  },
+
+  async updateNote(conversationId: string, noteId: string, input: UpdateNoteInput): Promise<Note> {
+    let updated: Note | undefined;
+    conversations = conversations.map((c) => {
+      if (c.id !== conversationId || !c.metadata) return c;
+      return {
+        ...c,
+        metadata: {
+          ...c.metadata,
+          notes: c.metadata.notes.map((n) => {
+            if (n.id !== noteId) return n;
+            updated = { ...n, ...input, updatedAt: new Date() };
+            return updated;
+          }),
+        },
+      };
+    });
+    return updated!;
+  },
+
+  async deleteNote(conversationId: string, noteId: string): Promise<void> {
+    conversations = conversations.map((c) => {
+      if (c.id !== conversationId || !c.metadata) return c;
+      return {
+        ...c,
+        metadata: {
+          ...c.metadata,
+          notes: c.metadata.notes.filter((n) => n.id !== noteId),
+        },
+      };
+    });
+  },
+
+  async toggleNotePin(conversationId: string, noteId: string): Promise<void> {
+    conversations = conversations.map((c) => {
+      if (c.id !== conversationId || !c.metadata) return c;
+      return {
+        ...c,
+        metadata: {
+          ...c.metadata,
+          notes: c.metadata.notes.map((n) =>
+            n.id === noteId ? { ...n, isPinned: !n.isPinned } : n,
+          ),
+        },
+      };
+    });
   },
 
   async createReminder(conversationId: string, input: CreateReminderInput): Promise<Reminder> {

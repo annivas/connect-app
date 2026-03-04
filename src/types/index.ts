@@ -157,16 +157,61 @@ export interface SharedObject {
 }
 
 // ─── Notes ───────────────────────────────────
+export type NoteBlockType =
+  | 'paragraph'
+  | 'heading1'
+  | 'heading2'
+  | 'bulletList'
+  | 'numberedList'
+  | 'checklist'
+  | 'image'
+  | 'file'
+  | 'link';
+
+export interface NoteAttachmentMeta {
+  uri?: string;
+  fileName?: string;
+  fileSize?: number;
+  mimeType?: string;
+  width?: number;
+  height?: number;
+  url?: string;
+  linkTitle?: string;
+  linkDomain?: string;
+}
+
+export interface NoteBlock {
+  id: string;
+  type: NoteBlockType;
+  content: string;
+  checked?: boolean;
+  indent?: number;
+  metadata?: NoteAttachmentMeta;
+}
+
+export type NoteTemplateCategory = 'general' | 'family' | 'trips' | 'friends' | 'sports';
+
+export interface NoteTemplate {
+  id: string;
+  name: string;
+  category: NoteTemplateCategory;
+  icon: string;
+  blocks: Omit<NoteBlock, 'id'>[];
+}
+
 export interface Note {
   id: string;
   title: string;
   content: string;
+  blocks: NoteBlock[];
   color: string;
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
   isPrivate: boolean;
+  isPinned: boolean;
   tags?: string[];
+  templateId?: string;
 }
 
 // ─── Reminders ───────────────────────────────

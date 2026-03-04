@@ -44,8 +44,10 @@ export function CreateNoteModal({ visible, onClose, onSave }: Props) {
       await onSave?.({
         title: title.trim(),
         content: content.trim(),
+        blocks: [{ id: `block-${Date.now()}`, type: 'paragraph', content: content.trim() }],
         color,
         isPrivate,
+        isPinned: false,
         createdBy: '',
       });
       reset();
