@@ -50,7 +50,6 @@ function useKeyboardOffset() {
 
 interface Props {
   conversationId: string;
-  isPrivate?: boolean;
   highlightText?: string;
   matchingMessageIds?: Set<string>;
 }
@@ -60,13 +59,13 @@ const EMPTY_TYPING: string[] = [];
 // Messages within this window from the same sender are grouped (no avatar/name repeated)
 const GROUP_THRESHOLD_MINUTES = 3;
 
-export function ChatTab({ conversationId, isPrivate, highlightText, matchingMessageIds }: Props) {
+export function ChatTab({ conversationId, highlightText, matchingMessageIds }: Props) {
   const listRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
   const { containerRef, offset: kbOffset, onLayout } = useKeyboardOffset();
 
   const messages = useMessagesStore(
-    useShallow((s) => s.getMessagesByConversationId(conversationId, isPrivate))
+    useShallow((s) => s.getMessagesByConversationId(conversationId))
   );
   const sendMessage = useMessagesStore((s) => s.sendMessage);
   const retryMessage = useMessagesStore((s) => s.retryMessage);
@@ -151,7 +150,7 @@ export function ChatTab({ conversationId, isPrivate, highlightText, matchingMess
   const handleSend = (content: string) => {
     const userId = useUserStore.getState().currentUser?.id;
     if (!userId) return;
-    sendMessage(conversationId, content, userId, isPrivate ? { isPrivate } : undefined);
+    sendMessage(conversationId, content, userId);
   };
 
   const handleDelete = (messageId: string) => {
@@ -275,7 +274,6 @@ export function ChatTab({ conversationId, isPrivate, highlightText, matchingMess
     sendMessage(conversationId, asset.uri, userId, {
       type: 'image',
       metadata: { width: asset.width, height: asset.height },
-      isPrivate,
     });
   };
 
@@ -299,7 +297,6 @@ export function ChatTab({ conversationId, isPrivate, highlightText, matchingMess
     sendMessage(conversationId, asset.uri, userId, {
       type: 'image',
       metadata: { width: asset.width, height: asset.height },
-      isPrivate,
     });
   };
 
@@ -323,7 +320,6 @@ export function ChatTab({ conversationId, isPrivate, highlightText, matchingMess
           mimeType: asset.mimeType ?? 'application/octet-stream',
           uri: asset.uri,
         },
-        isPrivate,
       });
     } catch {
       useToastStore.getState().show({ message: 'Failed to pick document. Please try again.', type: 'error' });
@@ -352,7 +348,6 @@ export function ChatTab({ conversationId, isPrivate, highlightText, matchingMess
         ...location,
         staticMapUrl: `https://maps.googleapis.com/maps/api/staticmap?center=${location.latitude},${location.longitude}&zoom=15&size=300x150&markers=color:red%7C${location.latitude},${location.longitude}&key=${apiKey}`,
       },
-      isPrivate,
     });
   };
 
@@ -370,7 +365,6 @@ export function ChatTab({ conversationId, isPrivate, highlightText, matchingMess
     sendMessage(conversationId, `${song.title} by ${song.artist}`, userId, {
       type: 'song',
       metadata: { ...song },
-      isPrivate,
     });
   };
 
@@ -399,7 +393,6 @@ export function ChatTab({ conversationId, isPrivate, highlightText, matchingMess
               ? contact.image.uri
               : undefined,
         },
-        isPrivate,
       });
     } catch {
       useToastStore.getState().show({ message: 'Failed to pick contact. Please try again.', type: 'error' });
@@ -460,7 +453,7 @@ export function ChatTab({ conversationId, isPrivate, highlightText, matchingMess
           // Send the scheduled message
           const userId = useUserStore.getState().currentUser?.id;
           if (userId) {
-            store.sendMessage(conversationId, sched.content, userId, isPrivate ? { isPrivate } : undefined);
+            store.sendMessage(conversationId, sched.content, userId);
             store.cancelScheduledMessage(sched.id); // marks as sent/cancelled
           }
         }
@@ -481,7 +474,6 @@ export function ChatTab({ conversationId, isPrivate, highlightText, matchingMess
         waveformSamples: data.waveformSamples,
         uri: data.uri,
       },
-      isPrivate,
     });
   }, [conversationId, sendMessage]);
 
@@ -527,15 +519,6 @@ export function ChatTab({ conversationId, isPrivate, highlightText, matchingMess
           }
         }}
       />
-
-      {isPrivate && (
-        <View className="flex-row items-center justify-center py-2 px-4 bg-background-tertiary rounded-lg mx-4 mt-1 mb-1">
-          <Ionicons name="lock-closed" size={12} color="#8B6F5A" />
-          <Text className="text-text-tertiary text-xs ml-1">
-            Private mode — AI cannot read these messages
-          </Text>
-        </View>
-      )}
 
       <FlatList<TimelineItem>
         ref={listRef as React.RefObject<FlatList<TimelineItem>>}

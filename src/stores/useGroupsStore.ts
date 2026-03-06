@@ -30,13 +30,13 @@ interface GroupsState {
   subscribe: () => void;
   unsubscribe: () => void;
   getGroupById: (id: string) => Group | undefined;
-  getGroupMessages: (groupId: string, isPrivate?: boolean) => Message[];
+  getGroupMessages: (groupId: string) => Message[];
 
   // Pagination
   loadGroupMessages: (groupId: string) => Promise<void>;
   loadMoreGroupMessages: (groupId: string) => Promise<void>;
 
-  sendGroupMessage: (groupId: string, content: string, senderId: string, options?: { type?: import('../types').MessageType; metadata?: Record<string, unknown>; isPrivate?: boolean }) => void;
+  sendGroupMessage: (groupId: string, content: string, senderId: string, options?: { type?: import('../types').MessageType; metadata?: Record<string, unknown> }) => void;
   retryGroupMessage: (messageId: string) => void;
   deleteGroupMessage: (groupId: string, messageId: string) => void;
   toggleGroupReaction: (groupId: string, messageId: string, emoji: string) => void;
@@ -369,10 +369,8 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
 
   getGroupById: (id) => get().groups.find((g) => g.id === id),
 
-  getGroupMessages: (groupId, isPrivate = false) =>
-    get().groupMessages.filter(
-      (m) => m.conversationId === groupId && (isPrivate ? m.isPrivate === true : !m.isPrivate)
-    ),
+  getGroupMessages: (groupId) =>
+    get().groupMessages.filter((m) => m.conversationId === groupId),
 
   loadGroupMessages: async (groupId) => {
     const state = get();
@@ -455,7 +453,6 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
       replyTo,
       isRead: true,
       sendStatus: 'sending',
-      isPrivate: options?.isPrivate,
     };
 
     set((s) => ({
@@ -473,7 +470,7 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
       .then((savedMessage) => {
         set((s) => ({
           groupMessages: s.groupMessages.map((m) =>
-            m.id === messageId ? { ...savedMessage, sendStatus: 'sent' as const, isPrivate: m.isPrivate } : m,
+            m.id === messageId ? { ...savedMessage, sendStatus: 'sent' as const } : m,
           ),
         }));
       })
@@ -497,13 +494,11 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
     }));
 
     groupsRepository
-      .sendGroupMessage(message.conversationId, message.content, message.senderId, {
-        isPrivate: message.isPrivate,
-      })
+      .sendGroupMessage(message.conversationId, message.content, message.senderId)
       .then((savedMessage) => {
         set((state) => ({
           groupMessages: state.groupMessages.map((m) =>
-            m.id === messageId ? { ...savedMessage, sendStatus: 'sent' as const, isPrivate: m.isPrivate } : m,
+            m.id === messageId ? { ...savedMessage, sendStatus: 'sent' as const } : m,
           ),
         }));
       })
