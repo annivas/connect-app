@@ -548,3 +548,52 @@ export interface ScheduledMessage {
   createdAt: Date;
   status: 'pending' | 'sent' | 'failed' | 'cancelled';
 }
+
+// ─── AI Agents ──────────────────────────────
+export type AIProvider = 'anthropic' | 'openai' | 'google';
+
+export interface AIAgent {
+  id: string;
+  name: string;
+  provider: AIProvider;
+  model: string;
+  avatar: string;
+  description: string;
+  color: string;
+  isConnected: boolean;
+}
+
+export type AIVisibility = 'ai-enabled' | 'ai-restricted';
+
+export interface AISubchat {
+  id: string;
+  agentId: string;
+  title: string;
+  createdAt: Date;
+  updatedAt: Date;
+  aiVisibility: AIVisibility;
+  lastMessage?: AIMessage;
+}
+
+export interface AIMessage {
+  id: string;
+  subchatId: string;
+  agentId: string;
+  senderId: string; // 'current-user' or agentId
+  content: string;
+  timestamp: Date;
+  isFromAI: boolean;
+  isRead: boolean;
+}
+
+export type AISuggestedActionType = 'meeting' | 'calendar' | 'task' | 'reminder' | 'decision' | 'document';
+
+export interface AISuggestedAction {
+  id: string;
+  type: AISuggestedActionType;
+  label: string;
+  description: string;
+  messageId: string;
+  isApproved: boolean;
+  isDismissed: boolean;
+}

@@ -4,6 +4,7 @@ import { useMessagesStore } from '../stores/useMessagesStore';
 import { useGroupsStore } from '../stores/useGroupsStore';
 import { useUserStore } from '../stores/useUserStore';
 import { useHomeStore } from '../stores/useHomeStore';
+import { useAIStore } from '../stores/useAIStore';
 
 export function useAppInit() {
   const [isReady, setIsReady] = useState(false);
@@ -33,6 +34,8 @@ export function useAppInit() {
           useGroupsStore.getState().init(),
           useHomeStore.getState().init(),
         ]);
+        // AI store init is synchronous (mock data), no need to await
+        useAIStore.getState().init();
         setIsReady(true);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to initialize app');
