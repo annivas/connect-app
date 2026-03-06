@@ -1,6 +1,7 @@
 import { Message, Group, RSVPStatus, Note, Reminder, LedgerEntry, SharedObject, SharedObjectType, Poll, DisappearingDuration, ItineraryItem, GroupEvent } from '../../types';
 import { MOCK_GROUPS } from '../../mocks/groups';
 import { MOCK_GROUP_MESSAGES } from '../../mocks/messages';
+import { MOCK_POLLS } from '../../mocks/polls';
 import { IGroupsRepository, PaginationParams, CreateGroupInput, UpdateGroupInput, CreateNoteInput, UpdateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../types';
 
 let groups = [...MOCK_GROUPS];
@@ -232,7 +233,7 @@ export const mockGroupsRepository: IGroupsRepository = {
   },
   async votePoll(_pollId: string, _optionId: string): Promise<void> {},
   async closePoll(_pollId: string): Promise<void> {},
-  async getPolls(_groupId: string): Promise<Poll[]> { return []; },
+  async getPolls(groupId: string): Promise<Poll[]> { return MOCK_POLLS[groupId] ?? []; },
 
   // Archive / Unread / Disappearing
   async toggleArchive(_groupId: string): Promise<void> {},

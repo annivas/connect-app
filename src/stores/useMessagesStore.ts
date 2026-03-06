@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Message, Conversation, Note, Reminder, LedgerEntry, SharedObject, ScheduledMessage, DisappearingDuration } from '../types';
+import { Message, Conversation, Note, Reminder, LedgerEntry, SharedObject, SharedObjectType, ScheduledMessage, DisappearingDuration } from '../types';
 import { messagesRepository } from '../services';
 import { CreateNoteInput, UpdateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../services/types';
 import { supabase } from '../lib/supabase';
@@ -67,7 +67,7 @@ interface MessagesState {
   deleteLedgerEntry: (conversationId: string, entryId: string) => void;
   addSharedObject: (
     conversationId: string,
-    data: { type: 'link'; title: string; description?: string; url: string },
+    data: { type: SharedObjectType; title: string; description?: string; url?: string },
   ) => void;
   deleteSharedObject: (conversationId: string, objectId: string) => void;
 
@@ -776,7 +776,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
       url: data.url,
       sharedBy: currentUserId,
       sharedAt: new Date(),
-      metadata: { url: data.url },
+      metadata: { url: data.url ?? '' },
     };
 
     set((state) => ({
