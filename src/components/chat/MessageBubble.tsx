@@ -397,20 +397,6 @@ export function MessageBubble({
 
           <GestureDetector gesture={composedGesture}>
           <Animated.View style={swipeStyle}>
-            {/* Reaction picker — positioned above the bubble */}
-            {showReactionPicker && (
-              <View className={`mb-1.5 ${isMine ? 'items-end pr-0' : 'items-start pl-9'}`}>
-                <ReactionPicker
-                  onSelect={handleReactionSelect}
-                  onClose={() => setShowReactionPicker(false)}
-                  onMore={() => {
-                    setShowReactionPicker(false);
-                    showMoreActions();
-                  }}
-                />
-              </View>
-            )}
-
             {/* Message row — no Pressable wrapper, gestures handled above */}
             <View className={`flex-row ${isMine ? 'justify-end' : 'justify-start'}`}>
               {/* Avatar column (received messages only) */}
