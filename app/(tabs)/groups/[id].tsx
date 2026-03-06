@@ -231,7 +231,7 @@ export default function GroupDetailScreen() {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             const g = useGroupsStore.getState().getGroupById(id!);
             if (!g?.household) return;
-            const newItem = { id: `shop-${Date.now()}`, name, isChecked: false, addedBy: CURRENT_USER_ID };
+            const newItem = { id: `shop-${Date.now()}`, name, isChecked: false, addedBy: CURRENT_USER_ID, addedAt: new Date() };
             useGroupsStore.getState().updateGroup(id!, { household: { ...g.household, shoppingList: [...g.household.shoppingList, newItem] } } as any);
           }}
           onDeleteShoppingItem={(itemId) => {

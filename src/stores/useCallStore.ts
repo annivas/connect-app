@@ -96,7 +96,7 @@ export const useCallStore = create<CallState>((set, get) => ({
 
     const historyEntry: CallEntry = {
       id: callId,
-      conversationId: '',
+      conversationId: groupId,
       callerId: currentUserId,
       receiverIds: otherMembers,
       type,
