@@ -3,6 +3,8 @@ import { View, Pressable, ScrollView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import type { NoteBlockType } from '../../types';
+import { InlineFormatToolbar } from '../ui/InlineFormatToolbar';
+import type { InlineFormat } from '../../utils/inlineFormatting';
 
 interface Props {
   currentBlockType: NoteBlockType;
@@ -10,6 +12,7 @@ interface Props {
   onAddImage: () => void;
   onAddFile: () => void;
   onAddLink: () => void;
+  onInlineFormat: (format: InlineFormat) => void;
   keyboardVisible: boolean;
   hasFocusedBlock?: boolean;
 }
@@ -28,6 +31,7 @@ export function NoteFormatToolbar({
   onAddImage,
   onAddFile,
   onAddLink,
+  onInlineFormat,
   keyboardVisible,
   hasFocusedBlock,
 }: Props) {
@@ -57,6 +61,13 @@ export function NoteFormatToolbar({
         keyboardShouldPersistTaps="always"
         contentContainerStyle={{ paddingHorizontal: 8, paddingVertical: 8, gap: 4 }}
       >
+        {/* Inline format buttons */}
+        <InlineFormatToolbar onFormat={onInlineFormat} />
+
+        {/* Divider */}
+        <View className="w-px h-6 bg-border self-center mx-1" />
+
+        {/* Block-type buttons */}
         {buttons.map((btn) => (
           <Pressable
             key={btn.label}
