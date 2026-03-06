@@ -412,11 +412,13 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     }));
 
     messagesRepository
-      .sendMessage(message.conversationId, message.content, message.senderId)
+      .sendMessage(message.conversationId, message.content, message.senderId, {
+        isPrivate: message.isPrivate,
+      })
       .then((savedMessage) => {
         set((state) => ({
           messages: state.messages.map((m) =>
-            m.id === messageId ? { ...savedMessage, sendStatus: 'sent' as const } : m,
+            m.id === messageId ? { ...savedMessage, sendStatus: 'sent' as const, isPrivate: m.isPrivate } : m,
           ),
         }));
       })

@@ -463,6 +463,7 @@ export type Database = {
           context_type: string
           created_at: string
           id: string
+          is_private: boolean
           is_read: boolean
           metadata: Json | null
           reactions: Json | null
@@ -475,6 +476,7 @@ export type Database = {
           context_type: string
           created_at?: string
           id?: string
+          is_private?: boolean
           is_read?: boolean
           metadata?: Json | null
           reactions?: Json | null
@@ -487,6 +489,7 @@ export type Database = {
           context_type?: string
           created_at?: string
           id?: string
+          is_private?: boolean
           is_read?: boolean
           metadata?: Json | null
           reactions?: Json | null
