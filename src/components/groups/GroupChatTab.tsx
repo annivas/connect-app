@@ -523,7 +523,11 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
 
   const handleSaveEvent = useCallback((eventData: Omit<GroupEvent, 'id' | 'groupId' | 'createdBy' | 'attendees'>) => {
     useGroupsStore.getState().createEvent(groupId, eventData);
-  }, [groupId]);
+    const userId = useUserStore.getState().currentUser?.id;
+    if (userId) {
+      sendGroupMessage(groupId, `Created an event: ${eventData.title}`, userId);
+    }
+  }, [groupId, sendGroupMessage]);
 
   return (
     <View ref={containerRef} onLayout={onLayout} className="flex-1 bg-background-primary">
@@ -775,6 +779,10 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
       onClose={() => setShowCreatePoll(false)}
       onCreatePoll={(question, options, isMultipleChoice) => {
         useGroupsStore.getState().createPoll(groupId, question, options, isMultipleChoice);
+        const userId = useUserStore.getState().currentUser?.id;
+        if (userId) {
+          sendGroupMessage(groupId, `Created a poll: ${question}`, userId);
+        }
         setShowCreatePoll(false);
         useToastStore.getState().show({ message: 'Poll created', type: 'success' });
       }}
@@ -784,6 +792,10 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
       onClose={() => setShowSheetNoteModal(false)}
       onSave={(note) => {
         useGroupsStore.getState().createGroupNote(groupId, note);
+        const userId = useUserStore.getState().currentUser?.id;
+        if (userId) {
+          sendGroupMessage(groupId, `Created a note: ${note.title}`, userId);
+        }
         setShowSheetNoteModal(false);
         useToastStore.getState().show({ message: 'Note created', type: 'success' });
       }}
@@ -801,6 +813,10 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
           date: new Date(),
           isSettled: false,
         });
+        const userId = useUserStore.getState().currentUser?.id;
+        if (userId) {
+          sendGroupMessage(groupId, `Added an expense: ${entry.description} — $${entry.amount.toFixed(2)}`, userId);
+        }
         setShowSheetExpenseModal(false);
         useToastStore.getState().show({ message: 'Expense added', type: 'success' });
       }}
@@ -818,6 +834,9 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
           isCompleted: false,
           createdBy: userId,
         });
+        if (userId) {
+          sendGroupMessage(groupId, `Set a reminder: ${reminder.title}`, userId);
+        }
         setShowSheetReminderModal(false);
         useToastStore.getState().show({ message: 'Reminder created', type: 'success' });
       }}
