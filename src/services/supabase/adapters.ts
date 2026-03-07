@@ -78,7 +78,6 @@ export function adaptMessage(row: Tables<'messages'>): Message {
     replyTo: replyToData ?? undefined,
     isEdited: meta?.edited === true,
     isRead: row.is_read,
-    isPrivate: row.is_private,
   };
 }
 

@@ -108,7 +108,6 @@ export interface Message {
   expiresAt?: Date;
   scheduledFor?: Date;
   isScheduled?: boolean;
-  isPrivate?: boolean;
 }
 
 // ─── Shared Objects ──────────────────────────

@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, View, Text, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Platform, View, Text, ActivityIndicator, Alert } from 'react-native';
 import { useToastStore } from '../../stores/useToastStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
@@ -8,7 +8,6 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Contacts from 'expo-contacts';
 import Constants from 'expo-constants';
-import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { MessageBubble } from '../chat/MessageBubble';
 import { MessageInput } from '../chat/MessageInput';
@@ -52,7 +51,6 @@ function useKeyboardOffset() {
 
 interface Props {
   groupId: string;
-  isPrivate?: boolean;
   highlightText?: string;
   matchingMessageIds?: Set<string>;
 }
@@ -60,12 +58,12 @@ interface Props {
 // Messages within this window from the same sender are grouped (no avatar/name repeated)
 const GROUP_THRESHOLD_MINUTES = 3;
 
-export function GroupChatTab({ groupId, isPrivate, highlightText, matchingMessageIds }: Props) {
+export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Props) {
   const listRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
   const { containerRef, offset: kbOffset, onLayout } = useKeyboardOffset();
 
-  const messages = useGroupsStore(useShallow((s) => s.getGroupMessages(groupId, isPrivate)));
+  const messages = useGroupsStore(useShallow((s) => s.getGroupMessages(groupId)));
   const sendGroupMessage = useGroupsStore((s) => s.sendGroupMessage);
   const retryGroupMessage = useGroupsStore((s) => s.retryGroupMessage);
   const hasMore = useGroupsStore((s) => s.hasMoreMessages[groupId] ?? false);
@@ -201,7 +199,7 @@ export function GroupChatTab({ groupId, isPrivate, highlightText, matchingMessag
         ) {
           const userId = useUserStore.getState().currentUser?.id;
           if (userId) {
-            store.sendGroupMessage(groupId, sched.content, userId, isPrivate ? { isPrivate } : undefined);
+            store.sendGroupMessage(groupId, sched.content, userId);
             store.cancelGroupScheduledMessage(sched.id);
           }
         }
@@ -214,7 +212,7 @@ export function GroupChatTab({ groupId, isPrivate, highlightText, matchingMessag
   const handleSend = (content: string) => {
     const userId = useUserStore.getState().currentUser?.id;
     if (!userId) return;
-    sendGroupMessage(groupId, content, userId, isPrivate ? { isPrivate } : undefined);
+    sendGroupMessage(groupId, content, userId);
   };
 
   const handleDelete = (messageId: string) => {
@@ -338,7 +336,6 @@ export function GroupChatTab({ groupId, isPrivate, highlightText, matchingMessag
     sendGroupMessage(groupId, asset.uri, userId, {
       type: 'image',
       metadata: { width: asset.width, height: asset.height },
-      isPrivate,
     });
   };
 
@@ -362,7 +359,6 @@ export function GroupChatTab({ groupId, isPrivate, highlightText, matchingMessag
     sendGroupMessage(groupId, asset.uri, userId, {
       type: 'image',
       metadata: { width: asset.width, height: asset.height },
-      isPrivate,
     });
   };
 
@@ -386,7 +382,6 @@ export function GroupChatTab({ groupId, isPrivate, highlightText, matchingMessag
           mimeType: asset.mimeType ?? 'application/octet-stream',
           uri: asset.uri,
         },
-        isPrivate,
       });
     } catch {
       useToastStore.getState().show({ message: 'Failed to pick document. Please try again.', type: 'error' });
@@ -415,7 +410,6 @@ export function GroupChatTab({ groupId, isPrivate, highlightText, matchingMessag
         ...location,
         staticMapUrl: `https://maps.googleapis.com/maps/api/staticmap?center=${location.latitude},${location.longitude}&zoom=15&size=300x150&markers=color:red%7C${location.latitude},${location.longitude}&key=${apiKey}`,
       },
-      isPrivate,
     });
   };
 
@@ -433,7 +427,6 @@ export function GroupChatTab({ groupId, isPrivate, highlightText, matchingMessag
     sendGroupMessage(groupId, `${song.title} by ${song.artist}`, userId, {
       type: 'song',
       metadata: { ...song },
-      isPrivate,
     });
   };
 
@@ -462,7 +455,6 @@ export function GroupChatTab({ groupId, isPrivate, highlightText, matchingMessag
               ? contact.image.uri
               : undefined,
         },
-        isPrivate,
       });
     } catch {
       useToastStore.getState().show({ message: 'Failed to pick contact. Please try again.', type: 'error' });
@@ -480,7 +472,6 @@ export function GroupChatTab({ groupId, isPrivate, highlightText, matchingMessag
         waveformSamples: data.waveformSamples,
         uri: data.uri,
       },
-      isPrivate,
     });
   }, [groupId, sendGroupMessage]);
 
@@ -549,15 +540,6 @@ export function GroupChatTab({ groupId, isPrivate, highlightText, matchingMessag
           }
         }}
       />
-
-      {isPrivate && (
-        <View className="flex-row items-center justify-center py-2 px-4 bg-background-tertiary rounded-lg mx-4 mt-1 mb-1">
-          <Ionicons name="lock-closed" size={12} color="#8B6F5A" />
-          <Text className="text-text-tertiary text-xs ml-1">
-            Private mode — AI cannot read these messages
-          </Text>
-        </View>
-      )}
 
       <FlatList<TimelineItem>
         ref={listRef as React.RefObject<FlatList<TimelineItem>>}

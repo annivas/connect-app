@@ -501,7 +501,6 @@ export const MOCK_MESSAGES: Message[] = [
     type: 'text',
     isRead: true,
     sendStatus: 'sent',
-    isPrivate: true,
   },
   {
     id: 'msg-priv-2',
@@ -512,7 +511,6 @@ export const MOCK_MESSAGES: Message[] = [
     type: 'text',
     isRead: true,
     sendStatus: 'sent',
-    isPrivate: true,
   },
   {
     id: 'msg-priv-3',
@@ -523,7 +521,6 @@ export const MOCK_MESSAGES: Message[] = [
     type: 'text',
     isRead: true,
     sendStatus: 'sent',
-    isPrivate: true,
   },
 ];
 
@@ -968,7 +965,6 @@ export const MOCK_GROUP_MESSAGES: Message[] = [
     type: 'text',
     isRead: true,
     sendStatus: 'sent',
-    isPrivate: true,
   },
   {
     id: 'gmsg-priv-2',
@@ -979,6 +975,5 @@ export const MOCK_GROUP_MESSAGES: Message[] = [
     type: 'text',
     isRead: true,
     sendStatus: 'sent',
-    isPrivate: true,
   },
 ];
