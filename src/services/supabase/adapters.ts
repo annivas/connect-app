@@ -78,6 +78,7 @@ export function adaptMessage(row: Tables<'messages'>): Message {
     replyTo: replyToData ?? undefined,
     isEdited: meta?.edited === true,
     isRead: row.is_read,
+    channelId: row.channel_id ?? undefined,
   };
 }
 
