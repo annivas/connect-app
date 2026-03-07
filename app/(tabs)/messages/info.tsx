@@ -17,7 +17,7 @@ import { useToastStore } from '../../../src/stores/useToastStore';
 import type { DisappearingDuration } from '../../../src/types';
 
 export default function ConversationInfoScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, channelId } = useLocalSearchParams<{ id: string; channelId?: string }>();
   const router = useRouter();
 
   const conversation = useMessagesStore(useShallow((s) => s.getConversationById(id!)));
@@ -36,7 +36,8 @@ export default function ConversationInfoScreen() {
     );
   }
 
-  const meta = conversation.metadata;
+  const activeChannel = channelId ? conversation.channels?.find((c) => c.id === channelId) : null;
+  const meta = activeChannel ? activeChannel.metadata : conversation.metadata;
   const sharedCount = meta?.sharedObjects?.length ?? 0;
   const pinnedCount = meta?.pinnedMessages?.length ?? 0;
   const notes = meta?.notes ?? [];
@@ -101,7 +102,7 @@ export default function ConversationInfoScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push({
       pathname: '/(tabs)/messages/section-detail',
-      params: { id: id!, section },
+      params: { id: id!, section, ...(channelId ? { channelId } : {}) },
     });
   };
 
@@ -135,7 +136,9 @@ export default function ConversationInfoScreen() {
       {/* Header */}
       <View className="flex-row items-center px-2 pb-2 border-b border-border-subtle">
         <IconButton icon="chevron-back" onPress={() => router.back()} />
-        <Text className="flex-1 text-text-primary text-[17px] font-semibold ml-1">Info</Text>
+        <Text className="flex-1 text-text-primary text-[17px] font-semibold ml-1">
+          {activeChannel ? `Info · ${activeChannel.emoji || ''} ${activeChannel.name}` : 'Info'}
+        </Text>
       </View>
 
       <ScrollView

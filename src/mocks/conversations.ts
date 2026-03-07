@@ -1,4 +1,4 @@
-import { Conversation, SharedObject } from '../types';
+import { Conversation, SharedObject, Channel } from '../types';
 import { CURRENT_USER_ID } from './users';
 import { MOCK_MESSAGES } from './messages';
 import { MOCK_CALL_HISTORY } from './calls';
@@ -204,6 +204,93 @@ const conv5SharedObjects: SharedObject[] = [
   },
 ];
 
+// ─── Channel data for conversations ─────────
+const conv1Channels: Channel[] = [
+  {
+    id: 'ch-conv1-startup',
+    name: 'Startup Ideas',
+    emoji: '🚀',
+    color: '#D4764E',
+    createdBy: CURRENT_USER_ID,
+    createdAt: new Date('2026-02-10T09:00:00'),
+    metadata: {
+      sharedObjects: [
+        {
+          id: 'ch-shared-1',
+          type: 'link',
+          title: 'YC Application Guide',
+          description: 'ycombinator.com',
+          url: 'https://ycombinator.com/apply',
+          sharedBy: CURRENT_USER_ID,
+          sharedAt: new Date('2026-02-15T10:00:00'),
+          metadata: {
+            url: 'https://ycombinator.com/apply',
+            favicon: 'https://ycombinator.com/favicon.ico',
+          },
+        },
+      ],
+      notes: [
+        {
+          id: 'ch-note-1',
+          title: 'MVP Feature List',
+          content: 'Core features for v1\nUser auth\nDashboard\nNotifications',
+          blocks: [
+            { id: 'chn-1', type: 'heading1' as const, content: 'MVP Feature List' },
+            { id: 'chn-2', type: 'checklist' as const, content: 'User auth', checked: true },
+            { id: 'chn-3', type: 'checklist' as const, content: 'Dashboard', checked: false },
+            { id: 'chn-4', type: 'checklist' as const, content: 'Notifications', checked: false },
+          ],
+          color: '#D4764E',
+          createdBy: CURRENT_USER_ID,
+          createdAt: new Date('2026-02-12T14:00:00'),
+          updatedAt: new Date('2026-02-18T11:00:00'),
+          isPrivate: false,
+          isPinned: true,
+        },
+      ],
+      reminders: [
+        {
+          id: 'ch-rem-1',
+          title: 'Finalize pitch deck',
+          dueDate: new Date('2026-03-01T09:00:00'),
+          isCompleted: false,
+          createdBy: 'user-1',
+          createdAt: new Date('2026-02-20T10:00:00'),
+          priority: 'high',
+        },
+      ],
+      ledgerBalance: 0,
+      ledgerEntries: [],
+      pinnedMessages: [],
+      starredMessages: [],
+      polls: [],
+      callHistory: [],
+    },
+  },
+];
+
+const conv5Channels: Channel[] = [
+  {
+    id: 'ch-conv5-concerts',
+    name: 'Concert Plans',
+    emoji: '🎵',
+    color: '#5B8EC9',
+    createdBy: 'user-5',
+    createdAt: new Date('2026-02-05T16:00:00'),
+    metadata: {
+      sharedObjects: [],
+      notes: [],
+      reminders: [],
+      ledgerBalance: 0,
+      ledgerEntries: [],
+      pinnedMessages: [],
+      starredMessages: [],
+      polls: [],
+      callHistory: [],
+    },
+  },
+];
+
 export const MOCK_CONVERSATIONS: Conversation[] = [
   {
     id: 'conv-1',
@@ -274,6 +361,7 @@ export const MOCK_CONVERSATIONS: Conversation[] = [
       polls: [],
       callHistory: MOCK_CALL_HISTORY.filter((c) => c.conversationId === 'conv-1'),
     },
+    channels: conv1Channels,
   },
   {
     id: 'conv-2',
@@ -396,6 +484,7 @@ export const MOCK_CONVERSATIONS: Conversation[] = [
       polls: [],
       callHistory: MOCK_CALL_HISTORY.filter((c) => c.conversationId === 'conv-5'),
     },
+    channels: conv5Channels,
   },
   {
     id: 'conv-6',

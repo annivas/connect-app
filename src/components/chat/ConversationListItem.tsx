@@ -179,6 +179,14 @@ export function ConversationListItem({ conversation, highlightText }: Props) {
                   <Text style={{ fontSize: 9, color: '#D4964E', fontWeight: '700' }}>DND</Text>
                 </View>
               )}
+              {conversation.channels && conversation.channels.length > 0 && (
+                <Ionicons
+                  name="layers-outline"
+                  size={13}
+                  color="#C2956B"
+                  style={{ marginLeft: 5 }}
+                />
+              )}
               {conversation.isMuted && (
                 <Ionicons
                   name="notifications-off"
@@ -223,7 +231,16 @@ export function ConversationListItem({ conversation, highlightText }: Props) {
                   className="text-text-secondary text-sm"
                   numberOfLines={1}
                 >
-                  {conversation.lastMessage?.content || 'No messages yet'}
+                  {(() => {
+                    const lastMsg = conversation.lastMessage;
+                    if (!lastMsg) return 'No messages yet';
+                    const channelName = lastMsg.channelId
+                      ? conversation.channels?.find((c) => c.id === lastMsg.channelId)?.name
+                      : null;
+                    return channelName
+                      ? `#${channelName}: ${lastMsg.content}`
+                      : lastMsg.content;
+                  })()}
                 </Text>
               )}
             </View>

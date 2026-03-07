@@ -51,6 +51,9 @@ function useKeyboardOffset() {
 
 interface Props {
   groupId: string;
+  isPrivate?: boolean;
+  channelId?: string | null;
+
   highlightText?: string;
   matchingMessageIds?: Set<string>;
 }
@@ -58,12 +61,14 @@ interface Props {
 // Messages within this window from the same sender are grouped (no avatar/name repeated)
 const GROUP_THRESHOLD_MINUTES = 3;
 
-export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Props) {
+export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, matchingMessageIds }: Props) {
+
   const listRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
   const { containerRef, offset: kbOffset, onLayout } = useKeyboardOffset();
 
-  const messages = useGroupsStore(useShallow((s) => s.getGroupMessages(groupId)));
+  const messages = useGroupsStore(useShallow((s) => s.getGroupMessages(groupId, isPrivate, channelId)));
+
   const sendGroupMessage = useGroupsStore((s) => s.sendGroupMessage);
   const retryGroupMessage = useGroupsStore((s) => s.retryGroupMessage);
   const hasMore = useGroupsStore((s) => s.hasMoreMessages[groupId] ?? false);
@@ -199,7 +204,8 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
         ) {
           const userId = useUserStore.getState().currentUser?.id;
           if (userId) {
-            store.sendGroupMessage(groupId, sched.content, userId);
+            store.sendGroupMessage(groupId, sched.content, userId, { ...(isPrivate ? { isPrivate } : {}), ...(channelId ? { channelId } : {}) });
+
             store.cancelGroupScheduledMessage(sched.id);
           }
         }
@@ -212,7 +218,8 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
   const handleSend = (content: string) => {
     const userId = useUserStore.getState().currentUser?.id;
     if (!userId) return;
-    sendGroupMessage(groupId, content, userId);
+    sendGroupMessage(groupId, content, userId, { ...(isPrivate ? { isPrivate } : {}), ...(channelId ? { channelId } : {}) });
+
   };
 
   const handleDelete = (messageId: string) => {
@@ -336,6 +343,9 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
     sendGroupMessage(groupId, asset.uri, userId, {
       type: 'image',
       metadata: { width: asset.width, height: asset.height },
+      isPrivate,
+      channelId,
+
     });
   };
 
@@ -359,6 +369,9 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
     sendGroupMessage(groupId, asset.uri, userId, {
       type: 'image',
       metadata: { width: asset.width, height: asset.height },
+      isPrivate,
+      channelId,
+
     });
   };
 
@@ -382,6 +395,9 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
           mimeType: asset.mimeType ?? 'application/octet-stream',
           uri: asset.uri,
         },
+        isPrivate,
+        channelId,
+
       });
     } catch {
       useToastStore.getState().show({ message: 'Failed to pick document. Please try again.', type: 'error' });
@@ -410,6 +426,9 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
         ...location,
         staticMapUrl: `https://maps.googleapis.com/maps/api/staticmap?center=${location.latitude},${location.longitude}&zoom=15&size=300x150&markers=color:red%7C${location.latitude},${location.longitude}&key=${apiKey}`,
       },
+      isPrivate,
+      channelId,
+
     });
   };
 
@@ -427,6 +446,9 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
     sendGroupMessage(groupId, `${song.title} by ${song.artist}`, userId, {
       type: 'song',
       metadata: { ...song },
+      isPrivate,
+      channelId,
+
     });
   };
 
@@ -455,6 +477,9 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
               ? contact.image.uri
               : undefined,
         },
+        isPrivate,
+        channelId,
+
       });
     } catch {
       useToastStore.getState().show({ message: 'Failed to pick contact. Please try again.', type: 'error' });
@@ -472,8 +497,11 @@ export function GroupChatTab({ groupId, highlightText, matchingMessageIds }: Pro
         waveformSamples: data.waveformSamples,
         uri: data.uri,
       },
+      isPrivate,
+      channelId,
+
     });
-  }, [groupId, sendGroupMessage]);
+  }, [groupId, sendGroupMessage, channelId]);
 
   // ─── Schedule message handlers ──────────────
   const handleScheduleSend = (text: string) => {

@@ -28,7 +28,7 @@ const TYPE_INFO: Record<GroupType, { label: string; icon: keyof typeof Ionicons.
 };
 
 export default function GroupInfoScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, channelId } = useLocalSearchParams<{ id: string; channelId?: string }>();
   const router = useRouter();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddMembers, setShowAddMembers] = useState(false);
@@ -48,7 +48,8 @@ export default function GroupInfoScreen() {
 
   const isAdmin = group.admins.includes(currentUserId);
   const typeInfo = TYPE_INFO[group.type];
-  const meta = group.metadata;
+  const activeChannel = channelId ? group.channels?.find((c) => c.id === channelId) : null;
+  const meta = activeChannel ? activeChannel.metadata : group.metadata;
 
   const sharedCount = meta?.sharedObjects?.length ?? 0;
   const pinnedCount = meta?.pinnedMessages?.length ?? 0;
@@ -145,7 +146,7 @@ export default function GroupInfoScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push({
       pathname: '/(tabs)/groups/section-detail',
-      params: { id: id!, section },
+      params: { id: id!, section, ...(channelId ? { channelId } : {}) },
     });
   };
 
@@ -179,7 +180,9 @@ export default function GroupInfoScreen() {
       {/* Header */}
       <View className="flex-row items-center px-2 pb-2 border-b border-border-subtle">
         <IconButton icon="chevron-back" onPress={() => router.back()} />
-        <Text className="flex-1 text-text-primary text-[17px] font-semibold ml-1">Group Info</Text>
+        <Text className="flex-1 text-text-primary text-[17px] font-semibold ml-1">
+          {activeChannel ? `Group Info · ${activeChannel.emoji || ''} ${activeChannel.name}` : 'Group Info'}
+        </Text>
         {isAdmin && (
           <Pressable onPress={() => setShowEditModal(true)} hitSlop={8} className="mr-2">
             <Text className="text-accent-primary text-[15px]">Edit</Text>

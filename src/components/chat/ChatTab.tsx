@@ -52,6 +52,8 @@ function useKeyboardOffset() {
 
 interface Props {
   conversationId: string;
+  isPrivate?: boolean;
+  channelId?: string | null;
   highlightText?: string;
   matchingMessageIds?: Set<string>;
 }
@@ -61,13 +63,13 @@ const EMPTY_TYPING: string[] = [];
 // Messages within this window from the same sender are grouped (no avatar/name repeated)
 const GROUP_THRESHOLD_MINUTES = 3;
 
-export function ChatTab({ conversationId, highlightText, matchingMessageIds }: Props) {
+export function ChatTab({ conversationId, isPrivate, channelId, highlightText, matchingMessageIds }: Props) {
   const listRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
   const { containerRef, offset: kbOffset, onLayout } = useKeyboardOffset();
 
   const messages = useMessagesStore(
-    useShallow((s) => s.getMessagesByConversationId(conversationId))
+    useShallow((s) => s.getMessagesByConversationId(conversationId, isPrivate, channelId))
   );
   const sendMessage = useMessagesStore((s) => s.sendMessage);
   const retryMessage = useMessagesStore((s) => s.retryMessage);
@@ -157,7 +159,7 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
   const handleSend = (content: string) => {
     const userId = useUserStore.getState().currentUser?.id;
     if (!userId) return;
-    sendMessage(conversationId, content, userId);
+    sendMessage(conversationId, content, userId, { ...(isPrivate ? { isPrivate } : {}), ...(channelId ? { channelId } : {}) });
   };
 
   const handleDelete = (messageId: string) => {
@@ -302,6 +304,9 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
     sendMessage(conversationId, asset.uri, userId, {
       type: 'image',
       metadata: { width: asset.width, height: asset.height },
+      isPrivate,
+      channelId,
+
     });
   };
 
@@ -325,6 +330,9 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
     sendMessage(conversationId, asset.uri, userId, {
       type: 'image',
       metadata: { width: asset.width, height: asset.height },
+      isPrivate,
+      channelId,
+
     });
   };
 
@@ -348,6 +356,9 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
           mimeType: asset.mimeType ?? 'application/octet-stream',
           uri: asset.uri,
         },
+        isPrivate,
+        channelId,
+
       });
     } catch {
       useToastStore.getState().show({ message: 'Failed to pick document. Please try again.', type: 'error' });
@@ -376,6 +387,9 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
         ...location,
         staticMapUrl: `https://maps.googleapis.com/maps/api/staticmap?center=${location.latitude},${location.longitude}&zoom=15&size=300x150&markers=color:red%7C${location.latitude},${location.longitude}&key=${apiKey}`,
       },
+      isPrivate,
+      channelId,
+
     });
   };
 
@@ -393,6 +407,9 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
     sendMessage(conversationId, `${song.title} by ${song.artist}`, userId, {
       type: 'song',
       metadata: { ...song },
+      isPrivate,
+      channelId,
+
     });
   };
 
@@ -421,6 +438,9 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
               ? contact.image.uri
               : undefined,
         },
+        isPrivate,
+        channelId,
+
       });
     } catch {
       useToastStore.getState().show({ message: 'Failed to pick contact. Please try again.', type: 'error' });
@@ -479,7 +499,8 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
           // Send the scheduled message
           const userId = useUserStore.getState().currentUser?.id;
           if (userId) {
-            store.sendMessage(conversationId, sched.content, userId);
+            store.sendMessage(conversationId, sched.content, userId, { ...(isPrivate ? { isPrivate } : {}), ...(channelId ? { channelId } : {}) });
+
             store.cancelScheduledMessage(sched.id); // marks as sent/cancelled
           }
         }
@@ -500,8 +521,11 @@ export function ChatTab({ conversationId, highlightText, matchingMessageIds }: P
         waveformSamples: data.waveformSamples,
         uri: data.uri,
       },
+      isPrivate,
+      channelId,
+
     });
-  }, [conversationId, sendMessage]);
+  }, [conversationId, sendMessage, channelId]);
 
   const handleScheduleSend = (text: string) => {
     setPendingScheduleText(text);
