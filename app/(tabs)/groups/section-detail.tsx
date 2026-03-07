@@ -267,7 +267,7 @@ function TripSection({ groupId }: { groupId: string }) {
 // ─── Main screen ───
 
 export default function GroupSectionDetailScreen() {
-  const { id, section } = useLocalSearchParams<{ id: string; section: string }>();
+  const { id, section, channelId } = useLocalSearchParams<{ id: string; section: string; channelId?: string }>();
   const router = useRouter();
 
   const group = useGroupsStore(useShallow((s) => s.getGroupById(id!)));
@@ -285,6 +285,8 @@ export default function GroupSectionDetailScreen() {
   const memberUsers: User[] = group.members
     .map((memberId) => getUserById(memberId))
     .filter((u): u is User => u != null);
+  const activeChannel = channelId ? group.channels?.find((c) => c.id === channelId) : null;
+  const meta = activeChannel ? activeChannel.metadata : group.metadata;
 
   const renderContent = () => {
     switch (section) {
@@ -298,11 +300,11 @@ export default function GroupSectionDetailScreen() {
       case 'pins':
         return (
           <MediaPinsTab
-            pinnedMessageIds={group.metadata?.pinnedMessages ?? []}
-            sharedObjects={group.metadata?.sharedObjects ?? []}
+            pinnedMessageIds={meta?.pinnedMessages ?? []}
+            sharedObjects={meta?.sharedObjects ?? []}
             allMessages={groupMessages}
-            onAddSharedObject={(obj) => useGroupsStore.getState().addGroupSharedObject(id!, obj)}
-            onDeleteSharedObject={(oid) => useGroupsStore.getState().deleteGroupSharedObject(id!, oid)}
+            onAddSharedObject={(obj) => useGroupsStore.getState().addGroupSharedObject(id!, obj, channelId)}
+            onDeleteSharedObject={(oid) => useGroupsStore.getState().deleteGroupSharedObject(id!, oid, channelId)}
             contextId={id!}
             contextType="group"
           />
@@ -310,11 +312,11 @@ export default function GroupSectionDetailScreen() {
       case 'notes':
         return (
           <NotesSavedTab
-            notes={group.metadata?.notes ?? []}
-            starredMessageIds={group.metadata?.starredMessages ?? []}
+            notes={meta?.notes ?? []}
+            starredMessageIds={meta?.starredMessages ?? []}
             allMessages={groupMessages}
-            onCreateNote={(note) => useGroupsStore.getState().createGroupNote(id!, note)}
-            onDeleteNote={(noteId) => useGroupsStore.getState().deleteGroupNote(id!, noteId)}
+            onCreateNote={(note) => useGroupsStore.getState().createGroupNote(id!, note, channelId)}
+            onDeleteNote={(noteId) => useGroupsStore.getState().deleteGroupNote(id!, noteId, channelId)}
             contextId={id!}
             contextType="group"
           />
@@ -322,10 +324,10 @@ export default function GroupSectionDetailScreen() {
       case 'reminders':
         return (
           <RemindersTab
-            reminders={group.metadata?.reminders ?? []}
-            onToggleComplete={(rid) => useGroupsStore.getState().toggleGroupReminderComplete(id!, rid)}
-            onCreateReminder={(rem) => useGroupsStore.getState().createGroupReminder(id!, rem)}
-            onDeleteReminder={(rid) => useGroupsStore.getState().deleteGroupReminder(id!, rid)}
+            reminders={meta?.reminders ?? []}
+            onToggleComplete={(rid) => useGroupsStore.getState().toggleGroupReminderComplete(id!, rid, channelId)}
+            onCreateReminder={(rem) => useGroupsStore.getState().createGroupReminder(id!, rem, channelId)}
+            onDeleteReminder={(rid) => useGroupsStore.getState().deleteGroupReminder(id!, rid, channelId)}
             members={memberUsers}
           />
         );
@@ -333,12 +335,12 @@ export default function GroupSectionDetailScreen() {
         return (
           <LedgerTab
             mode="group"
-            entries={group.metadata?.ledgerEntries ?? []}
-            pairBalances={useGroupsStore.getState().getGroupPairBalances(id!)}
+            entries={meta?.ledgerEntries ?? []}
+            pairBalances={useGroupsStore.getState().getGroupPairBalances(id!, channelId)}
             members={memberUsers}
-            onSettle={(eid) => useGroupsStore.getState().settleGroupLedgerEntry(id!, eid)}
-            onCreateEntry={(entry) => useGroupsStore.getState().createGroupLedgerEntry(id!, entry)}
-            onDeleteEntry={(eid) => useGroupsStore.getState().deleteGroupLedgerEntry(id!, eid)}
+            onSettle={(eid) => useGroupsStore.getState().settleGroupLedgerEntry(id!, eid, channelId)}
+            onCreateEntry={(entry) => useGroupsStore.getState().createGroupLedgerEntry(id!, entry, channelId)}
+            onDeleteEntry={(eid) => useGroupsStore.getState().deleteGroupLedgerEntry(id!, eid, channelId)}
           />
         );
       default:
@@ -354,8 +356,9 @@ export default function GroupSectionDetailScreen() {
     <SafeAreaView edges={['top']} className="flex-1 bg-background-primary">
       <View className="flex-row items-center px-2 pb-2 border-b border-border-subtle">
         <IconButton icon="chevron-back" onPress={() => router.back()} />
-        <Text className="flex-1 text-text-primary text-[17px] font-semibold ml-1">
+        <Text className="flex-1 text-text-primary text-[17px] font-semibold ml-1" numberOfLines={1}>
           {SECTION_TITLES[section ?? ''] ?? 'Details'}
+          {activeChannel ? ` · ${activeChannel.name}` : ''}
         </Text>
       </View>
       {renderContent()}

@@ -12,12 +12,16 @@ import { ChatModeToggle, type ChatMode } from '../../../src/components/chat/Chat
 import { HouseholdTab } from '../../../src/components/groups/HouseholdTab';
 import { InChatSearchBar } from '../../../src/components/chat/InChatSearchBar';
 import { DisappearingMessagesSheet } from '../../../src/components/chat/DisappearingMessagesSheet';
+import { ChannelStrip } from '../../../src/components/chat/ChannelStrip';
+import { CreateChannelModal } from '../../../src/components/chat/CreateChannelModal';
+import { EditChannelModal } from '../../../src/components/chat/EditChannelModal';
 import { CreatePollModal } from '../../../src/components/groups/CreatePollModal';
 import { useMessageSearch } from '../../../src/hooks/useMessageSearch';
 import { useGroupsStore } from '../../../src/stores/useGroupsStore';
 import { useUserStore } from '../../../src/stores/useUserStore';
 import { useCallStore } from '../../../src/stores/useCallStore';
 import { CURRENT_USER_ID } from '../../../src/mocks/users';
+import type { Channel } from '../../../src/types';
 
 export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -25,6 +29,9 @@ export default function GroupDetailScreen() {
   const navigation = useNavigation();
   const [showCreatePoll, setShowCreatePoll] = React.useState(false);
   const [showDisappearingSheet, setShowDisappearingSheet] = React.useState(false);
+  const [showCreateChannel, setShowCreateChannel] = useState(false);
+  const [showEditChannel, setShowEditChannel] = useState(false);
+  const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
   const [householdActiveTab, setHouseholdActiveTab] = useState<'chat' | 'household'>('chat');
   const [chatMode, setChatMode] = useState<ChatMode>('chat');
 
@@ -54,7 +61,11 @@ export default function GroupDetailScreen() {
   }, [parentNavigation]);
 
   const group = useGroupsStore(useShallow((s) => s.getGroupById(id!)));
-  const groupMessages = useGroupsStore(useShallow((s) => s.getGroupMessages(id!, chatMode === 'private')));
+  const activeChannelId = useGroupsStore((s) => s.getActiveChannel(id!));
+  const channels = group?.channels ?? [];
+  const groupMessages = useGroupsStore(useShallow((s) =>
+    s.getGroupMessages(id!, chatMode === 'private', chatMode === 'chat' ? activeChannelId : undefined)
+  ));
 
   const {
     searchQuery: chatSearchQuery,
@@ -84,6 +95,7 @@ export default function GroupDetailScreen() {
 
     const options = [
       'Create Poll',
+      'Create Channel',
       'Disappearing Messages',
       isPinned ? 'Unpin' : 'Pin',
       isMuted ? 'Unmute' : 'Mute',
@@ -92,20 +104,22 @@ export default function GroupDetailScreen() {
 
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
-        { options, cancelButtonIndex: 4 },
+        { options, cancelButtonIndex: 5 },
         (idx) => {
           if (idx === 0) setShowCreatePoll(true);
-          if (idx === 1) setShowDisappearingSheet(true);
-          if (idx === 2) togglePin(id!);
-          if (idx === 3) toggleMute(id!);
+          if (idx === 1) setShowCreateChannel(true);
+          if (idx === 2) setShowDisappearingSheet(true);
+          if (idx === 3) togglePin(id!);
+          if (idx === 4) toggleMute(id!);
         }
       );
     } else {
       Alert.alert('Options', undefined, [
         { text: 'Create Poll', onPress: () => setShowCreatePoll(true) },
+        { text: 'Create Channel', onPress: () => setShowCreateChannel(true) },
         { text: 'Disappearing Messages', onPress: () => setShowDisappearingSheet(true) },
-        { text: options[2], onPress: () => togglePin(id!) },
-        { text: options[3], onPress: () => toggleMute(id!) },
+        { text: options[3], onPress: () => togglePin(id!) },
+        { text: options[4], onPress: () => toggleMute(id!) },
         { text: 'Cancel', style: 'cancel' },
       ]);
     }
@@ -127,7 +141,7 @@ export default function GroupDetailScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push({
       pathname: '/(tabs)/groups/info',
-      params: { id: id! },
+      params: { id: id!, ...(activeChannelId ? { channelId: activeChannelId } : {}) },
     });
   };
 
@@ -157,6 +171,22 @@ export default function GroupDetailScreen() {
 
       {/* Chat / Private mode toggle */}
       <ChatModeToggle activeMode={chatMode} onModeChange={setChatMode} />
+
+      {/* Channel strip — shown only in chat mode when channels exist */}
+      {chatMode === 'chat' && channels.length > 0 && (
+        <ChannelStrip
+          channels={channels}
+          activeChannelId={activeChannelId}
+          onSelectChannel={(channelId) => {
+            useGroupsStore.getState().setActiveChannel(id!, channelId);
+          }}
+          onCreateChannel={() => setShowCreateChannel(true)}
+          onLongPressChannel={(channel) => {
+            setEditingChannel(channel);
+            setShowEditChannel(true);
+          }}
+        />
+      )}
 
       {/* In-chat search bar */}
       <InChatSearchBar
@@ -255,6 +285,7 @@ export default function GroupDetailScreen() {
         <GroupChatTab
           groupId={id!}
           isPrivate={chatMode === 'private'}
+          channelId={chatMode === 'chat' ? activeChannelId : undefined}
           highlightText={isSearching ? chatSearchQuery : undefined}
           matchingMessageIds={isSearching ? matchingMessageIds : undefined}
         />
@@ -273,6 +304,29 @@ export default function GroupDetailScreen() {
         currentDuration={group?.disappearingDuration ?? 'off'}
         onSelect={handleSetDisappearing}
         onClose={() => setShowDisappearingSheet(false)}
+      />
+
+      <CreateChannelModal
+        visible={showCreateChannel}
+        onClose={() => setShowCreateChannel(false)}
+        onCreate={(name, emoji, color) => {
+          useGroupsStore.getState().createChannel(id!, name, emoji, color);
+        }}
+      />
+
+      <EditChannelModal
+        visible={showEditChannel}
+        channel={editingChannel}
+        onClose={() => {
+          setShowEditChannel(false);
+          setEditingChannel(null);
+        }}
+        onUpdate={(channelId, updates) => {
+          useGroupsStore.getState().updateChannel(id!, channelId, updates);
+        }}
+        onDelete={(channelId) => {
+          useGroupsStore.getState().deleteChannel(id!, channelId);
+        }}
       />
     </SafeAreaView>
   );

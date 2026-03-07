@@ -1,4 +1,4 @@
-import { Group, SharedObject, Reminder, LedgerEntry, Note, CallEntry } from '../types';
+import { Group, SharedObject, Reminder, LedgerEntry, Note, CallEntry, Channel } from '../types';
 import { CURRENT_USER_ID } from './users';
 import { MOCK_HOUSEHOLD_DATA } from './household';
 
@@ -276,6 +276,58 @@ const group1Notes: Note[] = [
   },
 ];
 
+// ─── Channel data for groups ────────────────
+const group1Channels: Channel[] = [
+  {
+    id: 'ch-group1-photos',
+    name: 'Photos',
+    emoji: '📸',
+    color: '#2D9F6F',
+    createdBy: 'user-2',
+    createdAt: new Date('2026-02-01T10:00:00'),
+    metadata: {
+      sharedObjects: [],
+      notes: [],
+      reminders: [],
+      ledgerEntries: [],
+      ledgerBalance: 0,
+      pinnedMessages: [],
+      starredMessages: [],
+      polls: [],
+      callHistory: [],
+    },
+  },
+  {
+    id: 'ch-group1-planning',
+    name: 'Planning',
+    emoji: '📋',
+    color: '#D4964E',
+    createdBy: CURRENT_USER_ID,
+    createdAt: new Date('2026-02-03T14:00:00'),
+    metadata: {
+      sharedObjects: [],
+      notes: [],
+      reminders: [
+        {
+          id: 'ch-grem-1',
+          title: 'Book campsite for next trip',
+          dueDate: new Date('2026-03-10T09:00:00'),
+          isCompleted: false,
+          createdBy: CURRENT_USER_ID,
+          createdAt: new Date('2026-02-15T10:00:00'),
+          priority: 'medium',
+        },
+      ],
+      ledgerEntries: [],
+      ledgerBalance: 0,
+      pinnedMessages: [],
+      starredMessages: [],
+      polls: [],
+      callHistory: [],
+    },
+  },
+];
+
 export const MOCK_GROUPS: Group[] = [
   {
     id: 'group-1',
@@ -343,6 +395,7 @@ export const MOCK_GROUPS: Group[] = [
       starredMessages: [],
       callHistory: group1CallHistory,
     },
+    channels: group1Channels,
   },
   {
     id: 'group-2',

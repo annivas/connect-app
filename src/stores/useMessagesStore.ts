@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Message, Conversation, Note, Reminder, LedgerEntry, SharedObject, ScheduledMessage, DisappearingDuration } from '../types';
+import { Message, Conversation, Note, Reminder, LedgerEntry, SharedObject, ScheduledMessage, DisappearingDuration, Channel, ConversationMetadata } from '../types';
 import { messagesRepository } from '../services';
 import { CreateNoteInput, UpdateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../services/types';
 import { supabase } from '../lib/supabase';
@@ -9,6 +9,28 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { getCurrentUserId, getUserById } from './helpers';
 
 const PAGE_SIZE = 50;
+
+// Helper to update metadata on either conversation-level or channel-level
+const updateConvMetadata = (
+  conversations: Conversation[],
+  conversationId: string,
+  channelId: string | null | undefined,
+  updater: (metadata: ConversationMetadata) => ConversationMetadata,
+): Conversation[] => {
+  return conversations.map((c) => {
+    if (c.id !== conversationId) return c;
+    if (channelId && c.channels) {
+      return {
+        ...c,
+        channels: c.channels.map((ch) =>
+          ch.id === channelId ? { ...ch, metadata: updater(ch.metadata) } : ch,
+        ),
+      };
+    }
+    if (!c.metadata) return c;
+    return { ...c, metadata: updater(c.metadata) };
+  });
+};
 
 interface MessagesState {
   conversations: Conversation[];
@@ -29,6 +51,9 @@ interface MessagesState {
   // Draft messages per conversation
   drafts: Record<string, string>;
 
+  // Active channel per conversation
+  activeChannel: Record<string, string | null>;
+
   // Realtime
   _channel: RealtimeChannel | null;
 
@@ -36,14 +61,21 @@ interface MessagesState {
   subscribe: () => void;
   unsubscribe: () => void;
   getConversationById: (id: string) => Conversation | undefined;
-  getMessagesByConversationId: (conversationId: string, isPrivate?: boolean) => Message[];
+  getMessagesByConversationId: (conversationId: string, isPrivate?: boolean, channelId?: string | null) => Message[];
   getUnreadCount: () => number;
+
+  // Channel operations
+  createChannel: (conversationId: string, name: string, emoji?: string, color?: string) => void;
+  deleteChannel: (conversationId: string, channelId: string) => void;
+  updateChannel: (conversationId: string, channelId: string, updates: Partial<Pick<Channel, 'name' | 'emoji' | 'color'>>) => void;
+  setActiveChannel: (conversationId: string, channelId: string | null) => void;
+  getActiveChannel: (conversationId: string) => string | null;
 
   // Pagination
   loadMessages: (conversationId: string) => Promise<void>;
   loadMoreMessages: (conversationId: string) => Promise<void>;
 
-  sendMessage: (conversationId: string, content: string, senderId: string, options?: { type?: import('../types').MessageType; metadata?: Record<string, unknown>; isPrivate?: boolean }) => void;
+  sendMessage: (conversationId: string, content: string, senderId: string, options?: { type?: import('../types').MessageType; metadata?: Record<string, unknown>; isPrivate?: boolean; channelId?: string | null }) => void;
   retryMessage: (messageId: string) => void;
   createConversation: (participantIds: string[]) => Promise<string>;
   deleteMessage: (conversationId: string, messageId: string) => void;
@@ -54,22 +86,23 @@ interface MessagesState {
   togglePin: (conversationId: string) => void;
   toggleMute: (conversationId: string) => void;
 
-  // Write operations
-  createNote: (conversationId: string, input: CreateNoteInput) => Promise<Note>;
-  updateNote: (conversationId: string, noteId: string, input: UpdateNoteInput) => void;
-  deleteNote: (conversationId: string, noteId: string) => void;
-  toggleNotePin: (conversationId: string, noteId: string) => void;
-  createReminder: (conversationId: string, input: CreateReminderInput) => Promise<Reminder>;
-  toggleReminderComplete: (conversationId: string, reminderId: string) => void;
-  deleteReminder: (conversationId: string, reminderId: string) => void;
-  createLedgerEntry: (conversationId: string, input: CreateLedgerEntryInput) => Promise<LedgerEntry>;
-  settleLedgerEntry: (conversationId: string, entryId: string) => void;
-  deleteLedgerEntry: (conversationId: string, entryId: string) => void;
+  // Write operations (all accept optional channelId for channel-scoped metadata)
+  createNote: (conversationId: string, input: CreateNoteInput, channelId?: string | null) => Promise<Note>;
+  updateNote: (conversationId: string, noteId: string, input: UpdateNoteInput, channelId?: string | null) => void;
+  deleteNote: (conversationId: string, noteId: string, channelId?: string | null) => void;
+  toggleNotePin: (conversationId: string, noteId: string, channelId?: string | null) => void;
+  createReminder: (conversationId: string, input: CreateReminderInput, channelId?: string | null) => Promise<Reminder>;
+  toggleReminderComplete: (conversationId: string, reminderId: string, channelId?: string | null) => void;
+  deleteReminder: (conversationId: string, reminderId: string, channelId?: string | null) => void;
+  createLedgerEntry: (conversationId: string, input: CreateLedgerEntryInput, channelId?: string | null) => Promise<LedgerEntry>;
+  settleLedgerEntry: (conversationId: string, entryId: string, channelId?: string | null) => void;
+  deleteLedgerEntry: (conversationId: string, entryId: string, channelId?: string | null) => void;
   addSharedObject: (
     conversationId: string,
     data: { type: 'link'; title: string; description?: string; url: string },
+    channelId?: string | null,
   ) => void;
-  deleteSharedObject: (conversationId: string, objectId: string) => void;
+  deleteSharedObject: (conversationId: string, objectId: string, channelId?: string | null) => void;
 
   // ─── New: Star, Pin, Forward, Archive, Search ──────
   scheduledMessages: ScheduledMessage[];
@@ -98,6 +131,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
   replyingTo: {},
   typingUsers: {},
   drafts: {},
+  activeChannel: {},
   _channel: null,
   scheduledMessages: [],
 
@@ -274,13 +308,90 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
 
   getConversationById: (id) => get().conversations.find((c) => c.id === id),
 
-  getMessagesByConversationId: (conversationId, isPrivate = false) =>
+  getMessagesByConversationId: (conversationId, isPrivate = false, channelId) =>
     get().messages.filter(
-      (m) => m.conversationId === conversationId && (isPrivate ? m.isPrivate === true : !m.isPrivate)
+      (m) =>
+        m.conversationId === conversationId &&
+        (isPrivate ? m.isPrivate === true : !m.isPrivate) &&
+        (channelId ? m.channelId === channelId : !m.channelId)
     ),
 
   getUnreadCount: () =>
     get().conversations.reduce((acc, conv) => acc + conv.unreadCount, 0),
+
+  // ─── Channel Operations ──────────────────────────
+
+  createChannel: (conversationId, name, emoji, color = '#D4764E') => {
+    const newChannel: Channel = {
+      id: `ch-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      name,
+      emoji,
+      color,
+      createdBy: getCurrentUserId() || 'unknown',
+      createdAt: new Date(),
+      metadata: {
+        sharedObjects: [],
+        notes: [],
+        reminders: [],
+        ledgerBalance: 0,
+        ledgerEntries: [],
+        pinnedMessages: [],
+        starredMessages: [],
+        polls: [],
+        callHistory: [],
+      },
+    };
+    set((state) => ({
+      conversations: state.conversations.map((c) =>
+        c.id === conversationId
+          ? { ...c, channels: [...(c.channels || []), newChannel] }
+          : c,
+      ),
+    }));
+  },
+
+  deleteChannel: (conversationId, channelId) => {
+    set((state) => ({
+      conversations: state.conversations.map((c) =>
+        c.id === conversationId
+          ? { ...c, channels: (c.channels || []).filter((ch) => ch.id !== channelId) }
+          : c,
+      ),
+      // Remove all messages belonging to this channel
+      messages: state.messages.filter(
+        (m) => !(m.conversationId === conversationId && m.channelId === channelId),
+      ),
+      // Reset active channel if it was the deleted one
+      activeChannel: state.activeChannel[conversationId] === channelId
+        ? { ...state.activeChannel, [conversationId]: null }
+        : state.activeChannel,
+    }));
+  },
+
+  updateChannel: (conversationId, channelId, updates) => {
+    set((state) => ({
+      conversations: state.conversations.map((c) =>
+        c.id === conversationId
+          ? {
+              ...c,
+              channels: (c.channels || []).map((ch) =>
+                ch.id === channelId ? { ...ch, ...updates } : ch,
+              ),
+            }
+          : c,
+      ),
+    }));
+  },
+
+  setActiveChannel: (conversationId, channelId) => {
+    set((state) => ({
+      activeChannel: { ...state.activeChannel, [conversationId]: channelId },
+    }));
+  },
+
+  getActiveChannel: (conversationId) => {
+    return get().activeChannel[conversationId] ?? null;
+  },
 
   loadMessages: async (conversationId) => {
     const state = get();
@@ -366,6 +477,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
       isRead: true,
       sendStatus: 'sending',
       isPrivate: options?.isPrivate,
+      channelId: options?.channelId,
     };
 
     set((s) => ({
@@ -570,202 +682,140 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
 
   // ─── Write Operations ──────────────────────────
 
-  createNote: async (conversationId, input) => {
+  createNote: async (conversationId, input, channelId) => {
     const note = await messagesRepository.createNote(conversationId, input);
     set((state) => ({
-      conversations: state.conversations.map((c) =>
-        c.id === conversationId && c.metadata
-          ? { ...c, metadata: { ...c.metadata, notes: [note, ...c.metadata.notes] } }
-          : c,
-      ),
+      conversations: updateConvMetadata(state.conversations, conversationId, channelId, (md) => ({
+        ...md,
+        notes: [note, ...md.notes],
+      })),
     }));
     return note;
   },
 
-  updateNote: (conversationId, noteId, input) => {
+  updateNote: (conversationId, noteId, input, channelId) => {
     set((state) => ({
-      conversations: state.conversations.map((c) => {
-        if (c.id !== conversationId || !c.metadata) return c;
-        return {
-          ...c,
-          metadata: {
-            ...c.metadata,
-            notes: c.metadata.notes.map((n) =>
-              n.id === noteId ? { ...n, ...input, updatedAt: new Date() } : n,
-            ),
-          },
-        };
-      }),
+      conversations: updateConvMetadata(state.conversations, conversationId, channelId, (md) => ({
+        ...md,
+        notes: md.notes.map((n) =>
+          n.id === noteId ? { ...n, ...input, updatedAt: new Date() } : n,
+        ),
+      })),
     }));
     messagesRepository.updateNote(conversationId, noteId, input).catch(() => {});
   },
 
-  deleteNote: (conversationId, noteId) => {
+  deleteNote: (conversationId, noteId, channelId) => {
     set((state) => ({
-      conversations: state.conversations.map((c) =>
-        c.id === conversationId && c.metadata
-          ? { ...c, metadata: { ...c.metadata, notes: c.metadata.notes.filter((n) => n.id !== noteId) } }
-          : c,
-      ),
+      conversations: updateConvMetadata(state.conversations, conversationId, channelId, (md) => ({
+        ...md,
+        notes: md.notes.filter((n) => n.id !== noteId),
+      })),
     }));
     messagesRepository.deleteNote(conversationId, noteId).catch(() => {});
   },
 
-  toggleNotePin: (conversationId, noteId) => {
+  toggleNotePin: (conversationId, noteId, channelId) => {
     set((state) => ({
-      conversations: state.conversations.map((c) => {
-        if (c.id !== conversationId || !c.metadata) return c;
-        return {
-          ...c,
-          metadata: {
-            ...c.metadata,
-            notes: c.metadata.notes.map((n) =>
-              n.id === noteId ? { ...n, isPinned: !n.isPinned } : n,
-            ),
-          },
-        };
-      }),
+      conversations: updateConvMetadata(state.conversations, conversationId, channelId, (md) => ({
+        ...md,
+        notes: md.notes.map((n) =>
+          n.id === noteId ? { ...n, isPinned: !n.isPinned } : n,
+        ),
+      })),
     }));
     messagesRepository.toggleNotePin(conversationId, noteId).catch(() => {});
   },
 
-  createReminder: async (conversationId, input) => {
+  createReminder: async (conversationId, input, channelId) => {
     const reminder = await messagesRepository.createReminder(conversationId, input);
     set((state) => ({
-      conversations: state.conversations.map((c) =>
-        c.id === conversationId && c.metadata
-          ? { ...c, metadata: { ...c.metadata, reminders: [reminder, ...c.metadata.reminders] } }
-          : c,
-      ),
+      conversations: updateConvMetadata(state.conversations, conversationId, channelId, (md) => ({
+        ...md,
+        reminders: [reminder, ...md.reminders],
+      })),
     }));
     return reminder;
   },
 
-  toggleReminderComplete: (conversationId, reminderId) => {
-    // Optimistic toggle
+  toggleReminderComplete: (conversationId, reminderId, channelId) => {
     set((state) => ({
-      conversations: state.conversations.map((c) =>
-        c.id === conversationId && c.metadata
-          ? {
-              ...c,
-              metadata: {
-                ...c.metadata,
-                reminders: c.metadata.reminders.map((r) =>
-                  r.id === reminderId ? { ...r, isCompleted: !r.isCompleted } : r,
-                ),
-              },
-            }
-          : c,
-      ),
+      conversations: updateConvMetadata(state.conversations, conversationId, channelId, (md) => ({
+        ...md,
+        reminders: md.reminders.map((r) =>
+          r.id === reminderId ? { ...r, isCompleted: !r.isCompleted } : r,
+        ),
+      })),
     }));
 
     messagesRepository.toggleReminderComplete(reminderId).catch(() => {
-      // Revert on failure
       set((state) => ({
-        conversations: state.conversations.map((c) =>
-          c.id === conversationId && c.metadata
-            ? {
-                ...c,
-                metadata: {
-                  ...c.metadata,
-                  reminders: c.metadata.reminders.map((r) =>
-                    r.id === reminderId ? { ...r, isCompleted: !r.isCompleted } : r,
-                  ),
-                },
-              }
-            : c,
-        ),
+        conversations: updateConvMetadata(state.conversations, conversationId, channelId, (md) => ({
+          ...md,
+          reminders: md.reminders.map((r) =>
+            r.id === reminderId ? { ...r, isCompleted: !r.isCompleted } : r,
+          ),
+        })),
       }));
     });
   },
 
-  deleteReminder: (conversationId, reminderId) => {
+  deleteReminder: (conversationId, reminderId, channelId) => {
     set((state) => ({
-      conversations: state.conversations.map((c) =>
-        c.id === conversationId && c.metadata
-          ? { ...c, metadata: { ...c.metadata, reminders: c.metadata.reminders.filter((r) => r.id !== reminderId) } }
-          : c,
-      ),
+      conversations: updateConvMetadata(state.conversations, conversationId, channelId, (md) => ({
+        ...md,
+        reminders: md.reminders.filter((r) => r.id !== reminderId),
+      })),
     }));
   },
 
-  createLedgerEntry: async (conversationId, input) => {
+  createLedgerEntry: async (conversationId, input, channelId) => {
     const entry = await messagesRepository.createLedgerEntry(conversationId, input);
     set((state) => ({
-      conversations: state.conversations.map((c) => {
-        if (c.id !== conversationId || !c.metadata) return c;
-        const newEntries = [entry, ...c.metadata.ledgerEntries];
-        const newBalance = newEntries.reduce(
-          (sum, e) => (e.isSettled ? sum : sum + e.amount),
-          0,
-        );
-        return {
-          ...c,
-          metadata: { ...c.metadata, ledgerEntries: newEntries, ledgerBalance: newBalance },
-        };
+      conversations: updateConvMetadata(state.conversations, conversationId, channelId, (md) => {
+        const newEntries = [entry, ...md.ledgerEntries];
+        const newBalance = newEntries.reduce((sum, e) => (e.isSettled ? sum : sum + e.amount), 0);
+        return { ...md, ledgerEntries: newEntries, ledgerBalance: newBalance };
       }),
     }));
     return entry;
   },
 
-  settleLedgerEntry: (conversationId, entryId) => {
-    // Optimistic settle
+  settleLedgerEntry: (conversationId, entryId, channelId) => {
     set((state) => ({
-      conversations: state.conversations.map((c) => {
-        if (c.id !== conversationId || !c.metadata) return c;
-        const updatedEntries = c.metadata.ledgerEntries.map((e) =>
+      conversations: updateConvMetadata(state.conversations, conversationId, channelId, (md) => {
+        const updatedEntries = md.ledgerEntries.map((e) =>
           e.id === entryId ? { ...e, isSettled: true } : e,
         );
-        const newBalance = updatedEntries.reduce(
-          (sum, e) => (e.isSettled ? sum : sum + e.amount),
-          0,
-        );
-        return {
-          ...c,
-          metadata: { ...c.metadata, ledgerEntries: updatedEntries, ledgerBalance: newBalance },
-        };
+        const newBalance = updatedEntries.reduce((sum, e) => (e.isSettled ? sum : sum + e.amount), 0);
+        return { ...md, ledgerEntries: updatedEntries, ledgerBalance: newBalance };
       }),
     }));
 
     messagesRepository.settleLedgerEntry(entryId).catch(() => {
-      // Revert on failure
       set((state) => ({
-        conversations: state.conversations.map((c) => {
-          if (c.id !== conversationId || !c.metadata) return c;
-          const revertedEntries = c.metadata.ledgerEntries.map((e) =>
+        conversations: updateConvMetadata(state.conversations, conversationId, channelId, (md) => {
+          const revertedEntries = md.ledgerEntries.map((e) =>
             e.id === entryId ? { ...e, isSettled: false } : e,
           );
-          const newBalance = revertedEntries.reduce(
-            (sum, e) => (e.isSettled ? sum : sum + e.amount),
-            0,
-          );
-          return {
-            ...c,
-            metadata: { ...c.metadata, ledgerEntries: revertedEntries, ledgerBalance: newBalance },
-          };
+          const newBalance = revertedEntries.reduce((sum, e) => (e.isSettled ? sum : sum + e.amount), 0);
+          return { ...md, ledgerEntries: revertedEntries, ledgerBalance: newBalance };
         }),
       }));
     });
   },
 
-  deleteLedgerEntry: (conversationId, entryId) => {
+  deleteLedgerEntry: (conversationId, entryId, channelId) => {
     set((state) => ({
-      conversations: state.conversations.map((c) => {
-        if (c.id !== conversationId || !c.metadata) return c;
-        const remaining = c.metadata.ledgerEntries.filter((e) => e.id !== entryId);
-        const newBalance = remaining.reduce(
-          (sum, e) => (e.isSettled ? sum : sum + e.amount),
-          0,
-        );
-        return {
-          ...c,
-          metadata: { ...c.metadata, ledgerEntries: remaining, ledgerBalance: newBalance },
-        };
+      conversations: updateConvMetadata(state.conversations, conversationId, channelId, (md) => {
+        const remaining = md.ledgerEntries.filter((e) => e.id !== entryId);
+        const newBalance = remaining.reduce((sum, e) => (e.isSettled ? sum : sum + e.amount), 0);
+        return { ...md, ledgerEntries: remaining, ledgerBalance: newBalance };
       }),
     }));
   },
 
-  addSharedObject: (conversationId, data) => {
+  addSharedObject: (conversationId, data, channelId) => {
     const currentUserId = getCurrentUserId() || 'unknown';
 
     const newObject: SharedObject = {
@@ -780,40 +830,28 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     };
 
     set((state) => ({
-      conversations: state.conversations.map((c) =>
-        c.id === conversationId
-          ? {
-              ...c,
-              metadata: c.metadata
-                ? {
-                    ...c.metadata,
-                    sharedObjects: [newObject, ...(c.metadata.sharedObjects ?? [])],
-                  }
-                : c.metadata,
-            }
-          : c,
-      ),
+      conversations: updateConvMetadata(state.conversations, conversationId, channelId, (md) => ({
+        ...md,
+        sharedObjects: [newObject, ...(md.sharedObjects ?? [])],
+      })),
     }));
 
     messagesRepository.addSharedObject(conversationId, data).catch(() => {
-      // Revert: remove the optimistic object
       set((state) => ({
-        conversations: state.conversations.map((c) =>
-          c.id === conversationId && c.metadata
-            ? { ...c, metadata: { ...c.metadata, sharedObjects: c.metadata.sharedObjects.filter((o) => o.id !== newObject.id) } }
-            : c,
-        ),
+        conversations: updateConvMetadata(state.conversations, conversationId, channelId, (md) => ({
+          ...md,
+          sharedObjects: md.sharedObjects.filter((o) => o.id !== newObject.id),
+        })),
       }));
     });
   },
 
-  deleteSharedObject: (conversationId, objectId) => {
+  deleteSharedObject: (conversationId, objectId, channelId) => {
     set((state) => ({
-      conversations: state.conversations.map((c) =>
-        c.id === conversationId && c.metadata
-          ? { ...c, metadata: { ...c.metadata, sharedObjects: c.metadata.sharedObjects.filter((o) => o.id !== objectId) } }
-          : c,
-      ),
+      conversations: updateConvMetadata(state.conversations, conversationId, channelId, (md) => ({
+        ...md,
+        sharedObjects: md.sharedObjects.filter((o) => o.id !== objectId),
+      })),
     }));
   },
 
@@ -1077,6 +1115,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
       replyingTo: {},
       typingUsers: {},
       drafts: {},
+      activeChannel: {},
       _channel: null,
       scheduledMessages: [],
     });

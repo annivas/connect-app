@@ -53,6 +53,7 @@ function useKeyboardOffset() {
 interface Props {
   groupId: string;
   isPrivate?: boolean;
+  channelId?: string | null;
   highlightText?: string;
   matchingMessageIds?: Set<string>;
 }
@@ -60,12 +61,12 @@ interface Props {
 // Messages within this window from the same sender are grouped (no avatar/name repeated)
 const GROUP_THRESHOLD_MINUTES = 3;
 
-export function GroupChatTab({ groupId, isPrivate, highlightText, matchingMessageIds }: Props) {
+export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, matchingMessageIds }: Props) {
   const listRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
   const { containerRef, offset: kbOffset, onLayout } = useKeyboardOffset();
 
-  const messages = useGroupsStore(useShallow((s) => s.getGroupMessages(groupId, isPrivate)));
+  const messages = useGroupsStore(useShallow((s) => s.getGroupMessages(groupId, isPrivate, channelId)));
   const sendGroupMessage = useGroupsStore((s) => s.sendGroupMessage);
   const retryGroupMessage = useGroupsStore((s) => s.retryGroupMessage);
   const hasMore = useGroupsStore((s) => s.hasMoreMessages[groupId] ?? false);
@@ -201,7 +202,7 @@ export function GroupChatTab({ groupId, isPrivate, highlightText, matchingMessag
         ) {
           const userId = useUserStore.getState().currentUser?.id;
           if (userId) {
-            store.sendGroupMessage(groupId, sched.content, userId, isPrivate ? { isPrivate } : undefined);
+            store.sendGroupMessage(groupId, sched.content, userId, { ...(isPrivate ? { isPrivate } : {}), ...(channelId ? { channelId } : {}) });
             store.cancelGroupScheduledMessage(sched.id);
           }
         }
@@ -214,7 +215,7 @@ export function GroupChatTab({ groupId, isPrivate, highlightText, matchingMessag
   const handleSend = (content: string) => {
     const userId = useUserStore.getState().currentUser?.id;
     if (!userId) return;
-    sendGroupMessage(groupId, content, userId, isPrivate ? { isPrivate } : undefined);
+    sendGroupMessage(groupId, content, userId, { ...(isPrivate ? { isPrivate } : {}), ...(channelId ? { channelId } : {}) });
   };
 
   const handleDelete = (messageId: string) => {
@@ -339,6 +340,7 @@ export function GroupChatTab({ groupId, isPrivate, highlightText, matchingMessag
       type: 'image',
       metadata: { width: asset.width, height: asset.height },
       isPrivate,
+      channelId,
     });
   };
 
@@ -363,6 +365,7 @@ export function GroupChatTab({ groupId, isPrivate, highlightText, matchingMessag
       type: 'image',
       metadata: { width: asset.width, height: asset.height },
       isPrivate,
+      channelId,
     });
   };
 
@@ -387,6 +390,7 @@ export function GroupChatTab({ groupId, isPrivate, highlightText, matchingMessag
           uri: asset.uri,
         },
         isPrivate,
+        channelId,
       });
     } catch {
       useToastStore.getState().show({ message: 'Failed to pick document. Please try again.', type: 'error' });
@@ -416,6 +420,7 @@ export function GroupChatTab({ groupId, isPrivate, highlightText, matchingMessag
         staticMapUrl: `https://maps.googleapis.com/maps/api/staticmap?center=${location.latitude},${location.longitude}&zoom=15&size=300x150&markers=color:red%7C${location.latitude},${location.longitude}&key=${apiKey}`,
       },
       isPrivate,
+      channelId,
     });
   };
 
@@ -434,6 +439,7 @@ export function GroupChatTab({ groupId, isPrivate, highlightText, matchingMessag
       type: 'song',
       metadata: { ...song },
       isPrivate,
+      channelId,
     });
   };
 
@@ -463,6 +469,7 @@ export function GroupChatTab({ groupId, isPrivate, highlightText, matchingMessag
               : undefined,
         },
         isPrivate,
+        channelId,
       });
     } catch {
       useToastStore.getState().show({ message: 'Failed to pick contact. Please try again.', type: 'error' });
@@ -481,8 +488,9 @@ export function GroupChatTab({ groupId, isPrivate, highlightText, matchingMessag
         uri: data.uri,
       },
       isPrivate,
+      channelId,
     });
-  }, [groupId, sendGroupMessage]);
+  }, [groupId, sendGroupMessage, channelId]);
 
   // ─── Schedule message handlers ──────────────
   const handleScheduleSend = (text: string) => {

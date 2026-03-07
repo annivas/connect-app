@@ -109,6 +109,7 @@ export interface Message {
   scheduledFor?: Date;
   isScheduled?: boolean;
   isPrivate?: boolean;
+  channelId?: string | null;
 }
 
 // ─── Shared Objects ──────────────────────────
@@ -255,6 +256,17 @@ export interface ConversationMetadata {
   callHistory: CallEntry[];
 }
 
+// ─── Channels ───────────────────────────────
+export interface Channel {
+  id: string;
+  name: string;
+  emoji?: string;
+  color: string;
+  createdBy: string;
+  createdAt: Date;
+  metadata: ConversationMetadata;
+}
+
 export type DisappearingDuration = '30s' | '5m' | '1h' | '24h' | '7d' | 'off';
 export interface Conversation {
   id: string;
@@ -267,6 +279,7 @@ export interface Conversation {
   createdAt: Date;
   updatedAt: Date;
   metadata?: ConversationMetadata;
+  channels?: Channel[];
   isArchived?: boolean;
   isMarkedUnread?: boolean;
   disappearingDuration?: DisappearingDuration;
@@ -519,6 +532,7 @@ export interface Group {
   disappearingDuration?: DisappearingDuration;
   lastMessage?: Message;
   metadata?: GroupMetadata;
+  channels?: Channel[];
 }
 
 // ─── Collections ─────────────────────────────

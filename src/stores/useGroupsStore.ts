@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Group, Message, RSVPStatus, Poll, PollOption, Note, Reminder, LedgerEntry, SharedObject, DisappearingDuration, ScheduledMessage, GroupPairBalance } from '../types';
+import { Group, Message, RSVPStatus, Poll, PollOption, Note, Reminder, LedgerEntry, SharedObject, DisappearingDuration, ScheduledMessage, GroupPairBalance, Channel, ConversationMetadata, GroupMetadata } from '../types';
 import { groupsRepository } from '../services';
 import { supabase } from '../lib/supabase';
 import { config } from '../config/env';
@@ -9,6 +9,28 @@ import type { CreateGroupInput, UpdateGroupInput } from '../services/types';
 import { getCurrentUserId, getUserById, getMessagesStoreRef } from './helpers';
 
 const PAGE_SIZE = 50;
+
+// Helper to update metadata on either group-level or channel-level
+const updateGroupMetadata = (
+  groups: Group[],
+  groupId: string,
+  channelId: string | null | undefined,
+  updater: (metadata: GroupMetadata) => GroupMetadata,
+): Group[] => {
+  return groups.map((g) => {
+    if (g.id !== groupId) return g;
+    if (channelId && g.channels) {
+      return {
+        ...g,
+        channels: g.channels.map((ch) =>
+          ch.id === channelId ? { ...ch, metadata: updater(ch.metadata as unknown as GroupMetadata) as unknown as ConversationMetadata } : ch,
+        ),
+      };
+    }
+    if (!g.metadata) return g;
+    return { ...g, metadata: updater(g.metadata) };
+  });
+};
 
 interface GroupsState {
   groups: Group[];
@@ -29,14 +51,22 @@ interface GroupsState {
   init: () => Promise<void>;
   subscribe: () => void;
   unsubscribe: () => void;
+  // Channels
+  activeChannel: Record<string, string | null>;
+  createChannel: (groupId: string, name: string, emoji?: string, color?: string) => void;
+  deleteChannel: (groupId: string, channelId: string) => void;
+  updateChannel: (groupId: string, channelId: string, updates: Partial<Pick<Channel, 'name' | 'emoji' | 'color'>>) => void;
+  setActiveChannel: (groupId: string, channelId: string | null) => void;
+  getActiveChannel: (groupId: string) => string | null;
+
   getGroupById: (id: string) => Group | undefined;
-  getGroupMessages: (groupId: string, isPrivate?: boolean) => Message[];
+  getGroupMessages: (groupId: string, isPrivate?: boolean, channelId?: string | null) => Message[];
 
   // Pagination
   loadGroupMessages: (groupId: string) => Promise<void>;
   loadMoreGroupMessages: (groupId: string) => Promise<void>;
 
-  sendGroupMessage: (groupId: string, content: string, senderId: string, options?: { type?: import('../types').MessageType; metadata?: Record<string, unknown>; isPrivate?: boolean }) => void;
+  sendGroupMessage: (groupId: string, content: string, senderId: string, options?: { type?: import('../types').MessageType; metadata?: Record<string, unknown>; isPrivate?: boolean; channelId?: string | null }) => void;
   retryGroupMessage: (messageId: string) => void;
   deleteGroupMessage: (groupId: string, messageId: string) => void;
   toggleGroupReaction: (groupId: string, messageId: string, emoji: string) => void;
@@ -84,25 +114,25 @@ interface GroupsState {
   cancelGroupScheduledMessage: (messageId: string) => void;
 
   // Notes CRUD
-  createGroupNote: (groupId: string, note: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateGroupNote: (groupId: string, noteId: string, input: import('../services/types').UpdateNoteInput) => void;
-  deleteGroupNote: (groupId: string, noteId: string) => void;
-  toggleGroupNotePin: (groupId: string, noteId: string) => void;
+  createGroupNote: (groupId: string, note: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>, channelId?: string | null) => void;
+  updateGroupNote: (groupId: string, noteId: string, input: import('../services/types').UpdateNoteInput, channelId?: string | null) => void;
+  deleteGroupNote: (groupId: string, noteId: string, channelId?: string | null) => void;
+  toggleGroupNotePin: (groupId: string, noteId: string, channelId?: string | null) => void;
 
   // Reminders CRUD
-  createGroupReminder: (groupId: string, reminder: Omit<Reminder, 'id' | 'createdAt'>) => void;
-  toggleGroupReminderComplete: (groupId: string, reminderId: string) => void;
-  deleteGroupReminder: (groupId: string, reminderId: string) => void;
+  createGroupReminder: (groupId: string, reminder: Omit<Reminder, 'id' | 'createdAt'>, channelId?: string | null) => void;
+  toggleGroupReminderComplete: (groupId: string, reminderId: string, channelId?: string | null) => void;
+  deleteGroupReminder: (groupId: string, reminderId: string, channelId?: string | null) => void;
 
   // Ledger CRUD
-  createGroupLedgerEntry: (groupId: string, entry: Omit<LedgerEntry, 'id'>) => void;
-  settleGroupLedgerEntry: (groupId: string, entryId: string) => void;
-  deleteGroupLedgerEntry: (groupId: string, entryId: string) => void;
-  getGroupPairBalances: (groupId: string) => GroupPairBalance[];
+  createGroupLedgerEntry: (groupId: string, entry: Omit<LedgerEntry, 'id'>, channelId?: string | null) => void;
+  settleGroupLedgerEntry: (groupId: string, entryId: string, channelId?: string | null) => void;
+  deleteGroupLedgerEntry: (groupId: string, entryId: string, channelId?: string | null) => void;
+  getGroupPairBalances: (groupId: string, channelId?: string | null) => GroupPairBalance[];
 
   // Shared objects
-  addGroupSharedObject: (groupId: string, obj: Omit<SharedObject, 'id' | 'sharedAt'>) => void;
-  deleteGroupSharedObject: (groupId: string, objectId: string) => void;
+  addGroupSharedObject: (groupId: string, obj: Omit<SharedObject, 'id' | 'sharedAt'>, channelId?: string | null) => void;
+  deleteGroupSharedObject: (groupId: string, objectId: string, channelId?: string | null) => void;
 
   // List operations
   toggleGroupArchive: (groupId: string) => void;
@@ -123,6 +153,7 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
   loadingMessages: new Set(),
   replyingTo: {},
   _channel: null,
+  activeChannel: {},
   eventSpaceMessages: {},
   groupPolls: {},
   typingUsers: {},
@@ -369,9 +400,83 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
 
   getGroupById: (id) => get().groups.find((g) => g.id === id),
 
-  getGroupMessages: (groupId, isPrivate = false) =>
+  createChannel: (groupId, name, emoji, color = '#D4764E') => {
+    const newChannel: Channel = {
+      id: `ch-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      name,
+      emoji,
+      color,
+      createdBy: getCurrentUserId() || 'unknown',
+      createdAt: new Date(),
+      metadata: {
+        sharedObjects: [],
+        notes: [],
+        reminders: [],
+        ledgerBalance: 0,
+        ledgerEntries: [],
+        pinnedMessages: [],
+        starredMessages: [],
+        polls: [],
+        callHistory: [],
+      },
+    };
+    set((state) => ({
+      groups: state.groups.map((g) =>
+        g.id === groupId
+          ? { ...g, channels: [...(g.channels || []), newChannel] }
+          : g,
+      ),
+    }));
+  },
+
+  deleteChannel: (groupId, channelId) => {
+    set((state) => ({
+      groups: state.groups.map((g) =>
+        g.id === groupId
+          ? { ...g, channels: (g.channels || []).filter((ch) => ch.id !== channelId) }
+          : g,
+      ),
+      // Remove all messages belonging to this channel
+      groupMessages: state.groupMessages.filter(
+        (m) => !(m.conversationId === groupId && m.channelId === channelId),
+      ),
+      // Reset active channel if it was the deleted one
+      activeChannel: state.activeChannel[groupId] === channelId
+        ? { ...state.activeChannel, [groupId]: null }
+        : state.activeChannel,
+    }));
+  },
+
+  updateChannel: (groupId, channelId, updates) => {
+    set((state) => ({
+      groups: state.groups.map((g) =>
+        g.id === groupId
+          ? {
+              ...g,
+              channels: (g.channels || []).map((ch) =>
+                ch.id === channelId ? { ...ch, ...updates } : ch,
+              ),
+            }
+          : g,
+      ),
+    }));
+  },
+
+  setActiveChannel: (groupId, channelId) => {
+    set((state) => ({
+      activeChannel: { ...state.activeChannel, [groupId]: channelId },
+    }));
+  },
+
+  getActiveChannel: (groupId) => {
+    return get().activeChannel[groupId] ?? null;
+  },
+
+  getGroupMessages: (groupId, isPrivate = false, channelId) =>
     get().groupMessages.filter(
-      (m) => m.conversationId === groupId && (isPrivate ? m.isPrivate === true : !m.isPrivate)
+      (m) => m.conversationId === groupId &&
+        (isPrivate ? m.isPrivate === true : !m.isPrivate) &&
+        (channelId ? m.channelId === channelId : !m.channelId)
     ),
 
   loadGroupMessages: async (groupId) => {
@@ -456,6 +561,7 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
       isRead: true,
       sendStatus: 'sending',
       isPrivate: options?.isPrivate,
+      channelId: options?.channelId,
     };
 
     set((s) => ({
@@ -1181,7 +1287,7 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
   },
 
   // Notes
-  createGroupNote: (groupId, noteData) => {
+  createGroupNote: (groupId, noteData, channelId) => {
     const optimisticId = `gnote-${Date.now()}`;
     const newNote: Note = {
       ...noteData,
@@ -1190,14 +1296,10 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
       updatedAt: new Date(),
     };
     set((state) => ({
-      groups: state.groups.map((g) => {
-        if (g.id !== groupId) return g;
-        const metadata = g.metadata ?? {
-          sharedObjects: [], notes: [], reminders: [], ledgerEntries: [],
-          ledgerBalance: 0, pinnedMessages: [], starredMessages: [], callHistory: [],
-        };
-        return { ...g, metadata: { ...metadata, notes: [...metadata.notes, newNote] } };
-      }),
+      groups: updateGroupMetadata(state.groups, groupId, channelId, (metadata) => ({
+        ...metadata,
+        notes: [...metadata.notes, newNote],
+      })),
     }));
 
     groupsRepository.createNote(groupId, {
@@ -1205,84 +1307,58 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
       color: noteData.color, isPrivate: noteData.isPrivate,
     }).then((saved) => {
       set((state) => ({
-        groups: state.groups.map((g) => {
-          if (g.id !== groupId || !g.metadata) return g;
-          return { ...g, metadata: { ...g.metadata, notes: g.metadata.notes.map((n) => n.id === optimisticId ? saved : n) } };
-        }),
+        groups: updateGroupMetadata(state.groups, groupId, channelId, (metadata) => ({
+          ...metadata,
+          notes: metadata.notes.map((n) => n.id === optimisticId ? saved : n),
+        })),
       }));
     }).catch(() => {
       set((state) => ({
-        groups: state.groups.map((g) => {
-          if (g.id !== groupId || !g.metadata) return g;
-          return { ...g, metadata: { ...g.metadata, notes: g.metadata.notes.filter((n) => n.id !== optimisticId) } };
-        }),
+        groups: updateGroupMetadata(state.groups, groupId, channelId, (metadata) => ({
+          ...metadata,
+          notes: metadata.notes.filter((n) => n.id !== optimisticId),
+        })),
       }));
     });
   },
 
-  deleteGroupNote: (groupId, noteId) => {
-    const group = get().groups.find((g) => g.id === groupId);
-    const deletedNote = group?.metadata?.notes.find((n) => n.id === noteId);
-
+  deleteGroupNote: (groupId, noteId, channelId) => {
     set((state) => ({
-      groups: state.groups.map((g) => {
-        if (g.id !== groupId || !g.metadata) return g;
-        return {
-          ...g,
-          metadata: { ...g.metadata, notes: g.metadata.notes.filter((n) => n.id !== noteId) },
-        };
-      }),
+      groups: updateGroupMetadata(state.groups, groupId, channelId, (metadata) => ({
+        ...metadata,
+        notes: metadata.notes.filter((n) => n.id !== noteId),
+      })),
     }));
 
-    groupsRepository.deleteNote(noteId).catch(() => {
-      if (!deletedNote) return;
-      set((state) => ({
-        groups: state.groups.map((g) => {
-          if (g.id !== groupId || !g.metadata) return g;
-          return { ...g, metadata: { ...g.metadata, notes: [...g.metadata.notes, deletedNote] } };
-        }),
-      }));
-    });
+    groupsRepository.deleteNote(noteId).catch(() => {});
   },
 
-  updateGroupNote: (groupId, noteId, input) => {
+  updateGroupNote: (groupId, noteId, input, channelId) => {
     set((state) => ({
-      groups: state.groups.map((g) => {
-        if (g.id !== groupId || !g.metadata) return g;
-        return {
-          ...g,
-          metadata: {
-            ...g.metadata,
-            notes: g.metadata.notes.map((n) =>
-              n.id === noteId ? { ...n, ...input, updatedAt: new Date() } : n,
-            ),
-          },
-        };
-      }),
+      groups: updateGroupMetadata(state.groups, groupId, channelId, (metadata) => ({
+        ...metadata,
+        notes: metadata.notes.map((n) =>
+          n.id === noteId ? { ...n, ...input, updatedAt: new Date() } : n,
+        ),
+      })),
     }));
     groupsRepository.updateNote(groupId, noteId, input).catch(() => {});
   },
 
-  toggleGroupNotePin: (groupId, noteId) => {
+  toggleGroupNotePin: (groupId, noteId, channelId) => {
     set((state) => ({
-      groups: state.groups.map((g) => {
-        if (g.id !== groupId || !g.metadata) return g;
-        return {
-          ...g,
-          metadata: {
-            ...g.metadata,
-            notes: g.metadata.notes.map((n) =>
-              n.id === noteId ? { ...n, isPinned: !n.isPinned } : n,
-            ),
-          },
-        };
-      }),
+      groups: updateGroupMetadata(state.groups, groupId, channelId, (metadata) => ({
+        ...metadata,
+        notes: metadata.notes.map((n) =>
+          n.id === noteId ? { ...n, isPinned: !n.isPinned } : n,
+        ),
+      })),
     }));
     groupsRepository.toggleNotePin(groupId, noteId).catch(() => {});
   },
 
   // Reminders
-  createGroupReminder: (groupId, reminderData) => {
+  createGroupReminder: (groupId, reminderData, channelId) => {
     const optimisticId = `grem-${Date.now()}`;
     const newReminder: Reminder = {
       ...reminderData,
@@ -1290,14 +1366,10 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
       createdAt: new Date(),
     };
     set((state) => ({
-      groups: state.groups.map((g) => {
-        if (g.id !== groupId) return g;
-        const metadata = g.metadata ?? {
-          sharedObjects: [], notes: [], reminders: [], ledgerEntries: [],
-          ledgerBalance: 0, pinnedMessages: [], starredMessages: [], callHistory: [],
-        };
-        return { ...g, metadata: { ...metadata, reminders: [...metadata.reminders, newReminder] } };
-      }),
+      groups: updateGroupMetadata(state.groups, groupId, channelId, (metadata) => ({
+        ...metadata,
+        reminders: [...metadata.reminders, newReminder],
+      })),
     }));
 
     groupsRepository.createReminder(groupId, {
@@ -1307,86 +1379,55 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
       priority: reminderData.priority,
     }).then((saved) => {
       set((state) => ({
-        groups: state.groups.map((g) => {
-          if (g.id !== groupId || !g.metadata) return g;
-          return { ...g, metadata: { ...g.metadata, reminders: g.metadata.reminders.map((r) => r.id === optimisticId ? saved : r) } };
-        }),
+        groups: updateGroupMetadata(state.groups, groupId, channelId, (metadata) => ({
+          ...metadata,
+          reminders: metadata.reminders.map((r) => r.id === optimisticId ? saved : r),
+        })),
       }));
     }).catch(() => {
       set((state) => ({
-        groups: state.groups.map((g) => {
-          if (g.id !== groupId || !g.metadata) return g;
-          return { ...g, metadata: { ...g.metadata, reminders: g.metadata.reminders.filter((r) => r.id !== optimisticId) } };
-        }),
+        groups: updateGroupMetadata(state.groups, groupId, channelId, (metadata) => ({
+          ...metadata,
+          reminders: metadata.reminders.filter((r) => r.id !== optimisticId),
+        })),
       }));
     });
   },
 
-  toggleGroupReminderComplete: (groupId, reminderId) => {
-    const group = get().groups.find((g) => g.id === groupId);
-    const wasCompleted = group?.metadata?.reminders.find((r) => r.id === reminderId)?.isCompleted;
-
+  toggleGroupReminderComplete: (groupId, reminderId, channelId) => {
     set((state) => ({
-      groups: state.groups.map((g) => {
-        if (g.id !== groupId || !g.metadata) return g;
-        return {
-          ...g,
-          metadata: {
-            ...g.metadata,
-            reminders: g.metadata.reminders.map((r) =>
-              r.id === reminderId ? { ...r, isCompleted: !r.isCompleted } : r,
-            ),
-          },
-        };
-      }),
+      groups: updateGroupMetadata(state.groups, groupId, channelId, (metadata) => ({
+        ...metadata,
+        reminders: metadata.reminders.map((r) =>
+          r.id === reminderId ? { ...r, isCompleted: !r.isCompleted } : r,
+        ),
+      })),
     }));
 
-    groupsRepository.toggleReminderComplete(reminderId).catch(() => {
-      set((state) => ({
-        groups: state.groups.map((g) => {
-          if (g.id !== groupId || !g.metadata) return g;
-          return {
-            ...g,
-            metadata: {
-              ...g.metadata,
-              reminders: g.metadata.reminders.map((r) =>
-                r.id === reminderId ? { ...r, isCompleted: wasCompleted ?? false } : r,
-              ),
-            },
-          };
-        }),
-      }));
-    });
+    groupsRepository.toggleReminderComplete(reminderId).catch(() => {});
   },
 
-  deleteGroupReminder: (groupId, reminderId) => {
+  deleteGroupReminder: (groupId, reminderId, channelId) => {
     set((state) => ({
-      groups: state.groups.map((g) => {
-        if (g.id !== groupId || !g.metadata) return g;
-        return {
-          ...g,
-          metadata: { ...g.metadata, reminders: g.metadata.reminders.filter((r) => r.id !== reminderId) },
-        };
-      }),
+      groups: updateGroupMetadata(state.groups, groupId, channelId, (metadata) => ({
+        ...metadata,
+        reminders: metadata.reminders.filter((r) => r.id !== reminderId),
+      })),
     }));
   },
 
   // Ledger
-  createGroupLedgerEntry: (groupId, entryData) => {
+  createGroupLedgerEntry: (groupId, entryData, channelId) => {
     const optimisticId = `gled-${Date.now()}`;
     const newEntry: LedgerEntry = {
       ...entryData,
       id: optimisticId,
     };
     set((state) => ({
-      groups: state.groups.map((g) => {
-        if (g.id !== groupId) return g;
-        const metadata = g.metadata ?? {
-          sharedObjects: [], notes: [], reminders: [], ledgerEntries: [],
-          ledgerBalance: 0, pinnedMessages: [], starredMessages: [], callHistory: [],
-        };
-        return { ...g, metadata: { ...metadata, ledgerEntries: [...metadata.ledgerEntries, newEntry] } };
-      }),
+      groups: updateGroupMetadata(state.groups, groupId, channelId, (metadata) => ({
+        ...metadata,
+        ledgerEntries: [...metadata.ledgerEntries, newEntry],
+      })),
     }));
 
     groupsRepository.createLedgerEntry(groupId, {
@@ -1397,71 +1438,61 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
       category: entryData.category,
     }).then((saved) => {
       set((state) => ({
-        groups: state.groups.map((g) => {
-          if (g.id !== groupId || !g.metadata) return g;
-          return { ...g, metadata: { ...g.metadata, ledgerEntries: g.metadata.ledgerEntries.map((e) => e.id === optimisticId ? saved : e) } };
-        }),
+        groups: updateGroupMetadata(state.groups, groupId, channelId, (metadata) => ({
+          ...metadata,
+          ledgerEntries: metadata.ledgerEntries.map((e) => e.id === optimisticId ? saved : e),
+        })),
       }));
     }).catch(() => {
       set((state) => ({
-        groups: state.groups.map((g) => {
-          if (g.id !== groupId || !g.metadata) return g;
-          return { ...g, metadata: { ...g.metadata, ledgerEntries: g.metadata.ledgerEntries.filter((e) => e.id !== optimisticId) } };
-        }),
+        groups: updateGroupMetadata(state.groups, groupId, channelId, (metadata) => ({
+          ...metadata,
+          ledgerEntries: metadata.ledgerEntries.filter((e) => e.id !== optimisticId),
+        })),
       }));
     });
   },
 
-  settleGroupLedgerEntry: (groupId, entryId) => {
+  settleGroupLedgerEntry: (groupId, entryId, channelId) => {
     set((state) => ({
-      groups: state.groups.map((g) => {
-        if (g.id !== groupId || !g.metadata) return g;
-        return {
-          ...g,
-          metadata: {
-            ...g.metadata,
-            ledgerEntries: g.metadata.ledgerEntries.map((e) =>
-              e.id === entryId ? { ...e, isSettled: true } : e,
-            ),
-          },
-        };
-      }),
+      groups: updateGroupMetadata(state.groups, groupId, channelId, (metadata) => ({
+        ...metadata,
+        ledgerEntries: metadata.ledgerEntries.map((e) =>
+          e.id === entryId ? { ...e, isSettled: true } : e,
+        ),
+      })),
     }));
 
     groupsRepository.settleLedgerEntry(entryId).catch(() => {
       set((state) => ({
-        groups: state.groups.map((g) => {
-          if (g.id !== groupId || !g.metadata) return g;
-          return {
-            ...g,
-            metadata: {
-              ...g.metadata,
-              ledgerEntries: g.metadata.ledgerEntries.map((e) =>
-                e.id === entryId ? { ...e, isSettled: false } : e,
-              ),
-            },
-          };
-        }),
+        groups: updateGroupMetadata(state.groups, groupId, channelId, (metadata) => ({
+          ...metadata,
+          ledgerEntries: metadata.ledgerEntries.map((e) =>
+            e.id === entryId ? { ...e, isSettled: false } : e,
+          ),
+        })),
       }));
     });
   },
 
-  deleteGroupLedgerEntry: (groupId, entryId) => {
+  deleteGroupLedgerEntry: (groupId, entryId, channelId) => {
     set((state) => ({
-      groups: state.groups.map((g) => {
-        if (g.id !== groupId || !g.metadata) return g;
-        const remaining = g.metadata.ledgerEntries.filter((e) => e.id !== entryId);
-        return {
-          ...g,
-          metadata: { ...g.metadata, ledgerEntries: remaining },
-        };
-      }),
+      groups: updateGroupMetadata(state.groups, groupId, channelId, (metadata) => ({
+        ...metadata,
+        ledgerEntries: metadata.ledgerEntries.filter((e) => e.id !== entryId),
+      })),
     }));
   },
 
-  getGroupPairBalances: (groupId) => {
+  getGroupPairBalances: (groupId, channelId) => {
     const group = get().groups.find((g) => g.id === groupId);
-    const entries = group?.metadata?.ledgerEntries ?? [];
+    let entries: LedgerEntry[] = [];
+    if (channelId && group?.channels) {
+      const channel = group.channels.find((ch) => ch.id === channelId);
+      entries = (channel?.metadata as unknown as GroupMetadata)?.ledgerEntries ?? [];
+    } else {
+      entries = group?.metadata?.ledgerEntries ?? [];
+    }
     const unsettled = entries.filter((e) => !e.isSettled);
 
     // Build net balance map: key = "userId1|userId2" (sorted), value = amount userId1 is owed
@@ -1487,7 +1518,7 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
   },
 
   // Shared objects
-  addGroupSharedObject: (groupId, objData) => {
+  addGroupSharedObject: (groupId, objData, channelId) => {
     const optimisticId = `gso-${Date.now()}`;
     const newObj: SharedObject = {
       ...objData,
@@ -1495,14 +1526,10 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
       sharedAt: new Date(),
     };
     set((state) => ({
-      groups: state.groups.map((g) => {
-        if (g.id !== groupId) return g;
-        const metadata = g.metadata ?? {
-          sharedObjects: [], notes: [], reminders: [], ledgerEntries: [],
-          ledgerBalance: 0, pinnedMessages: [], starredMessages: [], callHistory: [],
-        };
-        return { ...g, metadata: { ...metadata, sharedObjects: [...metadata.sharedObjects, newObj] } };
-      }),
+      groups: updateGroupMetadata(state.groups, groupId, channelId, (metadata) => ({
+        ...metadata,
+        sharedObjects: [...metadata.sharedObjects, newObj],
+      })),
     }));
 
     groupsRepository.addSharedObject(groupId, {
@@ -1510,27 +1537,27 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
       description: objData.description, url: objData.url,
     }).then((saved) => {
       set((state) => ({
-        groups: state.groups.map((g) => {
-          if (g.id !== groupId || !g.metadata) return g;
-          return { ...g, metadata: { ...g.metadata, sharedObjects: g.metadata.sharedObjects.map((o) => o.id === optimisticId ? saved : o) } };
-        }),
+        groups: updateGroupMetadata(state.groups, groupId, channelId, (metadata) => ({
+          ...metadata,
+          sharedObjects: metadata.sharedObjects.map((o) => o.id === optimisticId ? saved : o),
+        })),
       }));
     }).catch(() => {
       set((state) => ({
-        groups: state.groups.map((g) => {
-          if (g.id !== groupId || !g.metadata) return g;
-          return { ...g, metadata: { ...g.metadata, sharedObjects: g.metadata.sharedObjects.filter((o) => o.id !== optimisticId) } };
-        }),
+        groups: updateGroupMetadata(state.groups, groupId, channelId, (metadata) => ({
+          ...metadata,
+          sharedObjects: metadata.sharedObjects.filter((o) => o.id !== optimisticId),
+        })),
       }));
     });
   },
 
-  deleteGroupSharedObject: (groupId, objectId) => {
+  deleteGroupSharedObject: (groupId, objectId, channelId) => {
     set((state) => ({
-      groups: state.groups.map((g) => {
-        if (g.id !== groupId || !g.metadata) return g;
-        return { ...g, metadata: { ...g.metadata, sharedObjects: g.metadata.sharedObjects.filter((o) => o.id !== objectId) } };
-      }),
+      groups: updateGroupMetadata(state.groups, groupId, channelId, (metadata) => ({
+        ...metadata,
+        sharedObjects: metadata.sharedObjects.filter((o) => o.id !== objectId),
+      })),
     }));
   },
 
@@ -1619,6 +1646,7 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
       loadingMessages: new Set(),
       replyingTo: {},
       _channel: null,
+      activeChannel: {},
       eventSpaceMessages: {},
       groupPolls: {},
       typingUsers: {},

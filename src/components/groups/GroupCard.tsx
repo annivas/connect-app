@@ -165,7 +165,14 @@ export function GroupCard({ group }: Props) {
             <View className="flex-1 mr-2">
               {group.lastMessage ? (
                 <Text className="text-text-secondary text-[13px]" numberOfLines={1}>
-                  {group.lastMessage.content}
+                  {(() => {
+                    const channelName = group.lastMessage!.channelId
+                      ? group.channels?.find((c) => c.id === group.lastMessage!.channelId)?.name
+                      : null;
+                    return channelName
+                      ? `#${channelName}: ${group.lastMessage!.content}`
+                      : group.lastMessage!.content;
+                  })()}
                 </Text>
               ) : group.description ? (
                 <Text className="text-text-secondary text-[13px]" numberOfLines={1}>
