@@ -227,7 +227,7 @@ export default function GroupDetailScreen() {
       )}
 
       {/* Trip tab toggle */}
-      {group.type === 'trip' && group.trip && (
+      {group.type === 'trip' && (
         <View className="flex-row px-4 pt-2 pb-1 gap-2">
           {(['chat', 'trip'] as const).map((tab) => (
             <Pressable
@@ -310,7 +310,7 @@ export default function GroupDetailScreen() {
             useGroupsStore.getState().updateGroup(id!, { household: { ...g.household, recurringBills: updatedBills } } as any);
           }}
         />
-      ) : group.type === 'trip' && group.trip && tripActiveTab === 'trip' ? (
+      ) : group.type === 'trip' && tripActiveTab === 'trip' ? (
         <TripTab groupId={id!} />
       ) : (
         <GroupChatTab

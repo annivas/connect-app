@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase';
-import { Group, Message, RSVPStatus, Note, Reminder, LedgerEntry, SharedObject, SharedObjectType, Poll, DisappearingDuration, ItineraryItem, GroupEvent } from '../../types';
+import { Group, Message, RSVPStatus, Note, Reminder, LedgerEntry, SharedObject, SharedObjectType, Poll, DisappearingDuration, ItineraryItem, GroupEvent, Trip } from '../../types';
 import { IGroupsRepository, PaginationParams, CreateGroupInput, UpdateGroupInput, CreateNoteInput, UpdateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../types';
 import {
   adaptMessage,
@@ -608,6 +608,25 @@ export const supabaseGroupsRepository: IGroupsRepository = {
       .insert({ event_id: data.id, user_id: userId, status: 'going', responded_at: new Date().toISOString() });
 
     return adaptGroupEvent(data, [{ userId, status: 'going', respondedAt: new Date() }]);
+  },
+
+  // ─── Trips ──────────────────────────────────────
+
+  async createTrip(groupId: string, trip: Omit<Trip, 'id' | 'groupId' | 'itinerary' | 'participants'>): Promise<Trip> {
+    const { data, error } = await supabase
+      .from('trips')
+      .insert({
+        group_id: groupId,
+        destination: trip.destination,
+        start_date: trip.startDate.toISOString(),
+        end_date: trip.endDate.toISOString(),
+        budget: trip.budget ?? null,
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to create trip: ${error.message}`);
+    return adaptTrip(data, []);
   },
 
   // ─── Itinerary ───────────────────────────────────

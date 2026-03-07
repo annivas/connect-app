@@ -6,6 +6,7 @@ import * as Haptics from 'expo-haptics';
 import { useShallow } from 'zustand/react/shallow';
 import { EmptyState } from '../ui/EmptyState';
 import { ItineraryItemModal } from './ItineraryItemModal';
+import { CreateTripModal } from './CreateTripModal';
 import { useGroupsStore } from '../../stores/useGroupsStore';
 import type { ItineraryItem } from '../../types';
 
@@ -26,9 +27,32 @@ export function TripTab({ groupId }: Props) {
   const trip = group?.trip;
   const [modalVisible, setModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<ItineraryItem | null>(null);
+  const [showCreateTrip, setShowCreateTrip] = useState(false);
 
   if (!trip) {
-    return <EmptyState icon="airplane-outline" title="No trip planned" description="Create a trip itinerary for this group" />;
+    return (
+      <View className="flex-1 bg-background-primary items-center justify-center px-6">
+        <View className="w-20 h-20 rounded-full bg-accent-primary/15 items-center justify-center mb-4">
+          <Ionicons name="airplane" size={40} color="#D4764E" />
+        </View>
+        <Text className="text-text-primary text-lg font-semibold mb-1">No trip planned</Text>
+        <Text className="text-text-tertiary text-sm text-center mb-6">Plan a trip to start building your itinerary</Text>
+        <Pressable
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setShowCreateTrip(true);
+          }}
+          className="bg-accent-primary rounded-xl px-6 py-3"
+        >
+          <Text className="text-white text-[15px] font-semibold">Plan a Trip</Text>
+        </Pressable>
+        <CreateTripModal
+          visible={showCreateTrip}
+          onClose={() => setShowCreateTrip(false)}
+          onSave={(tripData) => useGroupsStore.getState().createTrip(groupId, tripData)}
+        />
+      </View>
+    );
   }
 
   const totalDays = Math.max(1, Math.ceil((trip.endDate.getTime() - trip.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
