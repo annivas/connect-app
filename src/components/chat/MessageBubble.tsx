@@ -23,12 +23,15 @@ import { LocationMessageBubble } from './LocationMessageBubble';
 import { DocumentMessageBubble } from './DocumentMessageBubble';
 import { ContactMessageBubble } from './ContactMessageBubble';
 import { SongMessageBubble } from './SongMessageBubble';
+import { NoteMessageBubble } from './NoteMessageBubble';
+import { ReminderMessageBubble } from './ReminderMessageBubble';
+import { ExpenseMessageBubble } from './ExpenseMessageBubble';
 import { ImageViewerModal } from './ImageViewerModal';
 import { renderHighlightedText } from '../../utils/highlightText';
 import { extractUrls } from '../../utils/urlDetection';
 import { detectActions } from '../../utils/actionDetector';
 import { ActionSuggestionChip } from './ActionSuggestionChip';
-import { Message, Reaction, DetectedAction, VoiceMessageMetadata, LocationMessageMetadata, DocumentMessageMetadata, ContactMessageMetadata, SongMetadata } from '../../types';
+import { Message, Reaction, DetectedAction, VoiceMessageMetadata, LocationMessageMetadata, DocumentMessageMetadata, ContactMessageMetadata, SongMetadata, NoteMessageMetadata, ReminderMessageMetadata, ExpenseMessageMetadata } from '../../types';
 import { useUserStore } from '../../stores/useUserStore';
 
 interface Props {
@@ -486,6 +489,42 @@ export function MessageBubble({
                     <SongMessageBubble
                       messageId={message.id}
                       metadata={message.metadata as unknown as SongMetadata}
+                      isMine={isMine}
+                    />
+                  </View>
+                ) : message.type === 'note' ? (
+                  <View
+                    style={getBubbleRadius()}
+                    className={`px-3 py-2 ${
+                      isMine ? 'bg-accent-primary' : 'bg-surface-elevated'
+                    }`}
+                  >
+                    <NoteMessageBubble
+                      metadata={message.metadata as unknown as NoteMessageMetadata}
+                      isMine={isMine}
+                    />
+                  </View>
+                ) : message.type === 'reminder' ? (
+                  <View
+                    style={getBubbleRadius()}
+                    className={`px-3 py-2 ${
+                      isMine ? 'bg-accent-primary' : 'bg-surface-elevated'
+                    }`}
+                  >
+                    <ReminderMessageBubble
+                      metadata={message.metadata as unknown as ReminderMessageMetadata}
+                      isMine={isMine}
+                    />
+                  </View>
+                ) : message.type === 'expense' ? (
+                  <View
+                    style={getBubbleRadius()}
+                    className={`px-3 py-2 ${
+                      isMine ? 'bg-accent-primary' : 'bg-surface-elevated'
+                    }`}
+                  >
+                    <ExpenseMessageBubble
+                      metadata={message.metadata as unknown as ExpenseMessageMetadata}
                       isMine={isMine}
                     />
                   </View>

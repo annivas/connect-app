@@ -826,11 +826,19 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
       visible={showSheetNoteModal}
       conversationId={conversationId}
       onClose={() => setShowSheetNoteModal(false)}
-      onSave={(note) => {
-        useMessagesStore.getState().createNote(conversationId, note);
+      onSave={async (note) => {
+        const created = await useMessagesStore.getState().createNote(conversationId, note);
         const userId = useUserStore.getState().currentUser?.id;
         if (userId) {
-          sendMessage(conversationId, `Created a note: ${note.title}`, userId);
+          sendMessage(conversationId, `Created a note: ${note.title}`, userId, {
+            type: 'note',
+            metadata: {
+              title: created.title,
+              contentPreview: (created.content || '').slice(0, 80),
+              isPrivate: created.isPrivate,
+              color: created.color,
+            },
+          });
         }
         setShowSheetNoteModal(false);
         useToastStore.getState().show({ message: 'Note created', type: 'success' });
@@ -840,8 +848,8 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
       visible={showSheetExpenseModal}
       conversationId={conversationId}
       onClose={() => setShowSheetExpenseModal(false)}
-      onSave={(entry) => {
-        useMessagesStore.getState().createLedgerEntry(conversationId, {
+      onSave={async (entry) => {
+        const created = await useMessagesStore.getState().createLedgerEntry(conversationId, {
           description: entry.description,
           amount: entry.amount,
           paidBy: entry.paidBy,
@@ -850,7 +858,17 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
         });
         const userId = useUserStore.getState().currentUser?.id;
         if (userId) {
-          sendMessage(conversationId, `Added an expense: ${entry.description} — $${entry.amount.toFixed(2)}`, userId);
+          sendMessage(conversationId, `Added an expense: ${entry.description} — $${entry.amount.toFixed(2)}`, userId, {
+            type: 'expense',
+            metadata: {
+              description: created.description,
+              amount: created.amount,
+              paidBy: created.paidBy,
+              splitBetween: created.splitBetween,
+              category: created.category,
+              isSettled: created.isSettled,
+            },
+          });
         }
         setShowSheetExpenseModal(false);
         useToastStore.getState().show({ message: 'Expense added', type: 'success' });
@@ -860,8 +878,8 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
       visible={showSheetReminderModal}
       conversationId={conversationId}
       onClose={() => setShowSheetReminderModal(false)}
-      onSave={(reminder) => {
-        useMessagesStore.getState().createReminder(conversationId, {
+      onSave={async (reminder) => {
+        const created = await useMessagesStore.getState().createReminder(conversationId, {
           title: reminder.title,
           description: reminder.description,
           dueDate: reminder.dueDate instanceof Date ? reminder.dueDate.toISOString() : String(reminder.dueDate),
@@ -869,7 +887,17 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
         });
         const userId = useUserStore.getState().currentUser?.id;
         if (userId) {
-          sendMessage(conversationId, `Set a reminder: ${reminder.title}`, userId);
+          sendMessage(conversationId, `Set a reminder: ${reminder.title}`, userId, {
+            type: 'reminder',
+            metadata: {
+              title: created.title,
+              description: created.description,
+              dueDate: typeof created.dueDate === 'string' ? created.dueDate : created.dueDate instanceof Date ? created.dueDate.toISOString() : String(created.dueDate),
+              priority: created.priority,
+              isCompleted: created.isCompleted,
+              assignedTo: created.assignedTo,
+            },
+          });
         }
         setShowSheetReminderModal(false);
         useToastStore.getState().show({ message: 'Reminder created', type: 'success' });

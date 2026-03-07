@@ -822,7 +822,15 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
         useGroupsStore.getState().createGroupNote(groupId, note);
         const userId = useUserStore.getState().currentUser?.id;
         if (userId) {
-          sendGroupMessage(groupId, `Created a note: ${note.title}`, userId);
+          sendGroupMessage(groupId, `Created a note: ${note.title}`, userId, {
+            type: 'note',
+            metadata: {
+              title: note.title,
+              contentPreview: (note.content || '').slice(0, 80),
+              isPrivate: note.isPrivate,
+              color: note.color,
+            },
+          });
         }
         setShowSheetNoteModal(false);
         useToastStore.getState().show({ message: 'Note created', type: 'success' });
@@ -843,7 +851,17 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
         });
         const userId = useUserStore.getState().currentUser?.id;
         if (userId) {
-          sendGroupMessage(groupId, `Added an expense: ${entry.description} — $${entry.amount.toFixed(2)}`, userId);
+          sendGroupMessage(groupId, `Added an expense: ${entry.description} — $${entry.amount.toFixed(2)}`, userId, {
+            type: 'expense',
+            metadata: {
+              description: entry.description,
+              amount: entry.amount,
+              paidBy: entry.paidBy,
+              splitBetween: entry.splitBetween,
+              category: entry.category,
+              isSettled: false,
+            },
+          });
         }
         setShowSheetExpenseModal(false);
         useToastStore.getState().show({ message: 'Expense added', type: 'success' });
@@ -863,7 +881,16 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
           createdBy: userId,
         });
         if (userId) {
-          sendGroupMessage(groupId, `Set a reminder: ${reminder.title}`, userId);
+          sendGroupMessage(groupId, `Set a reminder: ${reminder.title}`, userId, {
+            type: 'reminder',
+            metadata: {
+              title: reminder.title,
+              description: reminder.description,
+              dueDate: reminder.dueDate instanceof Date ? reminder.dueDate.toISOString() : String(reminder.dueDate),
+              priority: reminder.priority,
+              isCompleted: false,
+            },
+          });
         }
         setShowSheetReminderModal(false);
         useToastStore.getState().show({ message: 'Reminder created', type: 'success' });

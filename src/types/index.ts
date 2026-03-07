@@ -14,7 +14,7 @@ export interface User {
 }
 
 // ─── Message ─────────────────────────────────
-export type MessageType = 'text' | 'image' | 'video' | 'audio' | 'file' | 'location' | 'contact' | 'song';
+export type MessageType = 'text' | 'image' | 'video' | 'audio' | 'file' | 'location' | 'contact' | 'song' | 'note' | 'reminder' | 'expense';
 
 export interface Reaction {
   emoji: string;
@@ -86,6 +86,31 @@ export interface VideoMessageMetadata {
   width: number;
   height: number;
   thumbnailUri?: string;
+}
+
+export interface NoteMessageMetadata {
+  title: string;
+  contentPreview: string;
+  isPrivate: boolean;
+  color: string;
+}
+
+export interface ReminderMessageMetadata {
+  title: string;
+  description?: string;
+  dueDate: string;
+  priority: 'low' | 'medium' | 'high';
+  isCompleted: boolean;
+  assignedTo?: string[];
+}
+
+export interface ExpenseMessageMetadata {
+  description: string;
+  amount: number;
+  paidBy: string;
+  splitBetween: string[];
+  category?: string;
+  isSettled: boolean;
 }
 
 export interface Message {
