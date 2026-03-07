@@ -526,7 +526,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     }));
 
     messagesRepository
-      .sendMessage(message.conversationId, message.content, message.senderId)
+      .sendMessage(message.conversationId, message.content, message.senderId, { channelId: message.channelId })
       .then((savedMessage) => {
         set((state) => ({
           messages: state.messages.map((m) =>
