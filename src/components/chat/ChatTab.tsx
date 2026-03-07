@@ -29,6 +29,7 @@ import { useCallStore } from '../../stores/useCallStore';
 import { getImageGroup } from '../../utils/imageGrouping';
 import { CreateReminderModal } from './CreateReminderModal';
 import { CreateExpenseModal } from './CreateExpenseModal';
+import { CreateNoteModal } from './CreateNoteModal';
 import type { Message, CallEntry, DisappearingDuration, SongMetadata, DetectedAction, User } from '../../types';
 
 /**
@@ -105,6 +106,11 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
   const [showActionReminderModal, setShowActionReminderModal] = useState(false);
   const [showActionExpenseModal, setShowActionExpenseModal] = useState(false);
   const [actionSuggestionValue, setActionSuggestionValue] = useState('');
+
+  // Sheet-triggered creation modals
+  const [showSheetNoteModal, setShowSheetNoteModal] = useState(false);
+  const [showSheetExpenseModal, setShowSheetExpenseModal] = useState(false);
+  const [showSheetReminderModal, setShowSheetReminderModal] = useState(false);
 
   // Unread jump button
   const conversationUnreadCount = useMessagesStore(
@@ -758,6 +764,10 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
       onShareLocation={handleShareLocation}
       onShareContact={handleShareContact}
       onShareSong={handleShareSong}
+      onCreateNote={() => setShowSheetNoteModal(true)}
+      onCreateExpense={() => setShowSheetExpenseModal(true)}
+      onCreateReminder={() => setShowSheetReminderModal(true)}
+      isGroup={false}
     />
     <SpotifyPickerModal
       visible={showSpotifyPicker}
@@ -808,6 +818,49 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
         setShowActionExpenseModal(false);
         setActionSuggestionValue('');
         useToastStore.getState().show({ message: 'Expense added', type: 'success' });
+      }}
+    />
+
+    {/* Sheet-triggered creation modals */}
+    <CreateNoteModal
+      visible={showSheetNoteModal}
+      conversationId={conversationId}
+      onClose={() => setShowSheetNoteModal(false)}
+      onSave={(note) => {
+        useMessagesStore.getState().createNote(conversationId, note);
+        setShowSheetNoteModal(false);
+        useToastStore.getState().show({ message: 'Note created', type: 'success' });
+      }}
+    />
+    <CreateExpenseModal
+      visible={showSheetExpenseModal}
+      conversationId={conversationId}
+      onClose={() => setShowSheetExpenseModal(false)}
+      onSave={(entry) => {
+        useMessagesStore.getState().createLedgerEntry(conversationId, {
+          description: entry.description,
+          amount: entry.amount,
+          paidBy: entry.paidBy,
+          splitBetween: entry.splitBetween,
+          category: entry.category,
+        });
+        setShowSheetExpenseModal(false);
+        useToastStore.getState().show({ message: 'Expense added', type: 'success' });
+      }}
+    />
+    <CreateReminderModal
+      visible={showSheetReminderModal}
+      conversationId={conversationId}
+      onClose={() => setShowSheetReminderModal(false)}
+      onSave={(reminder) => {
+        useMessagesStore.getState().createReminder(conversationId, {
+          title: reminder.title,
+          description: reminder.description,
+          dueDate: reminder.dueDate instanceof Date ? reminder.dueDate.toISOString() : String(reminder.dueDate),
+          priority: reminder.priority,
+        });
+        setShowSheetReminderModal(false);
+        useToastStore.getState().show({ message: 'Reminder created', type: 'success' });
       }}
     />
     </View>

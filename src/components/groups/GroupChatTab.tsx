@@ -24,6 +24,10 @@ import { TypingIndicator } from '../chat/TypingIndicator';
 import { CallHistoryEntry } from '../call/CallHistoryEntry';
 import { EventSuggestionChip } from './EventSuggestionChip';
 import { CreateEventModal } from './CreateEventModal';
+import { CreatePollModal } from './CreatePollModal';
+import { CreateReminderModal } from '../chat/CreateReminderModal';
+import { CreateExpenseModal } from '../chat/CreateExpenseModal';
+import { CreateNoteModal } from '../chat/CreateNoteModal';
 import { useGroupsStore } from '../../stores/useGroupsStore';
 import { useUserStore } from '../../stores/useUserStore';
 import { useCallStore } from '../../stores/useCallStore';
@@ -88,6 +92,12 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
 
   // Attachment sheet
   const [showAttachmentSheet, setShowAttachmentSheet] = useState(false);
+
+  // Sheet-triggered creation modals
+  const [showCreatePoll, setShowCreatePoll] = useState(false);
+  const [showSheetNoteModal, setShowSheetNoteModal] = useState(false);
+  const [showSheetExpenseModal, setShowSheetExpenseModal] = useState(false);
+  const [showSheetReminderModal, setShowSheetReminderModal] = useState(false);
 
   // Schedule message
   const [showScheduleSheet, setShowScheduleSheet] = useState(false);
@@ -764,6 +774,12 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
       onShareLocation={handleShareLocation}
       onShareContact={handleShareContact}
       onShareSong={handleShareSong}
+      onCreatePoll={() => setShowCreatePoll(true)}
+      onCreateEvent={() => setShowCreateEvent(true)}
+      onCreateNote={() => setShowSheetNoteModal(true)}
+      onCreateExpense={() => setShowSheetExpenseModal(true)}
+      onCreateReminder={() => setShowSheetReminderModal(true)}
+      isGroup={true}
     />
     <SpotifyPickerModal
       visible={showSpotifyPicker}
@@ -781,6 +797,58 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
       onClose={() => setShowCreateEvent(false)}
       onSave={handleSaveEvent}
       suggestedTitle={suggestedEventTitle}
+    />
+    <CreatePollModal
+      visible={showCreatePoll}
+      onClose={() => setShowCreatePoll(false)}
+      onCreatePoll={(question, options, isMultipleChoice) => {
+        useGroupsStore.getState().createPoll(groupId, question, options, isMultipleChoice);
+        setShowCreatePoll(false);
+        useToastStore.getState().show({ message: 'Poll created', type: 'success' });
+      }}
+    />
+    <CreateNoteModal
+      visible={showSheetNoteModal}
+      onClose={() => setShowSheetNoteModal(false)}
+      onSave={(note) => {
+        useGroupsStore.getState().createGroupNote(groupId, note);
+        setShowSheetNoteModal(false);
+        useToastStore.getState().show({ message: 'Note created', type: 'success' });
+      }}
+    />
+    <CreateExpenseModal
+      visible={showSheetExpenseModal}
+      onClose={() => setShowSheetExpenseModal(false)}
+      onSave={(entry) => {
+        useGroupsStore.getState().createGroupLedgerEntry(groupId, {
+          description: entry.description,
+          amount: entry.amount,
+          paidBy: entry.paidBy,
+          splitBetween: entry.splitBetween,
+          category: entry.category,
+          date: new Date(),
+          isSettled: false,
+        });
+        setShowSheetExpenseModal(false);
+        useToastStore.getState().show({ message: 'Expense added', type: 'success' });
+      }}
+    />
+    <CreateReminderModal
+      visible={showSheetReminderModal}
+      onClose={() => setShowSheetReminderModal(false)}
+      onSave={(reminder) => {
+        const userId = useUserStore.getState().currentUser?.id ?? '';
+        useGroupsStore.getState().createGroupReminder(groupId, {
+          title: reminder.title,
+          description: reminder.description,
+          dueDate: reminder.dueDate instanceof Date ? reminder.dueDate : new Date(reminder.dueDate),
+          priority: reminder.priority,
+          isCompleted: false,
+          createdBy: userId,
+        });
+        setShowSheetReminderModal(false);
+        useToastStore.getState().show({ message: 'Reminder created', type: 'success' });
+      }}
     />
     </View>
   );
