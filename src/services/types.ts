@@ -62,7 +62,7 @@ export interface IMessagesRepository {
     conversationId: string,
     content: string,
     senderId: string,
-    options?: { type?: MessageType; metadata?: Record<string, unknown> },
+    options?: { type?: MessageType; metadata?: Record<string, unknown>; isPrivate?: boolean; channelId?: string | null },
   ): Promise<Message>;
   createConversation(participantIds: string[]): Promise<Conversation>;
   deleteMessage(messageId: string): Promise<void>;
@@ -106,7 +106,7 @@ export interface IGroupsRepository {
     groupId: string,
     content: string,
     senderId: string,
-    options?: { type?: MessageType; metadata?: Record<string, unknown> },
+    options?: { type?: MessageType; metadata?: Record<string, unknown>; isPrivate?: boolean; channelId?: string | null },
   ): Promise<Message>;
   deleteGroupMessage(messageId: string): Promise<void>;
   toggleGroupReaction(messageId: string, emoji: string): Promise<void>;
