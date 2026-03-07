@@ -1,4 +1,4 @@
-import { Message, Group, RSVPStatus, Note, Reminder, LedgerEntry, SharedObject, SharedObjectType, Poll, DisappearingDuration, ItineraryItem, GroupEvent } from '../../types';
+import { Message, Group, RSVPStatus, Note, Reminder, LedgerEntry, SharedObject, SharedObjectType, Poll, DisappearingDuration, ItineraryItem, GroupEvent, Trip } from '../../types';
 import { MOCK_GROUPS } from '../../mocks/groups';
 import { MOCK_GROUP_MESSAGES } from '../../mocks/messages';
 import { MOCK_POLLS } from '../../mocks/polls';
@@ -190,6 +190,20 @@ export const mockGroupsRepository: IGroupsRepository = {
   // Events
   async createEvent(groupId: string, event: Omit<GroupEvent, 'id' | 'groupId' | 'createdBy' | 'attendees'>): Promise<GroupEvent> {
     return { ...event, id: `evt-${Date.now()}`, groupId, createdBy: 'current-user', attendees: [] };
+  },
+
+  // Trips
+  async createTrip(groupId: string, trip: Omit<Trip, 'id' | 'groupId' | 'itinerary' | 'participants'>): Promise<Trip> {
+    const group = groups.find((g) => g.id === groupId);
+    const newTrip: Trip = {
+      ...trip,
+      id: `trip-${Date.now()}`,
+      groupId,
+      itinerary: [],
+      participants: group?.members ?? [],
+    };
+    groups = groups.map((g) => (g.id === groupId ? { ...g, trip: newTrip } : g));
+    return newTrip;
   },
 
   // Itinerary

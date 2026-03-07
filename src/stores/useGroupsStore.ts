@@ -51,6 +51,7 @@ interface GroupsState {
   leaveGroup: (groupId: string) => void;
   updateGroup: (groupId: string, updates: UpdateGroupInput) => Promise<Group>;
   toggleAdmin: (groupId: string, memberId: string) => void;
+  createTrip: (groupId: string, trip: Omit<import('../types').Trip, 'id' | 'groupId' | 'itinerary' | 'participants'>) => void;
   addItineraryItem: (groupId: string, item: import('../types').ItineraryItem) => void;
   editItineraryItem: (groupId: string, itemId: string, updates: Partial<import('../types').ItineraryItem>) => void;
   deleteItineraryItem: (groupId: string, itemId: string) => void;
@@ -768,6 +769,33 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
       set((state) => ({
         groups: state.groups.map((g) =>
           g.id === groupId ? { ...g, admins: originalAdmins } : g,
+        ),
+      }));
+    });
+  },
+
+  createTrip: (groupId, tripInput) => {
+    const group = get().groups.find((g) => g.id === groupId);
+    if (!group) return;
+
+    const newTrip = {
+      ...tripInput,
+      id: `trip-${Date.now()}`,
+      groupId,
+      itinerary: [],
+      participants: group.members,
+    };
+
+    set((state) => ({
+      groups: state.groups.map((g) =>
+        g.id === groupId ? { ...g, trip: newTrip } : g,
+      ),
+    }));
+
+    groupsRepository.createTrip(groupId, tripInput).catch(() => {
+      set((state) => ({
+        groups: state.groups.map((g) =>
+          g.id === groupId ? { ...g, trip: undefined } : g,
         ),
       }));
     });
