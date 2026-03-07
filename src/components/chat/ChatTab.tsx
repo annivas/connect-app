@@ -828,6 +828,10 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
       onClose={() => setShowSheetNoteModal(false)}
       onSave={(note) => {
         useMessagesStore.getState().createNote(conversationId, note);
+        const userId = useUserStore.getState().currentUser?.id;
+        if (userId) {
+          sendMessage(conversationId, `Created a note: ${note.title}`, userId);
+        }
         setShowSheetNoteModal(false);
         useToastStore.getState().show({ message: 'Note created', type: 'success' });
       }}
@@ -844,6 +848,10 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
           splitBetween: entry.splitBetween,
           category: entry.category,
         });
+        const userId = useUserStore.getState().currentUser?.id;
+        if (userId) {
+          sendMessage(conversationId, `Added an expense: ${entry.description} — $${entry.amount.toFixed(2)}`, userId);
+        }
         setShowSheetExpenseModal(false);
         useToastStore.getState().show({ message: 'Expense added', type: 'success' });
       }}
@@ -859,6 +867,10 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
           dueDate: reminder.dueDate instanceof Date ? reminder.dueDate.toISOString() : String(reminder.dueDate),
           priority: reminder.priority,
         });
+        const userId = useUserStore.getState().currentUser?.id;
+        if (userId) {
+          sendMessage(conversationId, `Set a reminder: ${reminder.title}`, userId);
+        }
         setShowSheetReminderModal(false);
         useToastStore.getState().show({ message: 'Reminder created', type: 'success' });
       }}

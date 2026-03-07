@@ -1076,12 +1076,16 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
     }));
 
     groupsRepository.createPoll(groupId, question, options, isMultipleChoice).then((saved) => {
-      set((state) => ({
-        groupPolls: {
-          ...state.groupPolls,
-          [groupId]: (state.groupPolls[groupId] ?? []).map((p) => p.id === optimisticId ? saved : p),
-        },
-      }));
+      set((state) => {
+        const current = state.groupPolls[groupId] ?? [];
+        const hasRealtimeCopy = current.some((p) => p.id === saved.id);
+        // If realtime already inserted the saved poll, just remove the optimistic entry;
+        // otherwise replace the optimistic entry with the saved one.
+        const updated = hasRealtimeCopy
+          ? current.filter((p) => p.id !== optimisticId)
+          : current.map((p) => p.id === optimisticId ? saved : p);
+        return { groupPolls: { ...state.groupPolls, [groupId]: updated } };
+      });
     }).catch(() => {
       set((state) => ({
         groupPolls: {
