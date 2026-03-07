@@ -24,7 +24,7 @@ export const mockGroupsRepository: IGroupsRepository = {
     return filtered.slice(-limit);
   },
 
-  async sendGroupMessage(groupId: string, content: string, senderId: string, options?: { type?: import('../../types').MessageType; metadata?: Record<string, unknown> }) {
+  async sendGroupMessage(groupId: string, content: string, senderId: string, options?: { type?: import('../../types').MessageType; metadata?: Record<string, unknown>; isPrivate?: boolean; channelId?: string | null }) {
     const newMessage: Message = {
       id: `gmsg-${Date.now()}`,
       conversationId: groupId,
@@ -34,6 +34,8 @@ export const mockGroupsRepository: IGroupsRepository = {
       type: options?.type ?? 'text',
       metadata: options?.metadata,
       isRead: true,
+      isPrivate: options?.isPrivate,
+      channelId: options?.channelId,
     };
     groupMessages = [...groupMessages, newMessage];
     groups = groups.map((g) =>

@@ -495,10 +495,12 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     messagesRepository
       .sendMessage(conversationId, content, senderId, sendOptions)
       .then((savedMessage) => {
-        // Replace optimistic message with the saved one
+        // Replace optimistic message with the saved one, preserving channelId/isPrivate
         set((state) => ({
           messages: state.messages.map((m) =>
-            m.id === messageId ? { ...savedMessage, sendStatus: 'sent' as const } : m,
+            m.id === messageId
+              ? { ...savedMessage, sendStatus: 'sent' as const, channelId: savedMessage.channelId ?? m.channelId, isPrivate: savedMessage.isPrivate ?? m.isPrivate }
+              : m,
           ),
         }));
       })

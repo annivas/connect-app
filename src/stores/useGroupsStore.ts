@@ -577,9 +577,12 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
     groupsRepository
       .sendGroupMessage(groupId, content, senderId, sendOptions)
       .then((savedMessage) => {
+        // Preserve channelId/isPrivate from optimistic message if not in saved
         set((s) => ({
           groupMessages: s.groupMessages.map((m) =>
-            m.id === messageId ? { ...savedMessage, sendStatus: 'sent' as const } : m,
+            m.id === messageId
+              ? { ...savedMessage, sendStatus: 'sent' as const, channelId: savedMessage.channelId ?? m.channelId, isPrivate: savedMessage.isPrivate ?? m.isPrivate }
+              : m,
           ),
         }));
       })
