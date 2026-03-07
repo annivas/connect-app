@@ -9,6 +9,7 @@ import { IconButton } from '../../../src/components/ui/IconButton';
 import { Avatar } from '../../../src/components/ui/Avatar';
 import { GroupChatTab } from '../../../src/components/groups/GroupChatTab';
 import { HouseholdTab } from '../../../src/components/groups/HouseholdTab';
+import { TripTab } from '../../../src/components/groups/TripTab';
 import { InChatSearchBar } from '../../../src/components/chat/InChatSearchBar';
 import { DisappearingMessagesSheet } from '../../../src/components/chat/DisappearingMessagesSheet';
 import { CreatePollModal } from '../../../src/components/groups/CreatePollModal';
@@ -25,6 +26,7 @@ export default function GroupDetailScreen() {
   const [showCreatePoll, setShowCreatePoll] = React.useState(false);
   const [showDisappearingSheet, setShowDisappearingSheet] = React.useState(false);
   const [householdActiveTab, setHouseholdActiveTab] = useState<'chat' | 'household'>('chat');
+  const [tripActiveTab, setTripActiveTab] = useState<'chat' | 'trip'>('chat');
 
   // Mark group as read when screen opens
   useEffect(() => {
@@ -192,6 +194,41 @@ export default function GroupDetailScreen() {
         </View>
       )}
 
+      {/* Trip tab toggle */}
+      {group.type === 'trip' && group.trip && (
+        <View className="flex-row px-4 pt-2 pb-1 gap-2">
+          {(['chat', 'trip'] as const).map((tab) => (
+            <Pressable
+              key={tab}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setTripActiveTab(tab);
+              }}
+              className="flex-1"
+            >
+              <View
+                className={`flex-row items-center justify-center rounded-xl py-2 ${
+                  tripActiveTab === tab ? 'bg-accent-primary' : 'bg-surface'
+                }`}
+              >
+                <Ionicons
+                  name={tab === 'chat' ? 'chatbubbles-outline' : 'airplane-outline'}
+                  size={15}
+                  color={tripActiveTab === tab ? '#FFFFFF' : '#7A6355'}
+                />
+                <Text
+                  className={`text-xs font-medium ml-1.5 ${
+                    tripActiveTab === tab ? 'text-white' : 'text-text-secondary'
+                  }`}
+                >
+                  {tab === 'chat' ? 'Chat' : 'Trip'}
+                </Text>
+              </View>
+            </Pressable>
+          ))}
+        </View>
+      )}
+
       {/* Main content area */}
       {group.type === 'household' && group.household && householdActiveTab === 'household' ? (
         <HouseholdTab
@@ -241,6 +278,8 @@ export default function GroupDetailScreen() {
             useGroupsStore.getState().updateGroup(id!, { household: { ...g.household, recurringBills: updatedBills } } as any);
           }}
         />
+      ) : group.type === 'trip' && group.trip && tripActiveTab === 'trip' ? (
+        <TripTab groupId={id!} />
       ) : (
         <GroupChatTab
           groupId={id!}
