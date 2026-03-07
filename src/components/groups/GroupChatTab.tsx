@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, View, Text, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Platform, View, Text, ActivityIndicator, Alert } from 'react-native';
 import { useToastStore } from '../../stores/useToastStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
@@ -8,7 +8,6 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Contacts from 'expo-contacts';
 import Constants from 'expo-constants';
-import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { MessageBubble } from '../chat/MessageBubble';
 import { MessageInput } from '../chat/MessageInput';
@@ -54,6 +53,7 @@ interface Props {
   groupId: string;
   isPrivate?: boolean;
   channelId?: string | null;
+
   highlightText?: string;
   matchingMessageIds?: Set<string>;
 }
@@ -62,11 +62,13 @@ interface Props {
 const GROUP_THRESHOLD_MINUTES = 3;
 
 export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, matchingMessageIds }: Props) {
+
   const listRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
   const { containerRef, offset: kbOffset, onLayout } = useKeyboardOffset();
 
   const messages = useGroupsStore(useShallow((s) => s.getGroupMessages(groupId, isPrivate, channelId)));
+
   const sendGroupMessage = useGroupsStore((s) => s.sendGroupMessage);
   const retryGroupMessage = useGroupsStore((s) => s.retryGroupMessage);
   const hasMore = useGroupsStore((s) => s.hasMoreMessages[groupId] ?? false);
@@ -203,6 +205,7 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
           const userId = useUserStore.getState().currentUser?.id;
           if (userId) {
             store.sendGroupMessage(groupId, sched.content, userId, { ...(isPrivate ? { isPrivate } : {}), ...(channelId ? { channelId } : {}) });
+
             store.cancelGroupScheduledMessage(sched.id);
           }
         }
@@ -216,6 +219,7 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
     const userId = useUserStore.getState().currentUser?.id;
     if (!userId) return;
     sendGroupMessage(groupId, content, userId, { ...(isPrivate ? { isPrivate } : {}), ...(channelId ? { channelId } : {}) });
+
   };
 
   const handleDelete = (messageId: string) => {
@@ -341,6 +345,7 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
       metadata: { width: asset.width, height: asset.height },
       isPrivate,
       channelId,
+
     });
   };
 
@@ -366,6 +371,7 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
       metadata: { width: asset.width, height: asset.height },
       isPrivate,
       channelId,
+
     });
   };
 
@@ -391,6 +397,7 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
         },
         isPrivate,
         channelId,
+
       });
     } catch {
       useToastStore.getState().show({ message: 'Failed to pick document. Please try again.', type: 'error' });
@@ -421,6 +428,7 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
       },
       isPrivate,
       channelId,
+
     });
   };
 
@@ -440,6 +448,7 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
       metadata: { ...song },
       isPrivate,
       channelId,
+
     });
   };
 
@@ -470,6 +479,7 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
         },
         isPrivate,
         channelId,
+
       });
     } catch {
       useToastStore.getState().show({ message: 'Failed to pick contact. Please try again.', type: 'error' });
@@ -489,6 +499,7 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
       },
       isPrivate,
       channelId,
+
     });
   }, [groupId, sendGroupMessage, channelId]);
 
@@ -557,15 +568,6 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
           }
         }}
       />
-
-      {isPrivate && (
-        <View className="flex-row items-center justify-center py-2 px-4 bg-background-tertiary rounded-lg mx-4 mt-1 mb-1">
-          <Ionicons name="lock-closed" size={12} color="#8B6F5A" />
-          <Text className="text-text-tertiary text-xs ml-1">
-            Private mode — AI cannot read these messages
-          </Text>
-        </View>
-      )}
 
       <FlatList<TimelineItem>
         ref={listRef as React.RefObject<FlatList<TimelineItem>>}

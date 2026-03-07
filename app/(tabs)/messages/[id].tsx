@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useEffect, useState } from 'react';
+import React, { useLayoutEffect, useEffect } from 'react';
 import { View, Text, Pressable, Platform, ActionSheetIOS, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,7 +7,6 @@ import { useShallow } from 'zustand/react/shallow';
 import { IconButton } from '../../../src/components/ui/IconButton';
 import { Avatar } from '../../../src/components/ui/Avatar';
 import { ChatTab } from '../../../src/components/chat/ChatTab';
-import { ChatModeToggle, type ChatMode } from '../../../src/components/chat/ChatModeToggle';
 import { InChatSearchBar } from '../../../src/components/chat/InChatSearchBar';
 import { DisappearingMessagesSheet } from '../../../src/components/chat/DisappearingMessagesSheet';
 import { ChannelStrip } from '../../../src/components/chat/ChannelStrip';
@@ -24,10 +23,10 @@ export default function ConversationDetailScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const [showDisappearingSheet, setShowDisappearingSheet] = React.useState(false);
-  const [chatMode, setChatMode] = useState<ChatMode>('chat');
-  const [showCreateChannel, setShowCreateChannel] = useState(false);
-  const [showEditChannel, setShowEditChannel] = useState(false);
-  const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
+  const [showCreateChannel, setShowCreateChannel] = React.useState(false);
+  const [showEditChannel, setShowEditChannel] = React.useState(false);
+  const [editingChannel, setEditingChannel] = React.useState<Channel | null>(null);
+
 
   // Mark conversation as read when screen opens
   useEffect(() => {
@@ -58,8 +57,9 @@ export default function ConversationDetailScreen() {
   const activeChannelId = useMessagesStore((s) => s.getActiveChannel(id!));
   const channels = conversation?.channels ?? [];
   const messages = useMessagesStore(useShallow((s) =>
-    s.getMessagesByConversationId(id!, chatMode === 'private', chatMode === 'chat' ? activeChannelId : undefined)
+    s.getMessagesByConversationId(id!, false, activeChannelId)
   ));
+
   const getUserById = useUserStore((s) => s.getUserById);
 
   const {
@@ -71,11 +71,6 @@ export default function ConversationDetailScreen() {
     matchingMessageIds,
     matchCount,
   } = useMessageSearch(messages);
-
-  // Clear search when switching chat modes
-  useEffect(() => {
-    clearSearch();
-  }, [chatMode]);
 
   const showMenu = () => {
     const { togglePin, toggleMute, getConversationById } = useMessagesStore.getState();
@@ -179,11 +174,8 @@ export default function ConversationDetailScreen() {
         />
       </View>
 
-      {/* Chat / Private mode toggle */}
-      <ChatModeToggle activeMode={chatMode} onModeChange={setChatMode} />
-
-      {/* Channel strip — shown only in chat mode when channels exist */}
-      {chatMode === 'chat' && channels.length > 0 && (
+      {/* Channel strip — shown when channels exist */}
+      {channels.length > 0 && (
         <ChannelStrip
           channels={channels}
           activeChannelId={activeChannelId}
@@ -198,6 +190,7 @@ export default function ConversationDetailScreen() {
         />
       )}
 
+
       {/* In-chat search bar */}
       <InChatSearchBar
         visible={isSearching}
@@ -210,8 +203,8 @@ export default function ConversationDetailScreen() {
       {/* Full-screen chat */}
       <ChatTab
         conversationId={id!}
-        isPrivate={chatMode === 'private'}
-        channelId={chatMode === 'chat' ? activeChannelId : undefined}
+        channelId={activeChannelId}
+
         highlightText={isSearching ? chatSearchQuery : undefined}
         matchingMessageIds={isSearching ? matchingMessageIds : undefined}
       />

@@ -244,7 +244,7 @@ export const supabaseGroupsRepository: IGroupsRepository = {
     return data.reverse().map(adaptMessage);
   },
 
-  async sendGroupMessage(groupId: string, content: string, senderId: string, options?: { type?: import('../../types').MessageType; metadata?: Record<string, unknown>; isPrivate?: boolean }): Promise<Message> {
+  async sendGroupMessage(groupId: string, content: string, senderId: string, options?: { type?: import('../../types').MessageType; metadata?: Record<string, unknown> }): Promise<Message> {
     const { data, error } = await supabase
       .from('messages')
       .insert({
@@ -255,7 +255,6 @@ export const supabaseGroupsRepository: IGroupsRepository = {
         type: options?.type ?? 'text',
         metadata: options?.metadata ? JSON.stringify(options.metadata) : null,
         is_read: true,
-        is_private: options?.isPrivate ?? false,
       })
       .select()
       .single();

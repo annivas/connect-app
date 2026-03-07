@@ -8,8 +8,8 @@ import { useShallow } from 'zustand/react/shallow';
 import { IconButton } from '../../../src/components/ui/IconButton';
 import { Avatar } from '../../../src/components/ui/Avatar';
 import { GroupChatTab } from '../../../src/components/groups/GroupChatTab';
-import { ChatModeToggle, type ChatMode } from '../../../src/components/chat/ChatModeToggle';
 import { HouseholdTab } from '../../../src/components/groups/HouseholdTab';
+import { TripTab } from '../../../src/components/groups/TripTab';
 import { InChatSearchBar } from '../../../src/components/chat/InChatSearchBar';
 import { DisappearingMessagesSheet } from '../../../src/components/chat/DisappearingMessagesSheet';
 import { ChannelStrip } from '../../../src/components/chat/ChannelStrip';
@@ -33,7 +33,7 @@ export default function GroupDetailScreen() {
   const [showEditChannel, setShowEditChannel] = useState(false);
   const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
   const [householdActiveTab, setHouseholdActiveTab] = useState<'chat' | 'household'>('chat');
-  const [chatMode, setChatMode] = useState<ChatMode>('chat');
+  const [tripActiveTab, setTripActiveTab] = useState<'chat' | 'trip'>('chat');
 
   // Mark group as read when screen opens
   useEffect(() => {
@@ -64,8 +64,9 @@ export default function GroupDetailScreen() {
   const activeChannelId = useGroupsStore((s) => s.getActiveChannel(id!));
   const channels = group?.channels ?? [];
   const groupMessages = useGroupsStore(useShallow((s) =>
-    s.getGroupMessages(id!, chatMode === 'private', chatMode === 'chat' ? activeChannelId : undefined)
+    s.getGroupMessages(id!, false, activeChannelId)
   ));
+
 
   const {
     searchQuery: chatSearchQuery,
@@ -76,11 +77,6 @@ export default function GroupDetailScreen() {
     matchingMessageIds,
     matchCount,
   } = useMessageSearch(groupMessages);
-
-  // Clear search when switching chat modes
-  useEffect(() => {
-    clearSearch();
-  }, [chatMode]);
 
   const handleStartGroupCall = (type: 'voice' | 'video') => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -169,11 +165,8 @@ export default function GroupDetailScreen() {
         <IconButton icon="ellipsis-horizontal" onPress={showMenu} />
       </View>
 
-      {/* Chat / Private mode toggle */}
-      <ChatModeToggle activeMode={chatMode} onModeChange={setChatMode} />
-
-      {/* Channel strip — shown only in chat mode when channels exist */}
-      {chatMode === 'chat' && channels.length > 0 && (
+      {/* Channel strip — shown when channels exist */}
+      {channels.length > 0 && (
         <ChannelStrip
           channels={channels}
           activeChannelId={activeChannelId}
@@ -187,6 +180,7 @@ export default function GroupDetailScreen() {
           }}
         />
       )}
+
 
       {/* In-chat search bar */}
       <InChatSearchBar
@@ -232,6 +226,41 @@ export default function GroupDetailScreen() {
         </View>
       )}
 
+      {/* Trip tab toggle */}
+      {group.type === 'trip' && group.trip && (
+        <View className="flex-row px-4 pt-2 pb-1 gap-2">
+          {(['chat', 'trip'] as const).map((tab) => (
+            <Pressable
+              key={tab}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setTripActiveTab(tab);
+              }}
+              className="flex-1"
+            >
+              <View
+                className={`flex-row items-center justify-center rounded-xl py-2 ${
+                  tripActiveTab === tab ? 'bg-accent-primary' : 'bg-surface'
+                }`}
+              >
+                <Ionicons
+                  name={tab === 'chat' ? 'chatbubbles-outline' : 'airplane-outline'}
+                  size={15}
+                  color={tripActiveTab === tab ? '#FFFFFF' : '#7A6355'}
+                />
+                <Text
+                  className={`text-xs font-medium ml-1.5 ${
+                    tripActiveTab === tab ? 'text-white' : 'text-text-secondary'
+                  }`}
+                >
+                  {tab === 'chat' ? 'Chat' : 'Trip'}
+                </Text>
+              </View>
+            </Pressable>
+          ))}
+        </View>
+      )}
+
       {/* Main content area */}
       {group.type === 'household' && group.household && householdActiveTab === 'household' ? (
         <HouseholdTab
@@ -261,7 +290,7 @@ export default function GroupDetailScreen() {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             const g = useGroupsStore.getState().getGroupById(id!);
             if (!g?.household) return;
-            const newItem = { id: `shop-${Date.now()}`, name, isChecked: false, addedBy: CURRENT_USER_ID };
+            const newItem = { id: `shop-${Date.now()}`, name, isChecked: false, addedBy: CURRENT_USER_ID, addedAt: new Date() };
             useGroupsStore.getState().updateGroup(id!, { household: { ...g.household, shoppingList: [...g.household.shoppingList, newItem] } } as any);
           }}
           onDeleteShoppingItem={(itemId) => {
@@ -281,11 +310,14 @@ export default function GroupDetailScreen() {
             useGroupsStore.getState().updateGroup(id!, { household: { ...g.household, recurringBills: updatedBills } } as any);
           }}
         />
+      ) : group.type === 'trip' && group.trip && tripActiveTab === 'trip' ? (
+        <TripTab groupId={id!} />
       ) : (
         <GroupChatTab
           groupId={id!}
-          isPrivate={chatMode === 'private'}
-          channelId={chatMode === 'chat' ? activeChannelId : undefined}
+          isPrivate={false}
+          channelId={activeChannelId}
+
           highlightText={isSearching ? chatSearchQuery : undefined}
           matchingMessageIds={isSearching ? matchingMessageIds : undefined}
         />

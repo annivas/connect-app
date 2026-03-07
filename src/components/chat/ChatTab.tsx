@@ -1,14 +1,14 @@
 import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, View, Text, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Platform, View, Text, ActivityIndicator, Alert } from 'react-native';
 import { useToastStore } from '../../stores/useToastStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 import { isSameDay, differenceInMinutes } from 'date-fns';
+import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Contacts from 'expo-contacts';
 import Constants from 'expo-constants';
-import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { MessageBubble } from './MessageBubble';
 import { MessageInput } from './MessageInput';
@@ -27,7 +27,9 @@ import { useMessagesStore } from '../../stores/useMessagesStore';
 import { useUserStore } from '../../stores/useUserStore';
 import { useCallStore } from '../../stores/useCallStore';
 import { getImageGroup } from '../../utils/imageGrouping';
-import type { Message, CallEntry, DisappearingDuration, SongMetadata } from '../../types';
+import { CreateReminderModal } from './CreateReminderModal';
+import { CreateExpenseModal } from './CreateExpenseModal';
+import type { Message, CallEntry, DisappearingDuration, SongMetadata, DetectedAction, User } from '../../types';
 
 /**
  * Dynamically measure the Y position of the ChatTab container to get an accurate
@@ -98,6 +100,11 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
 
   // Attachment sheet
   const [showAttachmentSheet, setShowAttachmentSheet] = useState(false);
+
+  // Action suggestion modals (triggered by smart action chips)
+  const [showActionReminderModal, setShowActionReminderModal] = useState(false);
+  const [showActionExpenseModal, setShowActionExpenseModal] = useState(false);
+  const [actionSuggestionValue, setActionSuggestionValue] = useState('');
 
   // Unread jump button
   const conversationUnreadCount = useMessagesStore(
@@ -249,6 +256,27 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
     ]);
   };
 
+  // ─── Action suggestion handler ──────────────
+  const handleActionSuggestion = useCallback((action: DetectedAction) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setActionSuggestionValue(action.extractedValue);
+
+    switch (action.type) {
+      case 'reminder':
+        setShowActionReminderModal(true);
+        break;
+      case 'expense':
+        setShowActionExpenseModal(true);
+        break;
+      case 'event':
+        useToastStore.getState().show({ message: `Event detected: "${action.extractedValue}"`, type: 'info' });
+        break;
+      case 'link_save':
+        useToastStore.getState().show({ message: 'Link saved to collection', type: 'success' });
+        break;
+    }
+  }, []);
+
   // ─── Attachment handlers ──────────────
   const handleOpenAttachments = () => {
     setShowAttachmentSheet(true);
@@ -278,6 +306,7 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
       metadata: { width: asset.width, height: asset.height },
       isPrivate,
       channelId,
+
     });
   };
 
@@ -303,6 +332,7 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
       metadata: { width: asset.width, height: asset.height },
       isPrivate,
       channelId,
+
     });
   };
 
@@ -328,6 +358,7 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
         },
         isPrivate,
         channelId,
+
       });
     } catch {
       useToastStore.getState().show({ message: 'Failed to pick document. Please try again.', type: 'error' });
@@ -358,6 +389,7 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
       },
       isPrivate,
       channelId,
+
     });
   };
 
@@ -377,6 +409,7 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
       metadata: { ...song },
       isPrivate,
       channelId,
+
     });
   };
 
@@ -407,6 +440,7 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
         },
         isPrivate,
         channelId,
+
       });
     } catch {
       useToastStore.getState().show({ message: 'Failed to pick contact. Please try again.', type: 'error' });
@@ -437,9 +471,7 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
       if (!durationMs) return;
 
       const store = useMessagesStore.getState();
-      const currentMessages = store.messages.filter(
-        (m) => m.conversationId === conversationId,
-      );
+      const currentMessages = store.getMessagesByConversationId(conversationId);
 
       for (const msg of currentMessages) {
         const msgAge = now - new Date(msg.timestamp).getTime();
@@ -468,6 +500,7 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
           const userId = useUserStore.getState().currentUser?.id;
           if (userId) {
             store.sendMessage(conversationId, sched.content, userId, { ...(isPrivate ? { isPrivate } : {}), ...(channelId ? { channelId } : {}) });
+
             store.cancelScheduledMessage(sched.id); // marks as sent/cancelled
           }
         }
@@ -490,6 +523,7 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
       },
       isPrivate,
       channelId,
+
     });
   }, [conversationId, sendMessage, channelId]);
 
@@ -535,15 +569,6 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
           }
         }}
       />
-
-      {isPrivate && (
-        <View className="flex-row items-center justify-center py-2 px-4 bg-background-tertiary rounded-lg mx-4 mt-1 mb-1">
-          <Ionicons name="lock-closed" size={12} color="#8B6F5A" />
-          <Text className="text-text-tertiary text-xs ml-1">
-            Private mode — AI cannot read these messages
-          </Text>
-        </View>
-      )}
 
       <FlatList<TimelineItem>
         ref={listRef as React.RefObject<FlatList<TimelineItem>>}
@@ -612,6 +637,7 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
               highlightText={highlightText}
               isSearchMatch={matchingMessageIds?.has(msg.id)}
               onContextMenu={handleContextMenu}
+              onActionSuggestion={handleActionSuggestion}
               imageGroup={imgGroup?.isLeader ? imgGroup.images : undefined}
             />
           );
@@ -742,6 +768,47 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
       visible={showLocationPicker}
       onClose={() => setShowLocationPicker(false)}
       onSelectLocation={handleLocationSelected}
+    />
+
+    {/* Action suggestion modals */}
+    <CreateReminderModal
+      visible={showActionReminderModal}
+      conversationId={conversationId}
+      onClose={() => {
+        setShowActionReminderModal(false);
+        setActionSuggestionValue('');
+      }}
+      onSave={(reminder) => {
+        useMessagesStore.getState().createReminder(conversationId, {
+          title: reminder.title,
+          description: reminder.description,
+          dueDate: reminder.dueDate instanceof Date ? reminder.dueDate.toISOString() : String(reminder.dueDate),
+          priority: reminder.priority,
+        });
+        setShowActionReminderModal(false);
+        setActionSuggestionValue('');
+        useToastStore.getState().show({ message: 'Reminder created', type: 'success' });
+      }}
+    />
+    <CreateExpenseModal
+      visible={showActionExpenseModal}
+      conversationId={conversationId}
+      onClose={() => {
+        setShowActionExpenseModal(false);
+        setActionSuggestionValue('');
+      }}
+      onSave={(entry) => {
+        useMessagesStore.getState().createLedgerEntry(conversationId, {
+          description: entry.description,
+          amount: entry.amount,
+          paidBy: entry.paidBy,
+          splitBetween: entry.splitBetween,
+          category: entry.category,
+        });
+        setShowActionExpenseModal(false);
+        setActionSuggestionValue('');
+        useToastStore.getState().show({ message: 'Expense added', type: 'success' });
+      }}
     />
     </View>
   );

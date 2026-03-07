@@ -1,6 +1,7 @@
 import { Message, Group, RSVPStatus, Note, Reminder, LedgerEntry, SharedObject, SharedObjectType, Poll, DisappearingDuration, ItineraryItem, GroupEvent } from '../../types';
 import { MOCK_GROUPS } from '../../mocks/groups';
 import { MOCK_GROUP_MESSAGES } from '../../mocks/messages';
+import { MOCK_POLLS } from '../../mocks/polls';
 import { IGroupsRepository, PaginationParams, CreateGroupInput, UpdateGroupInput, CreateNoteInput, UpdateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../types';
 
 let groups = [...MOCK_GROUPS];
@@ -23,7 +24,7 @@ export const mockGroupsRepository: IGroupsRepository = {
     return filtered.slice(-limit);
   },
 
-  async sendGroupMessage(groupId: string, content: string, senderId: string, options?: { type?: import('../../types').MessageType; metadata?: Record<string, unknown>; isPrivate?: boolean }) {
+  async sendGroupMessage(groupId: string, content: string, senderId: string, options?: { type?: import('../../types').MessageType; metadata?: Record<string, unknown> }) {
     const newMessage: Message = {
       id: `gmsg-${Date.now()}`,
       conversationId: groupId,
@@ -33,7 +34,6 @@ export const mockGroupsRepository: IGroupsRepository = {
       type: options?.type ?? 'text',
       metadata: options?.metadata,
       isRead: true,
-      isPrivate: options?.isPrivate,
     };
     groupMessages = [...groupMessages, newMessage];
     groups = groups.map((g) =>
@@ -232,7 +232,7 @@ export const mockGroupsRepository: IGroupsRepository = {
   },
   async votePoll(_pollId: string, _optionId: string): Promise<void> {},
   async closePoll(_pollId: string): Promise<void> {},
-  async getPolls(_groupId: string): Promise<Poll[]> { return []; },
+  async getPolls(groupId: string): Promise<Poll[]> { return MOCK_POLLS[groupId] ?? []; },
 
   // Archive / Unread / Disappearing
   async toggleArchive(_groupId: string): Promise<void> {},

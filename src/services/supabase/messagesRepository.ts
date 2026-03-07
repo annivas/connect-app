@@ -179,7 +179,7 @@ export const supabaseMessagesRepository: IMessagesRepository = {
     conversationId: string,
     content: string,
     senderId: string,
-    options?: { type?: MessageType; metadata?: Record<string, unknown>; isPrivate?: boolean },
+    options?: { type?: MessageType; metadata?: Record<string, unknown> },
   ): Promise<Message> {
     const { data, error } = await supabase
       .from('messages')
@@ -191,7 +191,6 @@ export const supabaseMessagesRepository: IMessagesRepository = {
         type: options?.type ?? 'text',
         metadata: (options?.metadata as any) ?? null,
         is_read: true,
-        is_private: options?.isPrivate ?? false,
       })
       .select()
       .single();

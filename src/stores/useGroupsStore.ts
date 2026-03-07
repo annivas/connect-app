@@ -579,7 +579,7 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
       .then((savedMessage) => {
         set((s) => ({
           groupMessages: s.groupMessages.map((m) =>
-            m.id === messageId ? { ...savedMessage, sendStatus: 'sent' as const, isPrivate: m.isPrivate } : m,
+            m.id === messageId ? { ...savedMessage, sendStatus: 'sent' as const } : m,
           ),
         }));
       })
@@ -603,13 +603,11 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
     }));
 
     groupsRepository
-      .sendGroupMessage(message.conversationId, message.content, message.senderId, {
-        isPrivate: message.isPrivate,
-      })
+      .sendGroupMessage(message.conversationId, message.content, message.senderId)
       .then((savedMessage) => {
         set((state) => ({
           groupMessages: state.groupMessages.map((m) =>
-            m.id === messageId ? { ...savedMessage, sendStatus: 'sent' as const, isPrivate: m.isPrivate } : m,
+            m.id === messageId ? { ...savedMessage, sendStatus: 'sent' as const } : m,
           ),
         }));
       })

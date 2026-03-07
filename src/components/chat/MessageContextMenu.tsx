@@ -7,6 +7,7 @@ import Animated, { FadeIn, FadeOut, FadeInUp } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
 import { ReactionPicker } from './ReactionPicker';
 import type { Message } from '../../types';
+import { useToastStore } from '../../stores/useToastStore';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -90,7 +91,9 @@ export function MessageContextMenu({
   }
 
   if (!isMine) {
-    actions.push({ id: 'report', label: 'Report', icon: 'flag-outline', destructive: true, onPress: onClose });
+    actions.push({ id: 'report', label: 'Report', icon: 'flag-outline', destructive: true, onPress: () => {
+      useToastStore.getState().show({ message: 'Message reported', type: 'success' });
+    } });
   }
 
   const handleAction = (action: ContextMenuAction) => {

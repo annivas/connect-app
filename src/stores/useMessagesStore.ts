@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Message, Conversation, Note, Reminder, LedgerEntry, SharedObject, ScheduledMessage, DisappearingDuration, Channel, ConversationMetadata } from '../types';
+import { Message, Conversation, Note, Reminder, LedgerEntry, SharedObject, SharedObjectType, ScheduledMessage, DisappearingDuration, Channel, ConversationMetadata } from '../types';
 import { messagesRepository } from '../services';
 import { CreateNoteInput, UpdateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../services/types';
 import { supabase } from '../lib/supabase';
@@ -99,7 +99,7 @@ interface MessagesState {
   deleteLedgerEntry: (conversationId: string, entryId: string, channelId?: string | null) => void;
   addSharedObject: (
     conversationId: string,
-    data: { type: 'link'; title: string; description?: string; url: string },
+    data: { type: SharedObjectType; title: string; description?: string; url?: string },
     channelId?: string | null,
   ) => void;
   deleteSharedObject: (conversationId: string, objectId: string, channelId?: string | null) => void;
@@ -498,7 +498,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
         // Replace optimistic message with the saved one
         set((state) => ({
           messages: state.messages.map((m) =>
-            m.id === messageId ? { ...savedMessage, sendStatus: 'sent' as const, isPrivate: m.isPrivate } : m,
+            m.id === messageId ? { ...savedMessage, sendStatus: 'sent' as const } : m,
           ),
         }));
       })
@@ -524,13 +524,11 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     }));
 
     messagesRepository
-      .sendMessage(message.conversationId, message.content, message.senderId, {
-        isPrivate: message.isPrivate,
-      })
+      .sendMessage(message.conversationId, message.content, message.senderId)
       .then((savedMessage) => {
         set((state) => ({
           messages: state.messages.map((m) =>
-            m.id === messageId ? { ...savedMessage, sendStatus: 'sent' as const, isPrivate: m.isPrivate } : m,
+            m.id === messageId ? { ...savedMessage, sendStatus: 'sent' as const } : m,
           ),
         }));
       })
@@ -826,7 +824,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
       url: data.url,
       sharedBy: currentUserId,
       sharedAt: new Date(),
-      metadata: { url: data.url },
+      metadata: { url: data.url ?? '' },
     };
 
     set((state) => ({
