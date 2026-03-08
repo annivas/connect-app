@@ -11,6 +11,7 @@ import type {
   Message,
   MessageType,
   Reaction,
+  Channel,
   Conversation,
   SharedObject,
   SharedObjectType,
@@ -79,6 +80,30 @@ export function adaptMessage(row: Tables<'messages'>): Message {
     isEdited: meta?.edited === true,
     isRead: row.is_read,
     channelId: row.channel_id ?? undefined,
+  };
+}
+
+// ─── Channels ───────────────────────────────────
+
+export function adaptChannel(row: Tables<'channels'>): Channel {
+  return {
+    id: row.id,
+    name: row.name,
+    emoji: row.emoji ?? undefined,
+    color: row.color,
+    createdBy: row.created_by,
+    createdAt: new Date(row.created_at),
+    metadata: {
+      sharedObjects: [],
+      notes: [],
+      reminders: [],
+      ledgerBalance: 0,
+      ledgerEntries: [],
+      pinnedMessages: [],
+      starredMessages: [],
+      polls: [],
+      callHistory: [],
+    },
   };
 }
 
@@ -252,6 +277,7 @@ export interface ConversationAssemblyData {
   notes: Note[];
   reminders: Reminder[];
   ledgerEntries: LedgerEntry[];
+  channels: Channel[];
 }
 
 export function adaptConversation(data: ConversationAssemblyData): Conversation {
@@ -270,6 +296,7 @@ export function adaptConversation(data: ConversationAssemblyData): Conversation 
     isMuted: data.isMuted,
     createdAt: new Date(data.conversation.created_at),
     updatedAt: new Date(data.conversation.updated_at),
+    channels: data.channels.length > 0 ? data.channels : undefined,
     metadata: {
       sharedObjects: data.sharedObjects,
       notes: data.notes,
@@ -299,6 +326,7 @@ export interface GroupAssemblyData {
   reminders?: Reminder[];
   ledgerEntries?: LedgerEntry[];
   polls?: Poll[];
+  channels: Channel[];
 }
 
 export function adaptGroup(data: GroupAssemblyData): Group {
@@ -324,6 +352,7 @@ export function adaptGroup(data: GroupAssemblyData): Group {
     isPinned: data.isPinned,
     isMuted: data.isMuted,
     unreadCount: 0,
+    channels: data.channels.length > 0 ? data.channels : undefined,
     metadata: {
       sharedObjects: data.sharedObjects,
       notes: data.notes,

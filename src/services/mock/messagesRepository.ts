@@ -1,4 +1,4 @@
-import { Message, MessageType, Conversation, Note, Reminder, LedgerEntry, Reaction, SharedObject, SharedObjectType, DisappearingDuration } from '../../types';
+import { Message, MessageType, Conversation, Note, Reminder, LedgerEntry, Reaction, SharedObject, SharedObjectType, DisappearingDuration, Channel } from '../../types';
 import { MOCK_CONVERSATIONS } from '../../mocks/conversations';
 import { MOCK_MESSAGES } from '../../mocks/messages';
 import { IMessagesRepository, PaginationParams, CreateNoteInput, UpdateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../types';
@@ -313,5 +313,44 @@ export const mockMessagesRepository: IMessagesRepository = {
       sharedAt: new Date(),
       metadata: { url: data.url } as SharedObject['metadata'],
     };
+  },
+
+  async createChannel(conversationId: string, name: string, emoji?: string, color = '#D4764E'): Promise<Channel> {
+    const newChannel: Channel = {
+      id: `ch-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      name,
+      emoji,
+      color,
+      createdBy: 'current-user',
+      createdAt: new Date(),
+      metadata: { sharedObjects: [], notes: [], reminders: [], ledgerBalance: 0, ledgerEntries: [], pinnedMessages: [], starredMessages: [], polls: [], callHistory: [] },
+    };
+    conversations = conversations.map((c) =>
+      c.id === conversationId ? { ...c, channels: [...(c.channels || []), newChannel] } : c,
+    );
+    return newChannel;
+  },
+
+  async updateChannel(channelId: string, updates: Partial<Pick<Channel, 'name' | 'emoji' | 'color'>>): Promise<Channel> {
+    let updated: Channel | undefined;
+    conversations = conversations.map((c) => ({
+      ...c,
+      channels: (c.channels || []).map((ch) => {
+        if (ch.id === channelId) {
+          updated = { ...ch, ...updates };
+          return updated;
+        }
+        return ch;
+      }),
+    }));
+    if (!updated) throw new Error('Channel not found');
+    return updated;
+  },
+
+  async deleteChannel(channelId: string): Promise<void> {
+    conversations = conversations.map((c) => ({
+      ...c,
+      channels: (c.channels || []).filter((ch) => ch.id !== channelId),
+    }));
   },
 };

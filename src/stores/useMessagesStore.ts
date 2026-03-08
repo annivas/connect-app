@@ -322,8 +322,9 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
   // ─── Channel Operations ──────────────────────────
 
   createChannel: (conversationId, name, emoji, color = '#D4764E') => {
+    const tempId = `ch-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const newChannel: Channel = {
-      id: `ch-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      id: tempId,
       name,
       emoji,
       color,
@@ -341,6 +342,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
         callHistory: [],
       },
     };
+    // Optimistic update
     set((state) => ({
       conversations: state.conversations.map((c) =>
         c.id === conversationId
@@ -348,6 +350,16 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
           : c,
       ),
     }));
+    // Persist to database
+    messagesRepository.createChannel(conversationId, name, emoji, color).then((saved) => {
+      set((state) => ({
+        conversations: state.conversations.map((c) =>
+          c.id === conversationId
+            ? { ...c, channels: (c.channels || []).map((ch) => ch.id === tempId ? saved : ch) }
+            : c,
+        ),
+      }));
+    });
   },
 
   deleteChannel: (conversationId, channelId) => {
@@ -366,6 +378,8 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
         ? { ...state.activeChannel, [conversationId]: null }
         : state.activeChannel,
     }));
+    // Persist to database
+    messagesRepository.deleteChannel(channelId);
   },
 
   updateChannel: (conversationId, channelId, updates) => {
@@ -381,6 +395,8 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
           : c,
       ),
     }));
+    // Persist to database
+    messagesRepository.updateChannel(channelId, updates);
   },
 
   setActiveChannel: (conversationId, channelId) => {

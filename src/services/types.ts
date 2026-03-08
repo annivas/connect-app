@@ -1,4 +1,4 @@
-import { Conversation, Message, MessageType, Group, GroupType, User, Collection, Note, NoteBlock, Reminder, LedgerEntry, RSVPStatus, SharedObject, SharedObjectType, Poll, DisappearingDuration, ItineraryItem, GroupEvent, Trip } from '../types';
+import { Conversation, Message, MessageType, Group, GroupType, User, Collection, Note, NoteBlock, Reminder, LedgerEntry, RSVPStatus, SharedObject, SharedObjectType, Poll, DisappearingDuration, ItineraryItem, GroupEvent, Trip, Channel } from '../types';
 
 // ─── Pagination ─────────────────────────────
 export interface PaginationParams {
@@ -96,6 +96,11 @@ export interface IMessagesRepository {
   markAsUnread(conversationId: string): Promise<void>;
   setDisappearingDuration(conversationId: string, duration: DisappearingDuration): Promise<void>;
   addSharedObject(conversationId: string, data: { type: SharedObjectType; title: string; description?: string; url?: string }): Promise<SharedObject>;
+
+  // Channels
+  createChannel(conversationId: string, name: string, emoji?: string, color?: string): Promise<Channel>;
+  updateChannel(channelId: string, updates: Partial<Pick<Channel, 'name' | 'emoji' | 'color'>>): Promise<Channel>;
+  deleteChannel(channelId: string): Promise<void>;
 }
 
 // ─── Groups Repository ──────────────────────
@@ -159,6 +164,11 @@ export interface IGroupsRepository {
   // Star / Pin for group messages
   toggleStarGroupMessage(messageId: string, isStarred: boolean): Promise<void>;
   togglePinGroupMessage(messageId: string, isPinned: boolean): Promise<void>;
+
+  // Channels
+  createChannel(groupId: string, name: string, emoji?: string, color?: string): Promise<Channel>;
+  updateChannel(channelId: string, updates: Partial<Pick<Channel, 'name' | 'emoji' | 'color'>>): Promise<Channel>;
+  deleteChannel(channelId: string): Promise<void>;
 }
 
 // ─── User Repository ────────────────────────

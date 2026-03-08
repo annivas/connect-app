@@ -402,8 +402,9 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
   getGroupById: (id) => get().groups.find((g) => g.id === id),
 
   createChannel: (groupId, name, emoji, color = '#D4764E') => {
+    const tempId = `ch-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const newChannel: Channel = {
-      id: `ch-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      id: tempId,
       name,
       emoji,
       color,
@@ -421,6 +422,7 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         callHistory: [],
       },
     };
+    // Optimistic update
     set((state) => ({
       groups: state.groups.map((g) =>
         g.id === groupId
@@ -428,6 +430,16 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
           : g,
       ),
     }));
+    // Persist to database
+    groupsRepository.createChannel(groupId, name, emoji, color).then((saved) => {
+      set((state) => ({
+        groups: state.groups.map((g) =>
+          g.id === groupId
+            ? { ...g, channels: (g.channels || []).map((ch) => ch.id === tempId ? saved : ch) }
+            : g,
+        ),
+      }));
+    });
   },
 
   deleteChannel: (groupId, channelId) => {
@@ -446,6 +458,8 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         ? { ...state.activeChannel, [groupId]: null }
         : state.activeChannel,
     }));
+    // Persist to database
+    groupsRepository.deleteChannel(channelId);
   },
 
   updateChannel: (groupId, channelId, updates) => {
@@ -461,6 +475,8 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
           : g,
       ),
     }));
+    // Persist to database
+    groupsRepository.updateChannel(channelId, updates);
   },
 
   setActiveChannel: (groupId, channelId) => {

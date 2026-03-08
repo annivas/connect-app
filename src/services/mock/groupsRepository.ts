@@ -1,4 +1,4 @@
-import { Message, Group, RSVPStatus, Note, Reminder, LedgerEntry, SharedObject, SharedObjectType, Poll, DisappearingDuration, ItineraryItem, GroupEvent, Trip } from '../../types';
+import { Message, Group, RSVPStatus, Note, Reminder, LedgerEntry, SharedObject, SharedObjectType, Poll, DisappearingDuration, ItineraryItem, GroupEvent, Trip, Channel } from '../../types';
 import { MOCK_GROUPS } from '../../mocks/groups';
 import { MOCK_GROUP_MESSAGES } from '../../mocks/messages';
 import { MOCK_POLLS } from '../../mocks/polls';
@@ -259,4 +259,43 @@ export const mockGroupsRepository: IGroupsRepository = {
   // Star / Pin
   async toggleStarGroupMessage(_messageId: string, _isStarred: boolean): Promise<void> {},
   async togglePinGroupMessage(_messageId: string, _isPinned: boolean): Promise<void> {},
+
+  async createChannel(groupId: string, name: string, emoji?: string, color = '#D4764E'): Promise<Channel> {
+    const newChannel: Channel = {
+      id: `ch-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      name,
+      emoji,
+      color,
+      createdBy: 'current-user',
+      createdAt: new Date(),
+      metadata: { sharedObjects: [], notes: [], reminders: [], ledgerBalance: 0, ledgerEntries: [], pinnedMessages: [], starredMessages: [], polls: [], callHistory: [] },
+    };
+    groups = groups.map((g) =>
+      g.id === groupId ? { ...g, channels: [...(g.channels || []), newChannel] } : g,
+    );
+    return newChannel;
+  },
+
+  async updateChannel(channelId: string, updates: Partial<Pick<Channel, 'name' | 'emoji' | 'color'>>): Promise<Channel> {
+    let updated: Channel | undefined;
+    groups = groups.map((g) => ({
+      ...g,
+      channels: (g.channels || []).map((ch) => {
+        if (ch.id === channelId) {
+          updated = { ...ch, ...updates };
+          return updated;
+        }
+        return ch;
+      }),
+    }));
+    if (!updated) throw new Error('Channel not found');
+    return updated;
+  },
+
+  async deleteChannel(channelId: string): Promise<void> {
+    groups = groups.map((g) => ({
+      ...g,
+      channels: (g.channels || []).filter((ch) => ch.id !== channelId),
+    }));
+  },
 };

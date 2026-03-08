@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase';
-import { Group, Message, RSVPStatus, Note, Reminder, LedgerEntry, SharedObject, SharedObjectType, Poll, DisappearingDuration, ItineraryItem, GroupEvent, Trip } from '../../types';
+import { Group, Message, RSVPStatus, Note, Reminder, LedgerEntry, SharedObject, SharedObjectType, Poll, DisappearingDuration, ItineraryItem, GroupEvent, Trip, Channel } from '../../types';
 import { IGroupsRepository, PaginationParams, CreateGroupInput, UpdateGroupInput, CreateNoteInput, UpdateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../types';
 import {
   adaptMessage,
@@ -13,6 +13,7 @@ import {
   adaptItineraryItem,
   adaptGroup,
   adaptPoll,
+  adaptChannel,
   PollRow,
 } from './adapters';
 import { getCurrentUserId, generateUUID } from './helpers';
@@ -45,6 +46,7 @@ export const supabaseGroupsRepository: IGroupsRepository = {
       remindersResult,
       ledgerResult,
       pollsResult,
+      channelsResult,
     ] = await Promise.all([
       supabase
         .from('groups')
@@ -97,6 +99,11 @@ export const supabaseGroupsRepository: IGroupsRepository = {
         .select('*')
         .in('group_id', groupIds)
         .order('created_at', { ascending: false }),
+      supabase
+        .from('channels')
+        .select('*')
+        .in('group_id', groupIds)
+        .order('created_at', { ascending: true }),
     ]);
 
     if (groupsResult.error) throw new Error(`Failed to fetch groups: ${groupsResult.error.message}`);
@@ -196,6 +203,16 @@ export const supabaseGroupsRepository: IGroupsRepository = {
       pollsByGroup.set(poll.group_id, existing);
     }
 
+    const channelsByGroup = new Map<string, typeof channelsResult.data>();
+    if (!channelsResult.error) {
+      for (const ch of channelsResult.data) {
+        if (!ch.group_id) continue;
+        const existing = channelsByGroup.get(ch.group_id) ?? [];
+        existing.push(ch);
+        channelsByGroup.set(ch.group_id, existing);
+      }
+    }
+
     // User's membership metadata
     const userMemByGroup = new Map<string, (typeof memberships)[0]>();
     for (const m of memberships) {
@@ -218,6 +235,7 @@ export const supabaseGroupsRepository: IGroupsRepository = {
         reminders: (remindersByGroup.get(group.id) ?? []).map(adaptReminder),
         ledgerEntries: (ledgerByGroup.get(group.id) ?? []).map(adaptLedgerEntry),
         polls: pollsByGroup.get(group.id) ?? [],
+        channels: (channelsByGroup.get(group.id) ?? []).map(adaptChannel),
       });
     });
   },
@@ -417,6 +435,7 @@ export const supabaseGroupsRepository: IGroupsRepository = {
       trip: undefined,
       sharedObjects: [],
       notes: [],
+      channels: [],
     });
   },
 
@@ -545,6 +564,7 @@ export const supabaseGroupsRepository: IGroupsRepository = {
       trip: undefined,
       sharedObjects: [],
       notes: [],
+      channels: [],
     });
   },
 
@@ -1008,5 +1028,48 @@ export const supabaseGroupsRepository: IGroupsRepository = {
       .eq('id', messageId);
 
     if (error) throw new Error(`Failed to toggle pin: ${error.message}`);
+  },
+
+  async createChannel(groupId: string, name: string, emoji?: string, color = '#D4764E'): Promise<Channel> {
+    const userId = getCurrentUserId();
+    const { data, error } = await supabase
+      .from('channels')
+      .insert({
+        group_id: groupId,
+        name,
+        emoji: emoji ?? null,
+        color,
+        created_by: userId,
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to create channel: ${error.message}`);
+    return adaptChannel(data);
+  },
+
+  async updateChannel(channelId: string, updates: Partial<Pick<Channel, 'name' | 'emoji' | 'color'>>): Promise<Channel> {
+    const { data, error } = await supabase
+      .from('channels')
+      .update({
+        ...(updates.name !== undefined && { name: updates.name }),
+        ...(updates.emoji !== undefined && { emoji: updates.emoji ?? null }),
+        ...(updates.color !== undefined && { color: updates.color }),
+      })
+      .eq('id', channelId)
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to update channel: ${error.message}`);
+    return adaptChannel(data);
+  },
+
+  async deleteChannel(channelId: string): Promise<void> {
+    const { error } = await supabase
+      .from('channels')
+      .delete()
+      .eq('id', channelId);
+
+    if (error) throw new Error(`Failed to delete channel: ${error.message}`);
   },
 };
