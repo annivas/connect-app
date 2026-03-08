@@ -82,6 +82,10 @@ export default function NoteDetailScreen() {
     }
   }, [note, title, blocks, conversationId, groupId]);
 
+  // Keep a ref to latest doSave for the unmount cleanup
+  const doSaveRef = useRef(doSave);
+  useEffect(() => { doSaveRef.current = doSave; }, [doSave]);
+
   const scheduleAutosave = useCallback(() => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(doSave, 500);
@@ -106,10 +110,8 @@ export default function NoteDetailScreen() {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
-      // Immediate save
-      doSave();
+      doSaveRef.current();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleDelete = () => {

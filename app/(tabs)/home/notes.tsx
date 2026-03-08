@@ -58,7 +58,7 @@ export default function AllNotesScreen() {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 router.push({
                   pathname: '/(tabs)/messages/note-detail',
-                  params: { data: JSON.stringify(item) },
+                  params: { noteId: item.id, conversationId: item.conversationId },
                 });
               }}
             >
