@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase';
-import { Conversation, Message, MessageType, Note, Reminder, LedgerEntry, SharedObject, SharedObjectType, DisappearingDuration } from '../../types';
+import { Conversation, Message, MessageType, Note, Reminder, LedgerEntry, SharedObject, SharedObjectType, DisappearingDuration, Channel } from '../../types';
 import { IMessagesRepository, PaginationParams, CreateNoteInput, UpdateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../types';
 import {
   adaptMessage,
@@ -8,6 +8,7 @@ import {
   adaptReminder,
   adaptLedgerEntry,
   adaptConversation,
+  adaptChannel,
 } from './adapters';
 import { getCurrentUserId, generateUUID } from './helpers';
 
@@ -35,6 +36,7 @@ export const supabaseMessagesRepository: IMessagesRepository = {
       notesResult,
       remindersResult,
       ledgerResult,
+      channelsResult,
     ] = await Promise.all([
       supabase
         .from('conversations')
@@ -71,6 +73,11 @@ export const supabaseMessagesRepository: IMessagesRepository = {
         .select('*')
         .in('conversation_id', conversationIds)
         .order('date', { ascending: false }),
+      supabase
+        .from('channels')
+        .select('*')
+        .in('conversation_id', conversationIds)
+        .order('created_at', { ascending: true }),
     ]);
 
     if (conversationsResult.error) throw new Error(`Failed to fetch conversations: ${conversationsResult.error.message}`);
@@ -80,6 +87,7 @@ export const supabaseMessagesRepository: IMessagesRepository = {
     if (notesResult.error) throw new Error(`Failed to fetch notes: ${notesResult.error.message}`);
     if (remindersResult.error) throw new Error(`Failed to fetch reminders: ${remindersResult.error.message}`);
     if (ledgerResult.error) throw new Error(`Failed to fetch ledger: ${ledgerResult.error.message}`);
+    if (channelsResult.error) throw new Error(`Failed to fetch channels: ${channelsResult.error.message}`);
 
     // Step 3: Group data by conversation_id
     const participantsByConv = new Map<string, string[]>();
@@ -129,6 +137,14 @@ export const supabaseMessagesRepository: IMessagesRepository = {
       ledgerByConv.set(entry.conversation_id, existing);
     }
 
+    const channelsByConv = new Map<string, typeof channelsResult.data>();
+    for (const ch of channelsResult.data) {
+      if (!ch.conversation_id) continue;
+      const existing = channelsByConv.get(ch.conversation_id) ?? [];
+      existing.push(ch);
+      channelsByConv.set(ch.conversation_id, existing);
+    }
+
     // User's participation metadata (pinned, muted, unread)
     const userPartByConv = new Map<string, (typeof participations)[0]>();
     for (const p of participations) {
@@ -149,6 +165,7 @@ export const supabaseMessagesRepository: IMessagesRepository = {
         notes: (notesByConv.get(conv.id) ?? []).map(adaptNote),
         reminders: (remindersByConv.get(conv.id) ?? []).map(adaptReminder),
         ledgerEntries: (ledgerByConv.get(conv.id) ?? []).map(adaptLedgerEntry),
+        channels: (channelsByConv.get(conv.id) ?? []).map(adaptChannel),
       });
     });
   },
@@ -250,6 +267,7 @@ export const supabaseMessagesRepository: IMessagesRepository = {
       notes: [],
       reminders: [],
       ledgerEntries: [],
+      channels: [],
     });
   },
 
@@ -624,5 +642,48 @@ export const supabaseMessagesRepository: IMessagesRepository = {
 
     if (error) throw new Error(`Failed to add shared object: ${error.message}`);
     return adaptSharedObject(row);
+  },
+
+  async createChannel(conversationId: string, name: string, emoji?: string, color = '#D4764E'): Promise<Channel> {
+    const userId = getCurrentUserId();
+    const { data, error } = await supabase
+      .from('channels')
+      .insert({
+        conversation_id: conversationId,
+        name,
+        emoji: emoji ?? null,
+        color,
+        created_by: userId,
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to create channel: ${error.message}`);
+    return adaptChannel(data);
+  },
+
+  async updateChannel(channelId: string, updates: Partial<Pick<Channel, 'name' | 'emoji' | 'color'>>): Promise<Channel> {
+    const { data, error } = await supabase
+      .from('channels')
+      .update({
+        ...(updates.name !== undefined && { name: updates.name }),
+        ...(updates.emoji !== undefined && { emoji: updates.emoji ?? null }),
+        ...(updates.color !== undefined && { color: updates.color }),
+      })
+      .eq('id', channelId)
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to update channel: ${error.message}`);
+    return adaptChannel(data);
+  },
+
+  async deleteChannel(channelId: string): Promise<void> {
+    const { error } = await supabase
+      .from('channels')
+      .delete()
+      .eq('id', channelId);
+
+    if (error) throw new Error(`Failed to delete channel: ${error.message}`);
   },
 };

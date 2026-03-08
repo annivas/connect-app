@@ -14,6 +14,61 @@ export type Database = {
   }
   public: {
     Tables: {
+      channels: {
+        Row: {
+          color: string
+          conversation_id: string | null
+          created_at: string
+          created_by: string
+          emoji: string | null
+          group_id: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string
+          conversation_id?: string | null
+          created_at?: string
+          created_by: string
+          emoji?: string | null
+          group_id?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string
+          conversation_id?: string | null
+          created_at?: string
+          created_by?: string
+          emoji?: string | null
+          group_id?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channels_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channels_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channels_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       collection_collaborators: {
         Row: {
           collection_id: string
