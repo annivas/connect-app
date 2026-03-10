@@ -15,6 +15,7 @@ export default function HomeLayout() {
       <Stack.Screen name="notes" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="reminders" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="expenses" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="events" options={{ animation: 'slide_from_right' }} />
     </Stack>
   );
 }

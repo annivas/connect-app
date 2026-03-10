@@ -48,6 +48,8 @@ export default function ConversationInfoScreen() {
   const ledgerEntries = meta?.ledgerEntries ?? [];
   const unsettledEntries = ledgerEntries.filter((e) => !e.isSettled);
   const balance = meta?.ledgerBalance ?? 0;
+  const events = meta?.events ?? [];
+  const upcomingEvents = events.filter((e) => e.startDate > new Date());
 
   const handleCall = (type: 'voice' | 'video') => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -299,6 +301,20 @@ export default function ConversationInfoScreen() {
             preview={unsettledEntries.length > 0 ? (
               <Text className="text-text-tertiary text-xs ml-11" numberOfLines={1}>
                 {unsettledEntries.length} unsettled expense{unsettledEntries.length !== 1 ? 's' : ''}
+              </Text>
+            ) : undefined}
+          />
+
+          {/* Events */}
+          <ConversationInfoSection
+            icon="calendar-outline"
+            title="Events"
+            badge={upcomingEvents.length > 0 ? upcomingEvents.length : undefined}
+            onPress={() => navigateToSection('events')}
+            preview={upcomingEvents.length > 0 ? (
+              <Text className="text-text-tertiary text-xs ml-11" numberOfLines={1}>
+                {upcomingEvents[0].title}
+                {upcomingEvents.length > 1 ? ` +${upcomingEvents.length - 1} more` : ''}
               </Text>
             ) : undefined}
           />

@@ -15,6 +15,7 @@ interface Props {
   reminders: Reminder[];
   onToggleComplete: (reminderId: string) => void;
   onCreateReminder: (reminder: Omit<Reminder, 'id' | 'createdAt'>) => void;
+  onUpdateReminder?: (reminderId: string, updates: { title?: string; description?: string; dueDate?: string; priority?: 'low' | 'medium' | 'high' }) => void;
   onDeleteReminder?: (reminderId: string) => void;
   members?: User[];
 }
@@ -25,8 +26,9 @@ const priorityColors = {
   high: '#C94F4F',
 };
 
-export function RemindersTab({ reminders, onToggleComplete, onCreateReminder, onDeleteReminder, members }: Props) {
+export function RemindersTab({ reminders, onToggleComplete, onCreateReminder, onUpdateReminder, onDeleteReminder, members }: Props) {
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
   const getUserById = useUserStore((s) => s.getUserById);
 
   const handleToggle = (reminderId: string) => {
@@ -34,24 +36,30 @@ export function RemindersTab({ reminders, onToggleComplete, onCreateReminder, on
     onToggleComplete(reminderId);
   };
 
-  const handleDelete = (reminder: Reminder) => {
-    if (!onDeleteReminder) return;
-    Alert.alert(
-      'Delete Reminder',
-      `Are you sure you want to delete "${reminder.title}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            onDeleteReminder(reminder.id);
-            useToastStore.getState().show({ message: 'Reminder deleted', type: 'success' });
-          },
+  const handleEdit = (reminder: Reminder) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setEditingReminder(reminder);
+    setIsModalVisible(true);
+  };
+
+  const handleLongPress = (reminder: Reminder) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const options: { text: string; onPress?: () => void; style?: 'cancel' | 'destructive' }[] = [];
+    if (onUpdateReminder) {
+      options.push({ text: 'Edit', onPress: () => handleEdit(reminder) });
+    }
+    if (onDeleteReminder) {
+      options.push({
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          onDeleteReminder(reminder.id);
+          useToastStore.getState().show({ message: 'Reminder deleted', type: 'success' });
         },
-      ],
-    );
+      });
+    }
+    options.push({ text: 'Cancel', style: 'cancel' });
+    Alert.alert('Reminder', reminder.title, options);
   };
 
   const handleFABPress = () => {
@@ -70,8 +78,10 @@ export function RemindersTab({ reminders, onToggleComplete, onCreateReminder, on
         <FAB onPress={handleFABPress} />
         <CreateReminderModal
           visible={isModalVisible}
-          onClose={() => setIsModalVisible(false)}
+          onClose={() => { setIsModalVisible(false); setEditingReminder(null); }}
           onSave={onCreateReminder}
+          onUpdate={onUpdateReminder}
+          editingReminder={editingReminder}
           members={members}
         />
       </View>
@@ -85,7 +95,7 @@ export function RemindersTab({ reminders, onToggleComplete, onCreateReminder, on
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
         renderItem={({ item }: { item: Reminder }) => (
-          <Pressable onLongPress={() => handleDelete(item)} delayLongPress={500}>
+          <Pressable onLongPress={() => handleLongPress(item)} delayLongPress={500}>
             <Card className="mb-3">
               <View className="flex-row items-start">
                 <Pressable

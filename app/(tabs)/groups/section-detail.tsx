@@ -252,6 +252,7 @@ export default function GroupSectionDetailScreen() {
             reminders={meta?.reminders ?? []}
             onToggleComplete={(rid) => useGroupsStore.getState().toggleGroupReminderComplete(id!, rid, channelId)}
             onCreateReminder={(rem) => useGroupsStore.getState().createGroupReminder(id!, rem, channelId)}
+            onUpdateReminder={(rid, updates) => useGroupsStore.getState().updateGroupReminder(id!, rid, updates, channelId)}
             onDeleteReminder={(rid) => useGroupsStore.getState().deleteGroupReminder(id!, rid, channelId)}
             members={memberUsers}
           />
@@ -265,6 +266,7 @@ export default function GroupSectionDetailScreen() {
             members={memberUsers}
             onSettle={(eid) => useGroupsStore.getState().settleGroupLedgerEntry(id!, eid, channelId)}
             onCreateEntry={(entry) => useGroupsStore.getState().createGroupLedgerEntry(id!, entry, channelId)}
+            onUpdateEntry={(eid, updates) => useGroupsStore.getState().updateGroupLedgerEntry(id!, eid, updates, channelId)}
             onDeleteEntry={(eid) => useGroupsStore.getState().deleteGroupLedgerEntry(id!, eid, channelId)}
           />
         );

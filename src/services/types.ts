@@ -33,11 +33,24 @@ export type CreateReminderInput = {
   priority: 'low' | 'medium' | 'high';
 };
 
+export type UpdateReminderInput = {
+  title?: string;
+  description?: string;
+  dueDate?: string;
+  priority?: 'low' | 'medium' | 'high';
+};
+
 export type CreateLedgerEntryInput = {
   description: string;
   amount: number;
   paidBy: string;
   splitBetween: string[];
+  category?: string;
+};
+
+export type UpdateLedgerEntryInput = {
+  description?: string;
+  amount?: number;
   category?: string;
 };
 
@@ -76,8 +89,10 @@ export interface IMessagesRepository {
   deleteNote(conversationId: string, noteId: string): Promise<void>;
   toggleNotePin(conversationId: string, noteId: string): Promise<void>;
   createReminder(conversationId: string, input: CreateReminderInput): Promise<Reminder>;
+  updateReminder(reminderId: string, input: UpdateReminderInput): Promise<void>;
   toggleReminderComplete(reminderId: string): Promise<void>;
   createLedgerEntry(conversationId: string, input: CreateLedgerEntryInput): Promise<LedgerEntry>;
+  updateLedgerEntry(entryId: string, input: UpdateLedgerEntryInput): Promise<void>;
   settleLedgerEntry(entryId: string): Promise<void>;
   searchMessages(conversationId: string, query: string): Promise<Message[]>;
 
@@ -144,8 +159,10 @@ export interface IGroupsRepository {
   deleteNote(noteId: string): Promise<void>;
   toggleNotePin(groupId: string, noteId: string): Promise<void>;
   createReminder(groupId: string, input: CreateReminderInput): Promise<Reminder>;
+  updateReminder(reminderId: string, input: UpdateReminderInput): Promise<void>;
   toggleReminderComplete(reminderId: string): Promise<void>;
   createLedgerEntry(groupId: string, input: CreateLedgerEntryInput): Promise<LedgerEntry>;
+  updateLedgerEntry(entryId: string, input: UpdateLedgerEntryInput): Promise<void>;
   settleLedgerEntry(entryId: string): Promise<void>;
   addSharedObject(groupId: string, data: { type: SharedObjectType; title: string; description?: string; url?: string }): Promise<SharedObject>;
 

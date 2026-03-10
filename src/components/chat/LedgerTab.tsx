@@ -22,11 +22,13 @@ interface Props {
   // Callbacks
   onSettle: (entryId: string) => void;
   onCreateEntry: (entry: Omit<LedgerEntry, 'id'>) => void;
+  onUpdateEntry?: (entryId: string, updates: { description?: string; amount?: number; category?: string }) => void;
   onDeleteEntry?: (entryId: string) => void;
 }
 
-export function LedgerTab({ mode, entries, balance = 0, otherUser, pairBalances, members, onSettle, onCreateEntry, onDeleteEntry }: Props) {
+export function LedgerTab({ mode, entries, balance = 0, otherUser, pairBalances, members, onSettle, onCreateEntry, onUpdateEntry, onDeleteEntry }: Props) {
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<LedgerEntry | null>(null);
   const getUserById = useUserStore((s) => s.getUserById);
 
   const handleSettle = (entryId: string) => {
@@ -34,24 +36,30 @@ export function LedgerTab({ mode, entries, balance = 0, otherUser, pairBalances,
     onSettle(entryId);
   };
 
-  const handleDelete = (entry: LedgerEntry) => {
-    if (!onDeleteEntry) return;
-    Alert.alert(
-      'Delete Expense',
-      `Are you sure you want to delete "${entry.description}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            onDeleteEntry(entry.id);
-            useToastStore.getState().show({ message: 'Expense deleted', type: 'success' });
-          },
+  const handleEdit = (entry: LedgerEntry) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setEditingEntry(entry);
+    setIsModalVisible(true);
+  };
+
+  const handleLongPress = (entry: LedgerEntry) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const options: { text: string; onPress?: () => void; style?: 'cancel' | 'destructive' }[] = [];
+    if (onUpdateEntry && !entry.isSettled) {
+      options.push({ text: 'Edit', onPress: () => handleEdit(entry) });
+    }
+    if (onDeleteEntry) {
+      options.push({
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          onDeleteEntry(entry.id);
+          useToastStore.getState().show({ message: 'Expense deleted', type: 'success' });
         },
-      ],
-    );
+      });
+    }
+    options.push({ text: 'Cancel', style: 'cancel' });
+    Alert.alert('Expense', entry.description, options);
   };
 
   const handleFABPress = () => {
@@ -70,8 +78,10 @@ export function LedgerTab({ mode, entries, balance = 0, otherUser, pairBalances,
         <FAB onPress={handleFABPress} />
         <CreateExpenseModal
           visible={isModalVisible}
-          onClose={() => setIsModalVisible(false)}
+          onClose={() => { setIsModalVisible(false); setEditingEntry(null); }}
           onSave={onCreateEntry}
+          onUpdate={onUpdateEntry}
+          editingEntry={editingEntry}
           members={members}
         />
       </View>
@@ -140,7 +150,7 @@ export function LedgerTab({ mode, entries, balance = 0, otherUser, pairBalances,
         renderItem={({ item }: { item: LedgerEntry }) => {
           const paidBy = getUserById(item.paidBy);
           return (
-            <Pressable onLongPress={() => handleDelete(item)} delayLongPress={500}>
+            <Pressable onLongPress={() => handleLongPress(item)} delayLongPress={500}>
             <Card className="mb-3">
               <View className="flex-row justify-between items-start mb-2">
                 <View className="flex-1 mr-3">
@@ -196,8 +206,10 @@ export function LedgerTab({ mode, entries, balance = 0, otherUser, pairBalances,
       <FAB onPress={handleFABPress} />
       <CreateExpenseModal
         visible={isModalVisible}
-        onClose={() => setIsModalVisible(false)}
+        onClose={() => { setIsModalVisible(false); setEditingEntry(null); }}
         onSave={onCreateEntry}
+        onUpdate={onUpdateEntry}
+        editingEntry={editingEntry}
         members={members}
       />
     </View>

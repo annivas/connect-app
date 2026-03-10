@@ -122,11 +122,13 @@ interface GroupsState {
 
   // Reminders CRUD
   createGroupReminder: (groupId: string, reminder: Omit<Reminder, 'id' | 'createdAt'>, channelId?: string | null) => void;
+  updateGroupReminder: (groupId: string, reminderId: string, input: import('../services/types').UpdateReminderInput, channelId?: string | null) => void;
   toggleGroupReminderComplete: (groupId: string, reminderId: string, channelId?: string | null) => void;
   deleteGroupReminder: (groupId: string, reminderId: string, channelId?: string | null) => void;
 
   // Ledger CRUD
   createGroupLedgerEntry: (groupId: string, entry: Omit<LedgerEntry, 'id'>, channelId?: string | null) => void;
+  updateGroupLedgerEntry: (groupId: string, entryId: string, input: import('../services/types').UpdateLedgerEntryInput, channelId?: string | null) => void;
   settleGroupLedgerEntry: (groupId: string, entryId: string, channelId?: string | null) => void;
   deleteGroupLedgerEntry: (groupId: string, entryId: string, channelId?: string | null) => void;
   getGroupPairBalances: (groupId: string, channelId?: string | null) => GroupPairBalance[];
@@ -1443,6 +1445,20 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
     });
   },
 
+  updateGroupReminder: (groupId, reminderId, input, channelId) => {
+    set((state) => ({
+      groups: updateGroupMetadata(state.groups, groupId, channelId, (metadata) => ({
+        ...metadata,
+        reminders: metadata.reminders.map((r) =>
+          r.id === reminderId
+            ? { ...r, ...input, dueDate: input.dueDate ? new Date(input.dueDate) : r.dueDate }
+            : r,
+        ),
+      })),
+    }));
+    groupsRepository.updateReminder(reminderId, input).catch(() => {});
+  },
+
   toggleGroupReminderComplete: (groupId, reminderId, channelId) => {
     set((state) => ({
       groups: updateGroupMetadata(state.groups, groupId, channelId, (metadata) => ({
@@ -1500,6 +1516,18 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         })),
       }));
     });
+  },
+
+  updateGroupLedgerEntry: (groupId, entryId, input, channelId) => {
+    set((state) => ({
+      groups: updateGroupMetadata(state.groups, groupId, channelId, (metadata) => ({
+        ...metadata,
+        ledgerEntries: metadata.ledgerEntries.map((e) =>
+          e.id === entryId ? { ...e, ...input } : e,
+        ),
+      })),
+    }));
+    groupsRepository.updateLedgerEntry(entryId, input).catch(() => {});
   },
 
   settleGroupLedgerEntry: (groupId, entryId, channelId) => {

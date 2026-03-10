@@ -206,6 +206,8 @@ export const mockMessagesRepository: IMessagesRepository = {
     return newReminder;
   },
 
+  async updateReminder(_reminderId: string, _input: import('../types').UpdateReminderInput): Promise<void> {},
+
   async toggleReminderComplete(reminderId: string): Promise<void> {
     conversations = conversations.map((c) => ({
       ...c,
@@ -247,6 +249,8 @@ export const mockMessagesRepository: IMessagesRepository = {
     );
     return newEntry;
   },
+
+  async updateLedgerEntry(_entryId: string, _input: import('../types').UpdateLedgerEntryInput): Promise<void> {},
 
   async settleLedgerEntry(entryId: string): Promise<void> {
     conversations = conversations.map((c) => ({

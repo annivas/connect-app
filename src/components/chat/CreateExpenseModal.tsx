@@ -10,6 +10,8 @@ interface Props {
   conversationId?: string;
   onClose: () => void;
   onSave?: (entry: Omit<LedgerEntry, 'id'>) => void;
+  onUpdate?: (entryId: string, updates: { description?: string; amount?: number; category?: string }) => void;
+  editingEntry?: LedgerEntry | null;
   members?: User[];
 }
 
@@ -23,7 +25,7 @@ const CATEGORIES: { value: Category; icon: string }[] = [
   { value: 'Other', icon: '📦' },
 ];
 
-export function CreateExpenseModal({ visible, onClose, onSave, members }: Props) {
+export function CreateExpenseModal({ visible, onClose, onSave, onUpdate, editingEntry, members }: Props) {
   const [description, setDescription] = useState('');
   const [amountText, setAmountText] = useState('');
   const [category, setCategory] = useState<Category>('Other');
@@ -39,6 +41,17 @@ export function CreateExpenseModal({ visible, onClose, onSave, members }: Props)
   const otherUser = !isGroupMode && members && members.length === 2
     ? members.find((m) => m.id !== currentUser?.id) ?? null
     : null;
+
+  const isEditing = !!editingEntry;
+
+  // Populate fields when editing
+  useEffect(() => {
+    if (editingEntry && visible) {
+      setDescription(editingEntry.description);
+      setAmountText(editingEntry.amount.toString());
+      setCategory((editingEntry.category as Category) ?? 'Other');
+    }
+  }, [editingEntry, visible]);
 
   // Auto-select all members for split when opening in group mode
   useEffect(() => {
@@ -85,15 +98,23 @@ export function CreateExpenseModal({ visible, onClose, onSave, members }: Props)
     }
 
     try {
-      await onSave?.({
-        description: description.trim(),
-        amount,
-        paidBy,
-        splitBetween,
-        category,
-        date: new Date(),
-        isSettled: false,
-      });
+      if (isEditing && onUpdate) {
+        onUpdate(editingEntry!.id, {
+          description: description.trim(),
+          amount,
+          category,
+        });
+      } else {
+        await onSave?.({
+          description: description.trim(),
+          amount,
+          paidBy,
+          splitBetween,
+          category,
+          date: new Date(),
+          isSettled: false,
+        });
+      }
       reset();
       onClose();
     } catch {
@@ -114,7 +135,7 @@ export function CreateExpenseModal({ visible, onClose, onSave, members }: Props)
           <Pressable onPress={handleCancel} hitSlop={8}>
             <Text className="text-accent-primary text-[16px]">Cancel</Text>
           </Pressable>
-          <Text className="text-text-primary text-[17px] font-semibold">New Expense</Text>
+          <Text className="text-text-primary text-[17px] font-semibold">{isEditing ? 'Edit Expense' : 'New Expense'}</Text>
           <Pressable onPress={handleSave} disabled={!canSave} hitSlop={8}>
             {isSaving ? (
               <ActivityIndicator size="small" color="#D4764E" />

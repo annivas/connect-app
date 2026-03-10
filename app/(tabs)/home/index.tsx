@@ -213,6 +213,13 @@ export default function HomeScreen() {
             color="#5B8EC9"
             onPress={() => router.push('/(tabs)/home/notes')}
           />
+          <QuickAction
+            icon="calendar-outline"
+            label="Events"
+            count={allEvents.length}
+            color="#D4764E"
+            onPress={() => router.push('/(tabs)/home/events')}
+          />
         </View>
 
         {/* Today's Agenda */}

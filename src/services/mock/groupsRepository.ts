@@ -229,12 +229,14 @@ export const mockGroupsRepository: IGroupsRepository = {
   async createReminder(_groupId: string, input: CreateReminderInput): Promise<Reminder> {
     return { id: `grem-${Date.now()}`, title: input.title, description: input.description, dueDate: new Date(input.dueDate), isCompleted: false, createdBy: 'current-user', createdAt: new Date(), priority: input.priority };
   },
+  async updateReminder(_reminderId: string, _input: import('../types').UpdateReminderInput): Promise<void> {},
   async toggleReminderComplete(_reminderId: string): Promise<void> {},
 
   // Ledger
   async createLedgerEntry(_groupId: string, input: CreateLedgerEntryInput): Promise<LedgerEntry> {
     return { id: `gled-${Date.now()}`, description: input.description, amount: input.amount, paidBy: input.paidBy, splitBetween: input.splitBetween, category: input.category, date: new Date(), isSettled: false };
   },
+  async updateLedgerEntry(_entryId: string, _input: import('../types').UpdateLedgerEntryInput): Promise<void> {},
   async settleLedgerEntry(_entryId: string): Promise<void> {},
 
   // Shared objects

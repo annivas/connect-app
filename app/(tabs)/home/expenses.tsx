@@ -9,30 +9,47 @@ import { IconButton } from '../../../src/components/ui/IconButton';
 import { Card } from '../../../src/components/ui/Card';
 import { EmptyState } from '../../../src/components/ui/EmptyState';
 import { useMessagesStore } from '../../../src/stores/useMessagesStore';
+import { useGroupsStore } from '../../../src/stores/useGroupsStore';
 import { useUserStore } from '../../../src/stores/useUserStore';
 import type { LedgerEntry } from '../../../src/types';
 
 interface EntryWithSource extends LedgerEntry {
-  conversationId: string;
-  conversationName: string;
+  sourceId: string;
+  sourceName: string;
+  sourceType: 'conversation' | 'group';
 }
 
 export default function AllExpensesScreen() {
   const router = useRouter();
   const conversations = useMessagesStore((s) => s.conversations);
+  const groups = useGroupsStore((s) => s.groups);
   const getUserById = useUserStore((s) => s.getUserById);
   const currentUserId = useUserStore((s) => s.currentUser?.id);
 
-  const allEntries: EntryWithSource[] = conversations.flatMap((c) => {
+  // Conversation expenses
+  const convEntries: EntryWithSource[] = conversations.flatMap((c) => {
     const otherUserId = c.participants.find((p) => p !== currentUserId);
     const otherUser = otherUserId ? getUserById(otherUserId) : null;
     const name = otherUser?.name ?? 'Unknown';
     return (c.metadata?.ledgerEntries ?? []).map((entry) => ({
       ...entry,
-      conversationId: c.id,
-      conversationName: name,
+      sourceId: c.id,
+      sourceName: name,
+      sourceType: 'conversation' as const,
     }));
   });
+
+  // Group expenses
+  const groupEntries: EntryWithSource[] = groups.flatMap((g) => {
+    return (g.metadata?.ledgerEntries ?? []).map((entry) => ({
+      ...entry,
+      sourceId: g.id,
+      sourceName: g.name,
+      sourceType: 'group' as const,
+    }));
+  });
+
+  const allEntries = [...convEntries, ...groupEntries];
 
   // Sort: unsettled first, then by date descending
   const sorted = [...allEntries].sort((a, b) => {
@@ -51,10 +68,29 @@ export default function AllExpensesScreen() {
         text: 'Settle',
         onPress: () => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          useMessagesStore.getState().settleLedgerEntry(
-            entry.conversationId,
-            entry.id,
-          );
+          if (entry.sourceType === 'conversation') {
+            useMessagesStore.getState().settleLedgerEntry(entry.sourceId, entry.id);
+          } else {
+            useGroupsStore.getState().settleGroupLedgerEntry(entry.sourceId, entry.id);
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleDelete = (entry: EntryWithSource) => {
+    Alert.alert('Delete Expense', `Delete "${entry.description}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          if (entry.sourceType === 'conversation') {
+            useMessagesStore.getState().deleteLedgerEntry(entry.sourceId, entry.id);
+          } else {
+            useGroupsStore.getState().deleteGroupLedgerEntry(entry.sourceId, entry.id);
+          }
         },
       },
     ]);
@@ -72,12 +108,12 @@ export default function AllExpensesScreen() {
         <EmptyState
           icon="wallet-outline"
           title="No expenses"
-          description="Shared expenses from your conversations will appear here"
+          description="Shared expenses from your conversations and groups will appear here"
         />
       ) : (
         <FlatList
           data={sorted}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => `${item.sourceType}-${item.id}`}
           ListHeaderComponent={
             totalUnsettled > 0 ? (
               <View className="mx-4 mt-4 mb-2 bg-surface rounded-2xl p-4 flex-row items-center justify-between">
@@ -90,40 +126,48 @@ export default function AllExpensesScreen() {
           }
           contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
           renderItem={({ item }) => (
-            <Card className="mb-3">
-              <View className="flex-row items-center justify-between mb-1">
-                <Text
-                  className={`text-sm font-medium flex-1 ${
-                    item.isSettled ? 'text-text-tertiary line-through' : 'text-text-primary'
-                  }`}
-                >
-                  {item.description}
-                </Text>
-                <Text className={`text-sm font-bold ${item.isSettled ? 'text-text-tertiary' : 'text-text-primary'}`}>
-                  ${item.amount.toFixed(2)}
-                </Text>
-              </View>
-              <View className="flex-row items-center justify-between">
-                <View className="flex-row items-center">
-                  <Ionicons name="calendar-outline" size={11} color="#A8937F" />
-                  <Text className="text-text-tertiary text-[10px] ml-1">
-                    {format(item.date, 'MMM d')}
+            <Pressable onLongPress={() => handleDelete(item)} delayLongPress={500}>
+              <Card className="mb-3">
+                <View className="flex-row items-center justify-between mb-1">
+                  <Text
+                    className={`text-sm font-medium flex-1 ${
+                      item.isSettled ? 'text-text-tertiary line-through' : 'text-text-primary'
+                    }`}
+                  >
+                    {item.description}
                   </Text>
-                  <Text className="text-text-tertiary text-[10px] ml-3">
-                    From: {item.conversationName}
+                  <Text className={`text-sm font-bold ${item.isSettled ? 'text-text-tertiary' : 'text-text-primary'}`}>
+                    ${item.amount.toFixed(2)}
                   </Text>
                 </View>
-                {!item.isSettled && (
-                  <Pressable
-                    onPress={() => handleSettle(item)}
-                    className="flex-row items-center"
-                  >
-                    <Ionicons name="checkmark-circle-outline" size={14} color="#2D9F6F" />
-                    <Text className="text-status-success text-xs font-medium ml-1">Settle</Text>
-                  </Pressable>
-                )}
-              </View>
-            </Card>
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-row items-center">
+                    <Ionicons name="calendar-outline" size={11} color="#A8937F" />
+                    <Text className="text-text-tertiary text-[10px] ml-1">
+                      {format(item.date, 'MMM d')}
+                    </Text>
+                    <Ionicons
+                      name={item.sourceType === 'group' ? 'people-outline' : 'person-outline'}
+                      size={10}
+                      color="#A8937F"
+                      style={{ marginLeft: 8 }}
+                    />
+                    <Text className="text-text-tertiary text-[10px] ml-0.5">
+                      {item.sourceName}
+                    </Text>
+                  </View>
+                  {!item.isSettled && (
+                    <Pressable
+                      onPress={() => handleSettle(item)}
+                      className="flex-row items-center"
+                    >
+                      <Ionicons name="checkmark-circle-outline" size={14} color="#2D9F6F" />
+                      <Text className="text-status-success text-xs font-medium ml-1">Settle</Text>
+                    </Pressable>
+                  )}
+                </View>
+              </Card>
+            </Pressable>
           )}
         />
       )}

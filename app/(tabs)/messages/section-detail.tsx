@@ -8,6 +8,7 @@ import { MediaPinsTab } from '../../../src/components/chat/MediaPinsTab';
 import { NotesSavedTab } from '../../../src/components/chat/NotesSavedTab';
 import { RemindersTab } from '../../../src/components/chat/RemindersTab';
 import { LedgerTab } from '../../../src/components/chat/LedgerTab';
+import { EventsTab } from '../../../src/components/chat/EventsTab';
 import { useMessagesStore } from '../../../src/stores/useMessagesStore';
 import { useUserStore } from '../../../src/stores/useUserStore';
 import type { User } from '../../../src/types';
@@ -18,6 +19,7 @@ const SECTION_TITLES: Record<string, string> = {
   notes: 'Notes & Saved',
   reminders: 'Reminders',
   ledger: 'Expenses',
+  events: 'Events',
 };
 
 export default function SectionDetailScreen() {
@@ -82,6 +84,7 @@ export default function SectionDetailScreen() {
               dueDate: rem.dueDate instanceof Date ? rem.dueDate.toISOString() : String(rem.dueDate),
               priority: rem.priority,
             }, channelId)}
+            onUpdateReminder={(rid, updates) => useMessagesStore.getState().updateReminder(id!, rid, updates, channelId)}
             onDeleteReminder={(rid) => useMessagesStore.getState().deleteReminder(id!, rid, channelId)}
             members={members}
           />
@@ -95,8 +98,18 @@ export default function SectionDetailScreen() {
             otherUser={otherUser ?? undefined}
             onSettle={(eid) => useMessagesStore.getState().settleLedgerEntry(id!, eid, channelId)}
             onCreateEntry={(entry) => useMessagesStore.getState().createLedgerEntry(id!, entry, channelId)}
+            onUpdateEntry={(eid, updates) => useMessagesStore.getState().updateLedgerEntry(id!, eid, updates, channelId)}
             onDeleteEntry={(eid) => useMessagesStore.getState().deleteLedgerEntry(id!, eid, channelId)}
             members={members}
+          />
+        );
+      case 'events':
+        return (
+          <EventsTab
+            events={meta?.events ?? []}
+            onCreateEvent={(event) => useMessagesStore.getState().createEvent(id!, event, channelId)}
+            onUpdateEvent={(eventId, updates) => useMessagesStore.getState().updateEvent(id!, eventId, updates, channelId)}
+            onDeleteEvent={(eventId) => useMessagesStore.getState().deleteEvent(id!, eventId, channelId)}
           />
         );
       default:

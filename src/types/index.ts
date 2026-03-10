@@ -268,6 +268,17 @@ export interface LedgerEntry {
   linkedMessageId?: string;
 }
 
+// ─── Conversation Event ──────────────────────
+export interface ConversationEvent {
+  id: string;
+  title: string;
+  description?: string;
+  startDate: Date;
+  endDate?: Date;
+  location?: string;
+  createdBy: string;
+}
+
 // ─── Conversation ────────────────────────────
 export interface ConversationMetadata {
   sharedObjects: SharedObject[];
@@ -279,6 +290,7 @@ export interface ConversationMetadata {
   starredMessages: string[];
   polls: Poll[];
   callHistory: CallEntry[];
+  events?: ConversationEvent[];
 }
 
 // ─── Channels ───────────────────────────────

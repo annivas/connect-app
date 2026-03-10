@@ -776,6 +776,21 @@ export const supabaseGroupsRepository: IGroupsRepository = {
     return adaptReminder(data);
   },
 
+  async updateReminder(reminderId: string, input: import('../types').UpdateReminderInput): Promise<void> {
+    const updates: Record<string, unknown> = {};
+    if (input.title !== undefined) updates.title = input.title;
+    if (input.description !== undefined) updates.description = input.description;
+    if (input.dueDate !== undefined) updates.due_date = input.dueDate;
+    if (input.priority !== undefined) updates.priority = input.priority;
+
+    const { error } = await supabase
+      .from('reminders')
+      .update(updates)
+      .eq('id', reminderId);
+
+    if (error) throw new Error(`Failed to update group reminder: ${error.message}`);
+  },
+
   async toggleReminderComplete(reminderId: string): Promise<void> {
     const { data, error: readError } = await supabase
       .from('reminders')
@@ -812,6 +827,20 @@ export const supabaseGroupsRepository: IGroupsRepository = {
 
     if (error) throw new Error(`Failed to create group ledger entry: ${error.message}`);
     return adaptLedgerEntry(data);
+  },
+
+  async updateLedgerEntry(entryId: string, input: import('../types').UpdateLedgerEntryInput): Promise<void> {
+    const updates: Record<string, unknown> = {};
+    if (input.description !== undefined) updates.description = input.description;
+    if (input.amount !== undefined) updates.amount = input.amount;
+    if (input.category !== undefined) updates.category = input.category;
+
+    const { error: updateError } = await supabase
+      .from('ledger_entries')
+      .update(updates)
+      .eq('id', entryId);
+
+    if (updateError) throw new Error(`Failed to update group ledger entry: ${updateError.message}`);
   },
 
   async settleLedgerEntry(entryId: string): Promise<void> {

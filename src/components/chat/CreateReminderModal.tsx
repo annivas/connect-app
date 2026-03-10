@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Modal, Pressable, ScrollView, ActivityIndicator } from 'react-native';
-import { parse, isValid } from 'date-fns';
+import { parse, isValid, format } from 'date-fns';
 import * as Haptics from 'expo-haptics';
 import { MemberAssignmentPicker } from '../groups/MemberAssignmentPicker';
 import type { Reminder, User } from '../../types';
@@ -10,6 +10,8 @@ interface Props {
   conversationId?: string;
   onClose: () => void;
   onSave?: (reminder: Omit<Reminder, 'id' | 'createdAt'>) => void;
+  onUpdate?: (reminderId: string, updates: { title?: string; description?: string; dueDate?: string; priority?: 'low' | 'medium' | 'high' }) => void;
+  editingReminder?: Reminder | null;
   members?: User[];
 }
 
@@ -21,7 +23,7 @@ const PRIORITIES: { value: Priority; label: string; color: string }[] = [
   { value: 'high', label: 'High', color: '#C94F4F' },
 ];
 
-export function CreateReminderModal({ visible, onClose, onSave, members }: Props) {
+export function CreateReminderModal({ visible, onClose, onSave, onUpdate, editingReminder, members }: Props) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dateText, setDateText] = useState('');
@@ -29,6 +31,19 @@ export function CreateReminderModal({ visible, onClose, onSave, members }: Props
   const [isSaving, setIsSaving] = useState(false);
   const [dateError, setDateError] = useState('');
   const [assignedTo, setAssignedTo] = useState<string[]>([]);
+
+  const isEditing = !!editingReminder;
+
+  // Populate fields when editing
+  React.useEffect(() => {
+    if (editingReminder && visible) {
+      setTitle(editingReminder.title);
+      setDescription(editingReminder.description ?? '');
+      setDateText(format(editingReminder.dueDate, 'yyyy-MM-dd HH:mm'));
+      setPriority(editingReminder.priority);
+      setAssignedTo(editingReminder.assignedTo ?? []);
+    }
+  }, [editingReminder, visible]);
 
   const parsedDate = parse(dateText, 'yyyy-MM-dd HH:mm', new Date());
   const isDateValid = dateText.length > 0 && isValid(parsedDate);
@@ -63,15 +78,24 @@ export function CreateReminderModal({ visible, onClose, onSave, members }: Props
     setIsSaving(true);
 
     try {
-      await onSave?.({
-        title: title.trim(),
-        description: description.trim() || undefined,
-        dueDate: parsedDate,
-        priority,
-        isCompleted: false,
-        createdBy: '',
-        assignedTo: assignedTo.length > 0 ? assignedTo : undefined,
-      });
+      if (isEditing && onUpdate) {
+        onUpdate(editingReminder!.id, {
+          title: title.trim(),
+          description: description.trim() || undefined,
+          dueDate: parsedDate.toISOString(),
+          priority,
+        });
+      } else {
+        await onSave?.({
+          title: title.trim(),
+          description: description.trim() || undefined,
+          dueDate: parsedDate,
+          priority,
+          isCompleted: false,
+          createdBy: '',
+          assignedTo: assignedTo.length > 0 ? assignedTo : undefined,
+        });
+      }
       reset();
       onClose();
     } catch {
@@ -92,7 +116,7 @@ export function CreateReminderModal({ visible, onClose, onSave, members }: Props
           <Pressable onPress={handleCancel} hitSlop={8}>
             <Text className="text-accent-primary text-[16px]">Cancel</Text>
           </Pressable>
-          <Text className="text-text-primary text-[17px] font-semibold">New Reminder</Text>
+          <Text className="text-text-primary text-[17px] font-semibold">{isEditing ? 'Edit Reminder' : 'New Reminder'}</Text>
           <Pressable onPress={handleSave} disabled={!canSave} hitSlop={8}>
             {isSaving ? (
               <ActivityIndicator size="small" color="#D4764E" />

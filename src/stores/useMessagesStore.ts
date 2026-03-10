@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import { Message, Conversation, Note, Reminder, LedgerEntry, SharedObject, SharedObjectType, ScheduledMessage, DisappearingDuration, Channel, ConversationMetadata } from '../types';
+import { Message, Conversation, Note, Reminder, LedgerEntry, SharedObject, SharedObjectType, ScheduledMessage, DisappearingDuration, Channel, ConversationMetadata, ConversationEvent } from '../types';
 import { messagesRepository } from '../services';
-import { CreateNoteInput, UpdateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../services/types';
+import { CreateNoteInput, UpdateNoteInput, CreateReminderInput, UpdateReminderInput, CreateLedgerEntryInput, UpdateLedgerEntryInput } from '../services/types';
 import { supabase } from '../lib/supabase';
 import { config } from '../config/env';
 import { adaptMessage } from '../services/supabase/adapters';
@@ -92,9 +92,11 @@ interface MessagesState {
   deleteNote: (conversationId: string, noteId: string, channelId?: string | null) => void;
   toggleNotePin: (conversationId: string, noteId: string, channelId?: string | null) => void;
   createReminder: (conversationId: string, input: CreateReminderInput, channelId?: string | null) => Promise<Reminder>;
+  updateReminder: (conversationId: string, reminderId: string, input: UpdateReminderInput, channelId?: string | null) => void;
   toggleReminderComplete: (conversationId: string, reminderId: string, channelId?: string | null) => void;
   deleteReminder: (conversationId: string, reminderId: string, channelId?: string | null) => void;
   createLedgerEntry: (conversationId: string, input: CreateLedgerEntryInput, channelId?: string | null) => Promise<LedgerEntry>;
+  updateLedgerEntry: (conversationId: string, entryId: string, input: UpdateLedgerEntryInput, channelId?: string | null) => void;
   settleLedgerEntry: (conversationId: string, entryId: string, channelId?: string | null) => void;
   deleteLedgerEntry: (conversationId: string, entryId: string, channelId?: string | null) => void;
   addSharedObject: (
@@ -103,6 +105,11 @@ interface MessagesState {
     channelId?: string | null,
   ) => void;
   deleteSharedObject: (conversationId: string, objectId: string, channelId?: string | null) => void;
+
+  // Events
+  createEvent: (conversationId: string, event: Omit<ConversationEvent, 'id'>, channelId?: string | null) => void;
+  updateEvent: (conversationId: string, eventId: string, updates: Partial<Pick<ConversationEvent, 'title' | 'description' | 'startDate' | 'endDate' | 'location'>>, channelId?: string | null) => void;
+  deleteEvent: (conversationId: string, eventId: string, channelId?: string | null) => void;
 
   // ─── New: Star, Pin, Forward, Archive, Search ──────
   scheduledMessages: ScheduledMessage[];
@@ -754,6 +761,20 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     return reminder;
   },
 
+  updateReminder: (conversationId, reminderId, input, channelId) => {
+    set((state) => ({
+      conversations: updateConvMetadata(state.conversations, conversationId, channelId, (md) => ({
+        ...md,
+        reminders: md.reminders.map((r) =>
+          r.id === reminderId
+            ? { ...r, ...input, dueDate: input.dueDate ? new Date(input.dueDate) : r.dueDate }
+            : r,
+        ),
+      })),
+    }));
+    messagesRepository.updateReminder(reminderId, input).catch(() => {});
+  },
+
   toggleReminderComplete: (conversationId, reminderId, channelId) => {
     set((state) => ({
       conversations: updateConvMetadata(state.conversations, conversationId, channelId, (md) => ({
@@ -795,6 +816,19 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
       }),
     }));
     return entry;
+  },
+
+  updateLedgerEntry: (conversationId, entryId, input, channelId) => {
+    set((state) => ({
+      conversations: updateConvMetadata(state.conversations, conversationId, channelId, (md) => {
+        const updatedEntries = md.ledgerEntries.map((e) =>
+          e.id === entryId ? { ...e, ...input } : e,
+        );
+        const newBalance = updatedEntries.reduce((sum, e) => (e.isSettled ? sum : sum + e.amount), 0);
+        return { ...md, ledgerEntries: updatedEntries, ledgerBalance: newBalance };
+      }),
+    }));
+    messagesRepository.updateLedgerEntry(entryId, input).catch(() => {});
   },
 
   settleLedgerEntry: (conversationId, entryId, channelId) => {
@@ -867,6 +901,40 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
       conversations: updateConvMetadata(state.conversations, conversationId, channelId, (md) => ({
         ...md,
         sharedObjects: md.sharedObjects.filter((o) => o.id !== objectId),
+      })),
+    }));
+  },
+
+  // Events
+  createEvent: (conversationId, event, channelId) => {
+    const newEvent: ConversationEvent = {
+      ...event,
+      id: `evt-${Date.now()}`,
+    };
+    set((state) => ({
+      conversations: updateConvMetadata(state.conversations, conversationId, channelId, (md) => ({
+        ...md,
+        events: [...(md.events ?? []), newEvent],
+      })),
+    }));
+  },
+
+  updateEvent: (conversationId, eventId, updates, channelId) => {
+    set((state) => ({
+      conversations: updateConvMetadata(state.conversations, conversationId, channelId, (md) => ({
+        ...md,
+        events: (md.events ?? []).map((e) =>
+          e.id === eventId ? { ...e, ...updates } : e,
+        ),
+      })),
+    }));
+  },
+
+  deleteEvent: (conversationId, eventId, channelId) => {
+    set((state) => ({
+      conversations: updateConvMetadata(state.conversations, conversationId, channelId, (md) => ({
+        ...md,
+        events: (md.events ?? []).filter((e) => e.id !== eventId),
       })),
     }));
   },
