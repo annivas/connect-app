@@ -3,6 +3,7 @@ import { View, Text, Pressable, Modal, TextInput, ScrollView } from 'react-nativ
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
+import { useShallow } from 'zustand/react/shallow';
 import { useAIStore } from '../../stores/useAIStore';
 
 interface Props {
@@ -30,6 +31,7 @@ export function CreateChannelModal({ visible, onClose, onCreate }: Props) {
   const [selectedColor, setSelectedColor] = useState('#D4764E');
   const [selectedAgentId, setSelectedAgentId] = useState<string | undefined>();
   const connectedAgents = useAIStore((s) => s.agents.filter((a) => a.isConnected));
+  const connectedAgents = useAIStore(useShallow((s) => s.agents.filter((a) => a.isConnected)));
 
   const handleCreate = () => {
     if (!name.trim()) return;
