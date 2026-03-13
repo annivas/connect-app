@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
+import * as Haptics from 'expo-haptics';
 import { Avatar } from '../ui/Avatar';
 import { useUserStore } from '../../stores/useUserStore';
 import type { ReminderMessageMetadata } from '../../types';
@@ -21,9 +22,10 @@ const priorityLabels: Record<string, string> = {
 interface Props {
   metadata: ReminderMessageMetadata;
   isMine: boolean;
+  onPress?: () => void;
 }
 
-export function ReminderMessageBubble({ metadata, isMine }: Props) {
+export function ReminderMessageBubble({ metadata, isMine, onPress }: Props) {
   const priorityColor = priorityColors[metadata.priority] ?? '#A8937F';
   const accentColor = isMine ? '#FFFFFF' : priorityColor;
   const primaryText = isMine ? '#FFFFFF' : '#2D1F14';
@@ -44,8 +46,15 @@ export function ReminderMessageBubble({ metadata, isMine }: Props) {
   const visibleAssignees = assignees.slice(0, 4);
   const overflowCount = assignees.length - 4;
 
+  const handlePress = () => {
+    if (onPress) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      onPress();
+    }
+  };
+
   return (
-    <View style={{ minWidth: 240, opacity: metadata.isCompleted ? 0.7 : 1 }}>
+    <Pressable onPress={handlePress} disabled={!onPress} style={{ minWidth: 240, opacity: metadata.isCompleted ? 0.7 : 1 }}>
       {/* Top accent strip with priority color */}
       <View
         style={{
@@ -162,6 +171,6 @@ export function ReminderMessageBubble({ metadata, isMine }: Props) {
           )}
         </View>
       )}
-    </View>
+    </Pressable>
   );
 }

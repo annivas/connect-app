@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import type { NoteMessageMetadata } from '../../types';
 
 const NOTE_ACCENT = '#D4764E';
@@ -8,16 +9,24 @@ const NOTE_ACCENT = '#D4764E';
 interface Props {
   metadata: NoteMessageMetadata;
   isMine: boolean;
+  onPress?: () => void;
 }
 
-export function NoteMessageBubble({ metadata, isMine }: Props) {
+export function NoteMessageBubble({ metadata, isMine, onPress }: Props) {
   const noteColor = metadata.color || NOTE_ACCENT;
   const accentColor = isMine ? '#FFFFFF' : noteColor;
   const primaryText = isMine ? '#FFFFFF' : '#2D1F14';
   const secondaryText = isMine ? 'rgba(255,255,255,0.6)' : '#7A6355';
 
+  const handlePress = () => {
+    if (onPress) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      onPress();
+    }
+  };
+
   return (
-    <View style={{ minWidth: 230 }}>
+    <Pressable onPress={handlePress} disabled={!onPress} style={{ minWidth: 230 }}>
       {/* Header: icon badge + label + privacy pill */}
       <View className="flex-row items-center mb-2.5">
         <View
@@ -95,6 +104,6 @@ export function NoteMessageBubble({ metadata, isMine }: Props) {
           </Text>
         </View>
       ) : null}
-    </View>
+    </Pressable>
   );
 }

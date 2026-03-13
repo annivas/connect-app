@@ -89,6 +89,7 @@ export interface VideoMessageMetadata {
 }
 
 export interface NoteMessageMetadata {
+  noteId?: string;
   title: string;
   contentPreview: string;
   isPrivate: boolean;
@@ -96,6 +97,7 @@ export interface NoteMessageMetadata {
 }
 
 export interface ReminderMessageMetadata {
+  reminderId?: string;
   title: string;
   description?: string;
   dueDate: string;
@@ -105,6 +107,7 @@ export interface ReminderMessageMetadata {
 }
 
 export interface ExpenseMessageMetadata {
+  entryId?: string;
   description: string;
   amount: number;
   paidBy: string;
