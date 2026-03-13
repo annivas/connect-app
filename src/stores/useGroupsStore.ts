@@ -115,19 +115,19 @@ interface GroupsState {
   cancelGroupScheduledMessage: (messageId: string) => void;
 
   // Notes CRUD
-  createGroupNote: (groupId: string, note: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>, channelId?: string | null) => void;
+  createGroupNote: (groupId: string, note: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>, channelId?: string | null) => Note;
   updateGroupNote: (groupId: string, noteId: string, input: import('../services/types').UpdateNoteInput, channelId?: string | null) => void;
   deleteGroupNote: (groupId: string, noteId: string, channelId?: string | null) => void;
   toggleGroupNotePin: (groupId: string, noteId: string, channelId?: string | null) => void;
 
   // Reminders CRUD
-  createGroupReminder: (groupId: string, reminder: Omit<Reminder, 'id' | 'createdAt'>, channelId?: string | null) => void;
+  createGroupReminder: (groupId: string, reminder: Omit<Reminder, 'id' | 'createdAt'>, channelId?: string | null) => Reminder;
   updateGroupReminder: (groupId: string, reminderId: string, input: import('../services/types').UpdateReminderInput, channelId?: string | null) => void;
   toggleGroupReminderComplete: (groupId: string, reminderId: string, channelId?: string | null) => void;
   deleteGroupReminder: (groupId: string, reminderId: string, channelId?: string | null) => void;
 
   // Ledger CRUD
-  createGroupLedgerEntry: (groupId: string, entry: Omit<LedgerEntry, 'id'>, channelId?: string | null) => void;
+  createGroupLedgerEntry: (groupId: string, entry: Omit<LedgerEntry, 'id'>, channelId?: string | null) => LedgerEntry;
   updateGroupLedgerEntry: (groupId: string, entryId: string, input: import('../services/types').UpdateLedgerEntryInput, channelId?: string | null) => void;
   settleGroupLedgerEntry: (groupId: string, entryId: string, channelId?: string | null) => void;
   deleteGroupLedgerEntry: (groupId: string, entryId: string, channelId?: string | null) => void;
@@ -1380,6 +1380,7 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         })),
       }));
     });
+    return newNote;
   },
 
   deleteGroupNote: (groupId, noteId, channelId) => {
@@ -1452,6 +1453,7 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         })),
       }));
     });
+    return newReminder;
   },
 
   updateGroupReminder: (groupId, reminderId, input, channelId) => {
@@ -1525,6 +1527,7 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         })),
       }));
     });
+    return newEntry;
   },
 
   updateGroupLedgerEntry: (groupId, entryId, input, channelId) => {

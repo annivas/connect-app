@@ -29,9 +29,10 @@ interface Props {
   isMine: boolean;
   groupId?: string;
   conversationId?: string;
+  onPress?: () => void;
 }
 
-export function EventMessageBubble({ metadata, isMine, groupId }: Props) {
+export function EventMessageBubble({ metadata, isMine, groupId, onPress }: Props) {
   const currentUserId = useUserStore((s) => s.currentUser?.id);
   const getUserById = useUserStore.getState().getUserById;
 
@@ -71,8 +72,15 @@ export function EventMessageBubble({ metadata, isMine, groupId }: Props) {
   const visibleAttendees = goingAttendees.slice(0, 4);
   const overflowCount = goingAttendees.length - 4;
 
+  const handlePress = () => {
+    if (onPress) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      onPress();
+    }
+  };
+
   return (
-    <View style={{ minWidth: 250 }}>
+    <Pressable onPress={handlePress} disabled={!onPress} style={{ minWidth: 250 }}>
       {/* Top accent strip */}
       <View
         style={{
@@ -234,6 +242,6 @@ export function EventMessageBubble({ metadata, isMine, groupId }: Props) {
           })}
         </View>
       )}
-    </View>
+    </Pressable>
   );
 }

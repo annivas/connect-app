@@ -9,6 +9,8 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as Contacts from 'expo-contacts';
 import Constants from 'expo-constants';
 import * as Clipboard from 'expo-clipboard';
+import * as Haptics from 'expo-haptics';
+import { useRouter } from 'expo-router';
 import { MessageBubble } from '../chat/MessageBubble';
 import { MessageInput } from '../chat/MessageInput';
 import { MessageContextMenu } from '../chat/MessageContextMenu';
@@ -33,7 +35,7 @@ import { useUserStore } from '../../stores/useUserStore';
 import { useCallStore } from '../../stores/useCallStore';
 import { getImageGroup } from '../../utils/imageGrouping';
 import { detectEventHint } from '../../utils/eventDetection';
-import type { Message, GroupEvent, CallEntry, DisappearingDuration, SongMetadata } from '../../types';
+import type { Message, GroupEvent, CallEntry, DisappearingDuration, SongMetadata, Reminder, LedgerEntry, NoteMessageMetadata, ReminderMessageMetadata, ExpenseMessageMetadata, EventMessageMetadata } from '../../types';
 
 /**
  * Dynamically measure the Y position of the GroupChatTab container to get an
@@ -69,6 +71,7 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
 
   const listRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { containerRef, offset: kbOffset, onLayout } = useKeyboardOffset();
 
   const messages = useGroupsStore(useShallow((s) => s.getGroupMessages(groupId, isPrivate, channelId)));
@@ -98,6 +101,12 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
   const [showSheetNoteModal, setShowSheetNoteModal] = useState(false);
   const [showSheetExpenseModal, setShowSheetExpenseModal] = useState(false);
   const [showSheetReminderModal, setShowSheetReminderModal] = useState(false);
+
+  // Edit modals triggered by tapping rich bubbles in chat
+  const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
+  const [showEditReminderModal, setShowEditReminderModal] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<LedgerEntry | null>(null);
+  const [showEditExpenseModal, setShowEditExpenseModal] = useState(false);
 
   // Schedule message
   const [showScheduleSheet, setShowScheduleSheet] = useState(false);
@@ -569,6 +578,44 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
     }
   }, [groupId, sendGroupMessage]);
 
+  // ─── Rich bubble tap handler ──────────────
+  const handleItemPress = useCallback((type: string, metadata: Record<string, unknown>) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    switch (type) {
+      case 'note': {
+        const noteId = (metadata as unknown as NoteMessageMetadata).noteId;
+        if (noteId) {
+          router.push({ pathname: '/(tabs)/messages/note-detail', params: { noteId, groupId } } as never);
+        }
+        break;
+      }
+      case 'reminder': {
+        const reminderId = (metadata as unknown as ReminderMessageMetadata).reminderId;
+        if (reminderId) {
+          const group = useGroupsStore.getState().groups.find((g) => g.id === groupId);
+          const reminder = group?.metadata?.reminders?.find((r: Reminder) => r.id === reminderId);
+          if (reminder) {
+            setEditingReminder(reminder);
+            setShowEditReminderModal(true);
+          }
+        }
+        break;
+      }
+      case 'expense': {
+        const entryId = (metadata as unknown as ExpenseMessageMetadata).entryId;
+        if (entryId) {
+          const group = useGroupsStore.getState().groups.find((g) => g.id === groupId);
+          const entry = group?.metadata?.ledgerEntries?.find((e: LedgerEntry) => e.id === entryId);
+          if (entry) {
+            setEditingExpense(entry);
+            setShowEditExpenseModal(true);
+          }
+        }
+        break;
+      }
+    }
+  }, [groupId, router]);
+
   return (
     <View ref={containerRef} onLayout={onLayout} className="flex-1 bg-background-primary">
     <KeyboardAvoidingView
@@ -664,6 +711,7 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
               onContextMenu={handleContextMenu}
               imageGroup={imgGroup?.isLeader ? imgGroup.images : undefined}
               groupId={groupId}
+              onItemPress={handleItemPress}
             />
           );
         }}
@@ -841,12 +889,13 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
       visible={showSheetNoteModal}
       onClose={() => setShowSheetNoteModal(false)}
       onSave={(note) => {
-        useGroupsStore.getState().createGroupNote(groupId, note);
+        const created = useGroupsStore.getState().createGroupNote(groupId, note);
         const userId = useUserStore.getState().currentUser?.id;
         if (userId) {
           sendGroupMessage(groupId, `Created a note: ${note.title}`, userId, {
             type: 'note',
             metadata: {
+              noteId: created.id,
               title: note.title,
               contentPreview: (note.content || '').slice(0, 80),
               isPrivate: note.isPrivate,
@@ -862,7 +911,7 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
       visible={showSheetExpenseModal}
       onClose={() => setShowSheetExpenseModal(false)}
       onSave={(entry) => {
-        useGroupsStore.getState().createGroupLedgerEntry(groupId, {
+        const created = useGroupsStore.getState().createGroupLedgerEntry(groupId, {
           description: entry.description,
           amount: entry.amount,
           paidBy: entry.paidBy,
@@ -876,6 +925,7 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
           sendGroupMessage(groupId, `Added an expense: ${entry.description} — $${entry.amount.toFixed(2)}`, userId, {
             type: 'expense',
             metadata: {
+              entryId: created.id,
               description: entry.description,
               amount: entry.amount,
               paidBy: entry.paidBy,
@@ -894,7 +944,7 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
       onClose={() => setShowSheetReminderModal(false)}
       onSave={(reminder) => {
         const userId = useUserStore.getState().currentUser?.id ?? '';
-        useGroupsStore.getState().createGroupReminder(groupId, {
+        const created = useGroupsStore.getState().createGroupReminder(groupId, {
           title: reminder.title,
           description: reminder.description,
           dueDate: reminder.dueDate instanceof Date ? reminder.dueDate : new Date(reminder.dueDate),
@@ -906,6 +956,7 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
           sendGroupMessage(groupId, `Set a reminder: ${reminder.title}`, userId, {
             type: 'reminder',
             metadata: {
+              reminderId: created.id,
               title: reminder.title,
               description: reminder.description,
               dueDate: reminder.dueDate instanceof Date ? reminder.dueDate.toISOString() : String(reminder.dueDate),
@@ -916,6 +967,30 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
         }
         setShowSheetReminderModal(false);
         useToastStore.getState().show({ message: 'Reminder created', type: 'success' });
+      }}
+    />
+
+    {/* Edit modals triggered by tapping rich bubbles in chat */}
+    <CreateReminderModal
+      visible={showEditReminderModal}
+      onClose={() => { setShowEditReminderModal(false); setEditingReminder(null); }}
+      editingReminder={editingReminder}
+      onUpdate={(id, updates) => {
+        useGroupsStore.getState().updateGroupReminder(groupId, id, updates);
+        setShowEditReminderModal(false);
+        setEditingReminder(null);
+        useToastStore.getState().show({ message: 'Reminder updated', type: 'success' });
+      }}
+    />
+    <CreateExpenseModal
+      visible={showEditExpenseModal}
+      onClose={() => { setShowEditExpenseModal(false); setEditingExpense(null); }}
+      editingEntry={editingExpense}
+      onUpdate={(id, updates) => {
+        useGroupsStore.getState().updateGroupLedgerEntry(groupId, id, updates);
+        setShowEditExpenseModal(false);
+        setEditingExpense(null);
+        useToastStore.getState().show({ message: 'Expense updated', type: 'success' });
       }}
     />
     </View>

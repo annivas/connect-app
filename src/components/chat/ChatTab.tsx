@@ -10,6 +10,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as Contacts from 'expo-contacts';
 import Constants from 'expo-constants';
 import * as Clipboard from 'expo-clipboard';
+import { useRouter } from 'expo-router';
 import { MessageBubble } from './MessageBubble';
 import { MessageInput } from './MessageInput';
 import { MessageContextMenu } from './MessageContextMenu';
@@ -31,7 +32,7 @@ import { CreateReminderModal } from './CreateReminderModal';
 import { CreateExpenseModal } from './CreateExpenseModal';
 import { CreateNoteModal } from './CreateNoteModal';
 import { CreatePollModal } from '../groups/CreatePollModal';
-import type { Message, CallEntry, DisappearingDuration, SongMetadata, DetectedAction, User } from '../../types';
+import type { Message, CallEntry, DisappearingDuration, SongMetadata, DetectedAction, User, Reminder, LedgerEntry, NoteMessageMetadata, ReminderMessageMetadata, ExpenseMessageMetadata } from '../../types';
 
 /**
  * Dynamically measure the Y position of the ChatTab container to get an accurate
@@ -68,6 +69,7 @@ const GROUP_THRESHOLD_MINUTES = 3;
 export function ChatTab({ conversationId, isPrivate, channelId, highlightText, matchingMessageIds }: Props) {
   const listRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { containerRef, offset: kbOffset, onLayout } = useKeyboardOffset();
 
   const messages = useMessagesStore(
@@ -113,6 +115,12 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
   const [showSheetExpenseModal, setShowSheetExpenseModal] = useState(false);
   const [showSheetReminderModal, setShowSheetReminderModal] = useState(false);
   const [showSheetPollModal, setShowSheetPollModal] = useState(false);
+
+  // Edit modals triggered by tapping rich bubbles in chat
+  const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
+  const [showEditReminderModal, setShowEditReminderModal] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<LedgerEntry | null>(null);
+  const [showEditExpenseModal, setShowEditExpenseModal] = useState(false);
 
   // Unread jump button
   const conversationUnreadCount = useMessagesStore(
@@ -284,6 +292,44 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
         break;
     }
   }, []);
+
+  // ─── Rich bubble tap handler ──────────────
+  const handleItemPress = useCallback((type: string, metadata: Record<string, unknown>) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    switch (type) {
+      case 'note': {
+        const noteId = (metadata as unknown as NoteMessageMetadata).noteId;
+        if (noteId) {
+          router.push({ pathname: '/(tabs)/messages/note-detail', params: { noteId, conversationId } } as never);
+        }
+        break;
+      }
+      case 'reminder': {
+        const reminderId = (metadata as unknown as ReminderMessageMetadata).reminderId;
+        if (reminderId) {
+          const conversation = useMessagesStore.getState().getConversationById(conversationId);
+          const reminder = conversation?.metadata?.reminders?.find((r: Reminder) => r.id === reminderId);
+          if (reminder) {
+            setEditingReminder(reminder);
+            setShowEditReminderModal(true);
+          }
+        }
+        break;
+      }
+      case 'expense': {
+        const entryId = (metadata as unknown as ExpenseMessageMetadata).entryId;
+        if (entryId) {
+          const conversation = useMessagesStore.getState().getConversationById(conversationId);
+          const entry = conversation?.metadata?.ledgerEntries?.find((e: LedgerEntry) => e.id === entryId);
+          if (entry) {
+            setEditingExpense(entry);
+            setShowEditExpenseModal(true);
+          }
+        }
+        break;
+      }
+    }
+  }, [conversationId, router]);
 
   // ─── Attachment handlers ──────────────
   const handleOpenAttachments = () => {
@@ -648,6 +694,7 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
               onActionSuggestion={handleActionSuggestion}
               imageGroup={imgGroup?.isLeader ? imgGroup.images : undefined}
               conversationId={conversationId}
+              onItemPress={handleItemPress}
             />
           );
         }}
@@ -837,6 +884,7 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
           sendMessage(conversationId, `Created a note: ${note.title}`, userId, {
             type: 'note',
             metadata: {
+              noteId: created.id,
               title: created.title,
               contentPreview: (created.content || '').slice(0, 80),
               isPrivate: created.isPrivate,
@@ -865,6 +913,7 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
           sendMessage(conversationId, `Added an expense: ${entry.description} — $${entry.amount.toFixed(2)}`, userId, {
             type: 'expense',
             metadata: {
+              entryId: created.id,
               description: created.description,
               amount: created.amount,
               paidBy: created.paidBy,
@@ -916,6 +965,7 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
           sendMessage(conversationId, `Set a reminder: ${reminder.title}`, userId, {
             type: 'reminder',
             metadata: {
+              reminderId: created.id,
               title: created.title,
               description: created.description,
               dueDate: typeof created.dueDate === 'string' ? created.dueDate : created.dueDate instanceof Date ? created.dueDate.toISOString() : String(created.dueDate),
@@ -927,6 +977,32 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
         }
         setShowSheetReminderModal(false);
         useToastStore.getState().show({ message: 'Reminder created', type: 'success' });
+      }}
+    />
+
+    {/* Edit modals triggered by tapping rich bubbles in chat */}
+    <CreateReminderModal
+      visible={showEditReminderModal}
+      conversationId={conversationId}
+      onClose={() => { setShowEditReminderModal(false); setEditingReminder(null); }}
+      editingReminder={editingReminder}
+      onUpdate={(id, updates) => {
+        useMessagesStore.getState().updateReminder(conversationId, id, updates);
+        setShowEditReminderModal(false);
+        setEditingReminder(null);
+        useToastStore.getState().show({ message: 'Reminder updated', type: 'success' });
+      }}
+    />
+    <CreateExpenseModal
+      visible={showEditExpenseModal}
+      conversationId={conversationId}
+      onClose={() => { setShowEditExpenseModal(false); setEditingExpense(null); }}
+      editingEntry={editingExpense}
+      onUpdate={(id, updates) => {
+        useMessagesStore.getState().updateLedgerEntry(conversationId, id, updates);
+        setShowEditExpenseModal(false);
+        setEditingExpense(null);
+        useToastStore.getState().show({ message: 'Expense updated', type: 'success' });
       }}
     />
     </View>

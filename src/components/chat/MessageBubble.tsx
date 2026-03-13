@@ -58,6 +58,8 @@ interface Props {
   /** Context IDs for interactive bubbles (polls, events) */
   groupId?: string;
   conversationId?: string;
+  /** Called when a rich item bubble (note, reminder, expense, event) is tapped */
+  onItemPress?: (type: string, metadata: Record<string, unknown>) => void;
 }
 
 // ─── Date Divider ────────────────────────────
@@ -228,6 +230,7 @@ export function MessageBubble({
   onActionSuggestion,
   groupId,
   conversationId,
+  onItemPress,
 }: Props) {
   const currentUserId = useUserStore((s) => s.currentUser?.id);
   const getUserById = useUserStore((s) => s.getUserById);
@@ -509,6 +512,7 @@ export function MessageBubble({
                     <NoteMessageBubble
                       metadata={message.metadata as unknown as NoteMessageMetadata}
                       isMine={isMine}
+                      onPress={onItemPress ? () => onItemPress('note', message.metadata as unknown as Record<string, unknown>) : undefined}
                     />
                   </View>
                 ) : message.type === 'reminder' ? (
@@ -521,6 +525,7 @@ export function MessageBubble({
                     <ReminderMessageBubble
                       metadata={message.metadata as unknown as ReminderMessageMetadata}
                       isMine={isMine}
+                      onPress={onItemPress ? () => onItemPress('reminder', message.metadata as unknown as Record<string, unknown>) : undefined}
                     />
                   </View>
                 ) : message.type === 'expense' ? (
@@ -533,6 +538,7 @@ export function MessageBubble({
                     <ExpenseMessageBubble
                       metadata={message.metadata as unknown as ExpenseMessageMetadata}
                       isMine={isMine}
+                      onPress={onItemPress ? () => onItemPress('expense', message.metadata as unknown as Record<string, unknown>) : undefined}
                     />
                   </View>
                 ) : message.type === 'poll' ? (
@@ -560,6 +566,7 @@ export function MessageBubble({
                       metadata={message.metadata as unknown as EventMessageMetadata}
                       isMine={isMine}
                       groupId={groupId}
+                      onPress={onItemPress ? () => onItemPress('event', message.metadata as unknown as Record<string, unknown>) : undefined}
                     />
                   </View>
                 ) : message.type === 'image' ? (

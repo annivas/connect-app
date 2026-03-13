@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { Avatar } from '../ui/Avatar';
 import { useUserStore } from '../../stores/useUserStore';
 import type { ExpenseMessageMetadata } from '../../types';
@@ -21,9 +22,10 @@ const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
 interface Props {
   metadata: ExpenseMessageMetadata;
   isMine: boolean;
+  onPress?: () => void;
 }
 
-export function ExpenseMessageBubble({ metadata, isMine }: Props) {
+export function ExpenseMessageBubble({ metadata, isMine, onPress }: Props) {
   const primaryText = isMine ? '#FFFFFF' : '#2D1F14';
   const secondaryText = isMine ? 'rgba(255,255,255,0.6)' : '#7A6355';
   const accentColor = isMine ? '#FFFFFF' : EXPENSE_COLOR;
@@ -34,8 +36,15 @@ export function ExpenseMessageBubble({ metadata, isMine }: Props) {
     ? (metadata.amount / metadata.splitBetween.length).toFixed(2)
     : metadata.amount.toFixed(2);
 
+  const handlePress = () => {
+    if (onPress) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      onPress();
+    }
+  };
+
   return (
-    <View style={{ minWidth: 240 }}>
+    <Pressable onPress={handlePress} disabled={!onPress} style={{ minWidth: 240 }}>
       {/* Header: icon badge + EXPENSE label + settled status */}
       <View className="flex-row items-center mb-2.5">
         <View
@@ -137,6 +146,6 @@ export function ExpenseMessageBubble({ metadata, isMine }: Props) {
           </Text>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
