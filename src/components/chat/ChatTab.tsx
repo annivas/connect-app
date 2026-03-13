@@ -839,13 +839,28 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
         setShowActionReminderModal(false);
         setActionSuggestionValue('');
       }}
-      onSave={(reminder) => {
-        useMessagesStore.getState().createReminder(conversationId, {
+      onSave={async (reminder) => {
+        const created = await useMessagesStore.getState().createReminder(conversationId, {
           title: reminder.title,
           description: reminder.description,
           dueDate: reminder.dueDate instanceof Date ? reminder.dueDate.toISOString() : String(reminder.dueDate),
           priority: reminder.priority,
         });
+        const userId = useUserStore.getState().currentUser?.id;
+        if (userId) {
+          sendMessage(conversationId, `Set a reminder: ${reminder.title}`, userId, {
+            type: 'reminder',
+            metadata: {
+              reminderId: created.id,
+              title: created.title,
+              description: created.description,
+              dueDate: typeof created.dueDate === 'string' ? created.dueDate : created.dueDate instanceof Date ? created.dueDate.toISOString() : String(created.dueDate),
+              priority: created.priority,
+              isCompleted: created.isCompleted,
+              assignedTo: created.assignedTo,
+            },
+          });
+        }
         setShowActionReminderModal(false);
         setActionSuggestionValue('');
         useToastStore.getState().show({ message: 'Reminder created', type: 'success' });
@@ -858,14 +873,29 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
         setShowActionExpenseModal(false);
         setActionSuggestionValue('');
       }}
-      onSave={(entry) => {
-        useMessagesStore.getState().createLedgerEntry(conversationId, {
+      onSave={async (entry) => {
+        const created = await useMessagesStore.getState().createLedgerEntry(conversationId, {
           description: entry.description,
           amount: entry.amount,
           paidBy: entry.paidBy,
           splitBetween: entry.splitBetween,
           category: entry.category,
         });
+        const userId = useUserStore.getState().currentUser?.id;
+        if (userId) {
+          sendMessage(conversationId, `Added an expense: ${entry.description} — $${entry.amount.toFixed(2)}`, userId, {
+            type: 'expense',
+            metadata: {
+              entryId: created.id,
+              description: created.description,
+              amount: created.amount,
+              paidBy: created.paidBy,
+              splitBetween: created.splitBetween,
+              category: created.category,
+              isSettled: created.isSettled,
+            },
+          });
+        }
         setShowActionExpenseModal(false);
         setActionSuggestionValue('');
         useToastStore.getState().show({ message: 'Expense added', type: 'success' });
