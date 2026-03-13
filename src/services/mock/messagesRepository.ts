@@ -237,13 +237,11 @@ export const mockMessagesRepository: IMessagesRepository = {
       c.id === conversationId
         ? {
             ...c,
-            metadata: c.metadata
-              ? {
-                  ...c.metadata,
-                  ledgerEntries: [newEntry, ...c.metadata.ledgerEntries],
-                  ledgerBalance: c.metadata.ledgerBalance + input.amount,
-                }
-              : c.metadata,
+            metadata: {
+              ...(c.metadata ?? { sharedObjects: [], notes: [], reminders: [], ledgerBalance: 0, ledgerEntries: [], pinnedMessages: [], starredMessages: [], polls: [], callHistory: [] }),
+              ledgerEntries: [newEntry, ...(c.metadata?.ledgerEntries ?? [])],
+              ledgerBalance: (c.metadata?.ledgerBalance ?? 0) + input.amount,
+            },
           }
         : c,
     );

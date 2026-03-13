@@ -27,8 +27,18 @@ const updateConvMetadata = (
         ),
       };
     }
-    if (!c.metadata) return c;
-    return { ...c, metadata: updater(c.metadata) };
+    const metadata: ConversationMetadata = c.metadata ?? {
+      sharedObjects: [],
+      notes: [],
+      reminders: [],
+      ledgerBalance: 0,
+      ledgerEntries: [],
+      pinnedMessages: [],
+      starredMessages: [],
+      polls: [],
+      callHistory: [],
+    };
+    return { ...c, metadata: updater(metadata) };
   });
 };
 

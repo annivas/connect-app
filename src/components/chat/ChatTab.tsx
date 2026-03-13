@@ -139,6 +139,19 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
     useShallow((s) => s.callHistory.filter((c) => c.conversationId === conversationId)),
   );
 
+  // Build members list for expense modals (same pattern as section-detail.tsx)
+  const expenseMembers = useMemo(() => {
+    const conv = useMessagesStore.getState().getConversationById(conversationId);
+    if (!conv) return [];
+    const currentUser = useUserStore.getState().currentUser;
+    const getUserById = useUserStore.getState().getUserById;
+    const others = conv.participants
+      .filter((uid) => uid !== currentUser?.id)
+      .map((uid) => getUserById(uid))
+      .filter(Boolean) as import('../../types').User[];
+    return currentUser ? [currentUser, ...others] : others;
+  }, [conversationId]);
+
   // Merge messages and call history into a unified timeline
   type TimelineItem =
     | { kind: 'message'; data: Message }
@@ -869,6 +882,7 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
     <CreateExpenseModal
       visible={showActionExpenseModal}
       conversationId={conversationId}
+      members={expenseMembers}
       onClose={() => {
         setShowActionExpenseModal(false);
         setActionSuggestionValue('');
@@ -929,6 +943,7 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
     <CreateExpenseModal
       visible={showSheetExpenseModal}
       conversationId={conversationId}
+      members={expenseMembers}
       onClose={() => setShowSheetExpenseModal(false)}
       onSave={async (entry) => {
         const created = await useMessagesStore.getState().createLedgerEntry(conversationId, {
@@ -1026,6 +1041,7 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
     <CreateExpenseModal
       visible={showEditExpenseModal}
       conversationId={conversationId}
+      members={expenseMembers}
       onClose={() => { setShowEditExpenseModal(false); setEditingExpense(null); }}
       editingEntry={editingExpense}
       onUpdate={(id, updates) => {
