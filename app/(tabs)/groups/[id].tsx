@@ -17,11 +17,12 @@ import { CreateChannelModal } from '../../../src/components/chat/CreateChannelMo
 import { EditChannelModal } from '../../../src/components/chat/EditChannelModal';
 import { CreatePollModal } from '../../../src/components/groups/CreatePollModal';
 import { useMessageSearch } from '../../../src/hooks/useMessageSearch';
+import { AIVisibilityToggle } from '../../../src/components/ai/AIVisibilityToggle';
 import { useGroupsStore } from '../../../src/stores/useGroupsStore';
 import { useUserStore } from '../../../src/stores/useUserStore';
 import { useCallStore } from '../../../src/stores/useCallStore';
 import { CURRENT_USER_ID } from '../../../src/mocks/users';
-import type { Channel } from '../../../src/types';
+import type { AIVisibility, Channel } from '../../../src/types';
 
 export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -67,6 +68,11 @@ export default function GroupDetailScreen() {
     s.getGroupMessages(id!, false, activeChannelId)
   ));
 
+  // Check if the active channel has an AI agent
+  const activeChannel = activeChannelId
+    ? channels.find((c) => c.id === activeChannelId)
+    : null;
+  const activeChannelAI = activeChannel?.aiAgentId ? activeChannel : null;
 
   const {
     searchQuery: chatSearchQuery,
@@ -181,6 +187,15 @@ export default function GroupDetailScreen() {
         />
       )}
 
+      {/* AI visibility toggle — shown when active channel has an AI agent */}
+      {activeChannelAI && (
+        <AIVisibilityToggle
+          visibility={activeChannelAI.aiVisibility ?? 'ai-restricted'}
+          onToggle={(visibility: AIVisibility) => {
+            useGroupsStore.getState().updateChannel(id!, activeChannelAI.id, { aiVisibility: visibility });
+          }}
+        />
+      )}
 
       {/* In-chat search bar */}
       <InChatSearchBar
@@ -341,8 +356,8 @@ export default function GroupDetailScreen() {
       <CreateChannelModal
         visible={showCreateChannel}
         onClose={() => setShowCreateChannel(false)}
-        onCreate={(name, emoji, color) => {
-          useGroupsStore.getState().createChannel(id!, name, emoji, color);
+        onCreate={(name, emoji, color, aiAgentId) => {
+          useGroupsStore.getState().createChannel(id!, name, emoji, color, aiAgentId);
         }}
       />
 

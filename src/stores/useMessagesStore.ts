@@ -7,6 +7,7 @@ import { config } from '../config/env';
 import { adaptMessage } from '../services/supabase/adapters';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { getCurrentUserId, getUserById } from './helpers';
+import { generateMockAIResponse } from '../utils/mockAIResponse';
 
 const PAGE_SIZE = 50;
 
@@ -65,9 +66,9 @@ interface MessagesState {
   getUnreadCount: () => number;
 
   // Channel operations
-  createChannel: (conversationId: string, name: string, emoji?: string, color?: string) => void;
+  createChannel: (conversationId: string, name: string, emoji?: string, color?: string, aiAgentId?: string) => void;
   deleteChannel: (conversationId: string, channelId: string) => void;
-  updateChannel: (conversationId: string, channelId: string, updates: Partial<Pick<Channel, 'name' | 'emoji' | 'color'>>) => void;
+  updateChannel: (conversationId: string, channelId: string, updates: Partial<Pick<Channel, 'name' | 'emoji' | 'color' | 'aiAgentId' | 'aiVisibility'>>) => void;
   setActiveChannel: (conversationId: string, channelId: string | null) => void;
   getActiveChannel: (conversationId: string) => string | null;
 
@@ -332,7 +333,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
 
   // ─── Channel Operations ──────────────────────────
 
-  createChannel: (conversationId, name, emoji, color = '#D4764E') => {
+  createChannel: (conversationId, name, emoji, color = '#D4764E', aiAgentId) => {
     const tempId = `ch-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const newChannel: Channel = {
       id: tempId,
@@ -352,6 +353,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
         polls: [],
         callHistory: [],
       },
+      ...(aiAgentId ? { aiAgentId, aiVisibility: 'ai-restricted' as const } : {}),
     };
     // Optimistic update
     set((state) => ({
@@ -539,6 +541,50 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
           ),
         }));
       });
+
+    // ─── AI Channel Response ───────────────────
+    // If this message was sent in a channel with an AI agent, generate a response
+    const channelId = options?.channelId;
+    if (channelId) {
+      const conversation = get().getConversationById(conversationId);
+      const channel = conversation?.channels?.find((c) => c.id === channelId);
+      if (channel?.aiAgentId) {
+        const agentId = channel.aiAgentId;
+        // Show typing indicator for the AI agent
+        set((s) => ({
+          typingUsers: {
+            ...s.typingUsers,
+            [conversationId]: [...(s.typingUsers[conversationId] || []), agentId],
+          },
+        }));
+
+        // Generate AI response after delay
+        setTimeout(() => {
+          const aiMessage: Message = {
+            id: `msg-ai-${Date.now()}`,
+            conversationId,
+            senderId: agentId,
+            content: generateMockAIResponse('AI', content),
+            timestamp: new Date(),
+            type: 'text',
+            isRead: true,
+            sendStatus: 'sent',
+            channelId,
+          };
+
+          set((s) => ({
+            messages: [...s.messages, aiMessage],
+            // Clear typing indicator
+            typingUsers: {
+              ...s.typingUsers,
+              [conversationId]: (s.typingUsers[conversationId] || []).filter(
+                (id) => id !== agentId,
+              ),
+            },
+          }));
+        }, 1500);
+      }
+    }
   },
 
   retryMessage: (messageId) => {

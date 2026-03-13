@@ -20,6 +20,7 @@ function ChannelPill({
   emoji,
   color,
   isActive,
+  hasAI,
   onPress,
   onLongPress,
 }: {
@@ -27,6 +28,7 @@ function ChannelPill({
   emoji?: string;
   color?: string;
   isActive: boolean;
+  hasAI?: boolean;
   onPress: () => void;
   onLongPress?: () => void;
 }) {
@@ -74,6 +76,14 @@ function ChannelPill({
         >
           {label}
         </Text>
+        {hasAI && (
+          <Ionicons
+            name="sparkles"
+            size={10}
+            color={isActive ? '#FFFFFF' : (color || '#D4764E')}
+            style={{ marginLeft: 4 }}
+          />
+        )}
       </View>
     </AnimatedPressable>
   );
@@ -110,6 +120,7 @@ export function ChannelStrip({
             emoji={channel.emoji}
             color={channel.color}
             isActive={activeChannelId === channel.id}
+            hasAI={!!channel.aiAgentId}
             onPress={() => onSelectChannel(channel.id)}
             onLongPress={() => onLongPressChannel(channel)}
           />

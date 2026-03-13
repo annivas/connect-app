@@ -7,6 +7,7 @@ import { adaptMessage, adaptPoll, PollRow } from '../services/supabase/adapters'
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import type { CreateGroupInput, UpdateGroupInput } from '../services/types';
 import { getCurrentUserId, getUserById, getMessagesStoreRef } from './helpers';
+import { generateMockAIResponse } from '../utils/mockAIResponse';
 
 const PAGE_SIZE = 50;
 
@@ -53,9 +54,9 @@ interface GroupsState {
   unsubscribe: () => void;
   // Channels
   activeChannel: Record<string, string | null>;
-  createChannel: (groupId: string, name: string, emoji?: string, color?: string) => void;
+  createChannel: (groupId: string, name: string, emoji?: string, color?: string, aiAgentId?: string) => void;
   deleteChannel: (groupId: string, channelId: string) => void;
-  updateChannel: (groupId: string, channelId: string, updates: Partial<Pick<Channel, 'name' | 'emoji' | 'color'>>) => void;
+  updateChannel: (groupId: string, channelId: string, updates: Partial<Pick<Channel, 'name' | 'emoji' | 'color' | 'aiAgentId' | 'aiVisibility'>>) => void;
   setActiveChannel: (groupId: string, channelId: string | null) => void;
   getActiveChannel: (groupId: string) => string | null;
 
@@ -403,7 +404,7 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
 
   getGroupById: (id) => get().groups.find((g) => g.id === id),
 
-  createChannel: (groupId, name, emoji, color = '#D4764E') => {
+  createChannel: (groupId, name, emoji, color = '#D4764E', aiAgentId) => {
     const tempId = `ch-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const newChannel: Channel = {
       id: tempId,
@@ -423,6 +424,7 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         polls: [],
         callHistory: [],
       },
+      ...(aiAgentId ? { aiAgentId, aiVisibility: 'ai-restricted' as const } : {}),
     };
     // Optimistic update
     set((state) => ({
@@ -612,6 +614,46 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
           ),
         }));
       });
+
+    // ─── AI Channel Response ───────────────────
+    const channelId = options?.channelId;
+    if (channelId) {
+      const group = get().getGroupById(groupId);
+      const channel = group?.channels?.find((c) => c.id === channelId);
+      if (channel?.aiAgentId) {
+        const agentId = channel.aiAgentId;
+        set((s) => ({
+          typingUsers: {
+            ...s.typingUsers,
+            [groupId]: [...(s.typingUsers[groupId] || []), agentId],
+          },
+        }));
+
+        setTimeout(() => {
+          const aiMessage: Message = {
+            id: `gmsg-ai-${Date.now()}`,
+            conversationId: groupId,
+            senderId: agentId,
+            content: generateMockAIResponse('AI', content),
+            timestamp: new Date(),
+            type: 'text',
+            isRead: true,
+            sendStatus: 'sent',
+            channelId,
+          };
+
+          set((s) => ({
+            groupMessages: [...s.groupMessages, aiMessage],
+            typingUsers: {
+              ...s.typingUsers,
+              [groupId]: (s.typingUsers[groupId] || []).filter(
+                (id) => id !== agentId,
+              ),
+            },
+          }));
+        }, 1500);
+      }
+    }
   },
 
   retryGroupMessage: (messageId) => {

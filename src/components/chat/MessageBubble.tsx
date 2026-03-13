@@ -238,6 +238,7 @@ export function MessageBubble({
   const isFailed = message.sendStatus === 'failed';
 
   const sender = !isMine ? getUserById(message.senderId) : null;
+  const isAISender = sender?.isAI ?? false;
 
   // ─── Image viewer state ───
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
@@ -416,16 +417,39 @@ export function MessageBubble({
               {!isMine && (
                 <View style={{ width: AVATAR_SIZE, marginRight: 8 }}>
                   {isLastInGroup && sender ? (
-                    <Image
-                      source={{ uri: sender.avatar }}
-                      style={{
-                        width: AVATAR_SIZE,
-                        height: AVATAR_SIZE,
-                        borderRadius: AVATAR_SIZE / 2,
-                      }}
-                      contentFit="cover"
-                      transition={200}
-                    />
+                    isAISender ? (
+                      <View
+                        style={{
+                          width: AVATAR_SIZE,
+                          height: AVATAR_SIZE,
+                          borderRadius: AVATAR_SIZE / 2,
+                          borderWidth: 1.5,
+                          borderColor: '#D4764E',
+                          overflow: 'hidden',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: '#FFFFFF',
+                        }}
+                      >
+                        <Image
+                          source={{ uri: sender.avatar }}
+                          style={{ width: AVATAR_SIZE - 8, height: AVATAR_SIZE - 8 }}
+                          contentFit="contain"
+                          transition={200}
+                        />
+                      </View>
+                    ) : (
+                      <Image
+                        source={{ uri: sender.avatar }}
+                        style={{
+                          width: AVATAR_SIZE,
+                          height: AVATAR_SIZE,
+                          borderRadius: AVATAR_SIZE / 2,
+                        }}
+                        contentFit="cover"
+                        transition={200}
+                      />
+                    )
                   ) : (
                     <View style={{ width: AVATAR_SIZE }} />
                   )}
@@ -434,11 +458,16 @@ export function MessageBubble({
 
               {/* Bubble content */}
               <View className={`max-w-[75%] ${isMine ? 'items-end' : 'items-start'}`}>
-                {/* Sender name for group messages */}
-                {showSenderName && isFirstInGroup && !isMine && sender && (
-                  <Text className="text-accent-primary text-[11px] font-semibold mb-0.5 ml-1">
-                    {sender.name}
-                  </Text>
+                {/* Sender name for group/AI messages */}
+                {((showSenderName && isFirstInGroup) || (isAISender && isFirstInGroup)) && !isMine && sender && (
+                  <View className="flex-row items-center mb-0.5 ml-1">
+                    {isAISender && (
+                      <Ionicons name="sparkles" size={10} color="#D4764E" style={{ marginRight: 3 }} />
+                    )}
+                    <Text className="text-accent-primary text-[11px] font-semibold">
+                      {sender.name}
+                    </Text>
+                  </View>
                 )}
                 {/* Forwarded label */}
                 {message.forwardedFrom && (
