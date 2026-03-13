@@ -30,7 +30,6 @@ export function CreateChannelModal({ visible, onClose, onCreate }: Props) {
   const [selectedEmoji, setSelectedEmoji] = useState('🚀');
   const [selectedColor, setSelectedColor] = useState('#D4764E');
   const [selectedAgentId, setSelectedAgentId] = useState<string | undefined>();
-  const connectedAgents = useAIStore((s) => s.agents.filter((a) => a.isConnected));
   const connectedAgents = useAIStore(useShallow((s) => s.agents.filter((a) => a.isConnected)));
 
   const handleCreate = () => {
