@@ -3,6 +3,7 @@ import { View, Text, TextInput, Modal, Pressable, ScrollView, ActivityIndicator 
 import * as Haptics from 'expo-haptics';
 import { useUserStore } from '../../stores/useUserStore';
 import { MemberAssignmentPicker } from '../groups/MemberAssignmentPicker';
+import { useToastStore } from '../../stores/useToastStore';
 import type { LedgerEntry, User } from '../../types';
 
 interface Props {
@@ -117,8 +118,10 @@ export function CreateExpenseModal({ visible, onClose, onSave, onUpdate, editing
       }
       reset();
       onClose();
-    } catch {
+    } catch (err) {
+      console.error('Failed to save expense:', err);
       setIsSaving(false);
+      useToastStore.getState().show({ message: 'Failed to save expense', type: 'error' });
     }
   };
 
