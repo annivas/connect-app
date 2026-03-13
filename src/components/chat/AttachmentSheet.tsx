@@ -35,7 +35,7 @@ const ACTIONS: Action[] = [
   { id: 'contact', label: 'Contact', icon: 'person', color: '#F59E0B' },
   { id: 'document', label: 'Document', icon: 'document-text', color: '#5B8EC9' },
   { id: 'song', label: 'Song', icon: 'musical-note', color: '#1DB954' },
-  { id: 'poll', label: 'Poll', icon: 'bar-chart', color: '#E67E22', groupOnly: true },
+  { id: 'poll', label: 'Poll', icon: 'bar-chart', color: '#E67E22' },
   { id: 'event', label: 'Event', icon: 'calendar', color: '#D4764E', groupOnly: true },
   { id: 'note', label: 'Note', icon: 'create', color: '#C2956B' },
   { id: 'expense', label: 'Expense', icon: 'cash', color: '#27AE60' },

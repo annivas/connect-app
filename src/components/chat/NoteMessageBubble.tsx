@@ -3,64 +3,98 @@ import { View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { NoteMessageMetadata } from '../../types';
 
+const NOTE_ACCENT = '#D4764E';
+
 interface Props {
   metadata: NoteMessageMetadata;
   isMine: boolean;
 }
 
 export function NoteMessageBubble({ metadata, isMine }: Props) {
-  const accentText = isMine ? 'text-white' : 'text-text-primary';
-  const secondaryText = isMine ? 'text-white/60' : 'text-text-tertiary';
-  const labelColor = isMine ? '#FFFFFF' : '#D4764E';
-  const badgeBg = isMine ? 'bg-white/15' : 'bg-surface-hover';
+  const noteColor = metadata.color || NOTE_ACCENT;
+  const accentColor = isMine ? '#FFFFFF' : noteColor;
+  const primaryText = isMine ? '#FFFFFF' : '#2D1F14';
+  const secondaryText = isMine ? 'rgba(255,255,255,0.6)' : '#7A6355';
 
   return (
-    <View style={{ minWidth: 220 }}>
-      {/* Header */}
-      <View className="flex-row items-center mb-1.5">
-        <Ionicons name="document-text-outline" size={14} color={labelColor} />
+    <View style={{ minWidth: 230 }}>
+      {/* Header: icon badge + label + privacy pill */}
+      <View className="flex-row items-center mb-2.5">
+        <View
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            backgroundColor: isMine ? 'rgba(255,255,255,0.2)' : `${noteColor}18`,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Ionicons name="document-text" size={16} color={accentColor} />
+        </View>
         <Text
-          className={`text-[11px] font-semibold ml-1 tracking-wider ${
-            isMine ? 'text-white/80' : 'text-accent-primary'
-          }`}
+          style={{ fontSize: 11, fontWeight: '700', color: accentColor, marginLeft: 8, letterSpacing: 1, flex: 1 }}
         >
           NOTE
         </Text>
+        {/* Private/Shared pill */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 8,
+            paddingVertical: 3,
+            borderRadius: 10,
+            backgroundColor: isMine ? 'rgba(255,255,255,0.15)' : `${noteColor}10`,
+          }}
+        >
+          <Ionicons
+            name={metadata.isPrivate ? 'lock-closed' : 'people'}
+            size={10}
+            color={isMine ? 'rgba(255,255,255,0.7)' : noteColor}
+          />
+          <Text
+            style={{
+              fontSize: 10,
+              fontWeight: '600',
+              marginLeft: 3,
+              color: isMine ? 'rgba(255,255,255,0.7)' : noteColor,
+            }}
+          >
+            {metadata.isPrivate ? 'Private' : 'Shared'}
+          </Text>
+        </View>
       </View>
 
       {/* Title */}
       <Text
-        className={`text-[15px] font-semibold ${accentText}`}
-        numberOfLines={1}
+        style={{ fontSize: 16, fontWeight: '700', color: primaryText, marginBottom: 4 }}
+        numberOfLines={2}
       >
         {metadata.title}
       </Text>
 
-      {/* Content preview */}
+      {/* Content preview in a styled quote block */}
       {metadata.contentPreview ? (
-        <Text
-          className={`text-[13px] mt-0.5 ${secondaryText}`}
-          numberOfLines={2}
+        <View
+          style={{
+            borderLeftWidth: 3,
+            borderLeftColor: isMine ? 'rgba(255,255,255,0.3)' : `${noteColor}40`,
+            paddingLeft: 10,
+            paddingVertical: 4,
+            marginTop: 4,
+            backgroundColor: isMine ? 'rgba(255,255,255,0.06)' : `${noteColor}06`,
+            borderRadius: 4,
+          }}
         >
-          {metadata.contentPreview}
-        </Text>
+          <Text
+            style={{ fontSize: 13, color: secondaryText, lineHeight: 18 }}
+            numberOfLines={3}
+          >
+            {metadata.contentPreview}
+          </Text>
+        </View>
       ) : null}
-
-      {/* Private/Shared badge */}
-      <View className={`flex-row items-center mt-2 px-2 py-1 rounded-md self-start ${badgeBg}`}>
-        <Ionicons
-          name={metadata.isPrivate ? 'lock-closed-outline' : 'people-outline'}
-          size={12}
-          color={labelColor}
-        />
-        <Text
-          className={`text-[11px] font-medium ml-1 ${
-            isMine ? 'text-white/70' : 'text-accent-primary'
-          }`}
-        >
-          {metadata.isPrivate ? 'Private' : 'Shared'}
-        </Text>
-      </View>
     </View>
   );
 }

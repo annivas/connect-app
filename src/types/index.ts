@@ -14,7 +14,7 @@ export interface User {
 }
 
 // ─── Message ─────────────────────────────────
-export type MessageType = 'text' | 'image' | 'video' | 'audio' | 'file' | 'location' | 'contact' | 'song' | 'note' | 'reminder' | 'expense';
+export type MessageType = 'text' | 'image' | 'video' | 'audio' | 'file' | 'location' | 'contact' | 'song' | 'note' | 'reminder' | 'expense' | 'poll' | 'event';
 
 export interface Reaction {
   emoji: string;
@@ -111,6 +111,25 @@ export interface ExpenseMessageMetadata {
   splitBetween: string[];
   category?: string;
   isSettled: boolean;
+}
+
+export interface PollMessageMetadata {
+  pollId: string;
+  question: string;
+  options: { id: string; text: string; voterIds: string[] }[];
+  isMultipleChoice: boolean;
+  isClosed: boolean;
+}
+
+export interface EventMessageMetadata {
+  eventId: string;
+  title: string;
+  type: 'hangout' | 'trip' | 'sports' | 'other';
+  startDate: string;
+  endDate?: string;
+  location?: { name: string; address: string };
+  description?: string;
+  attendees: { userId: string; status: string }[];
 }
 
 export interface Message {

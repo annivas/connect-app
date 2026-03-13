@@ -85,7 +85,7 @@ interface GroupsState {
   addItineraryItem: (groupId: string, item: import('../types').ItineraryItem) => void;
   editItineraryItem: (groupId: string, itemId: string, updates: Partial<import('../types').ItineraryItem>) => void;
   deleteItineraryItem: (groupId: string, itemId: string) => void;
-  createEvent: (groupId: string, event: Omit<import('../types').GroupEvent, 'id' | 'groupId' | 'createdBy' | 'attendees'>) => void;
+  createEvent: (groupId: string, event: Omit<import('../types').GroupEvent, 'id' | 'groupId' | 'createdBy' | 'attendees'>) => import('../types').GroupEvent;
 
   // Event Spaces
   eventSpaceMessages: Record<string, Message[]>;
@@ -95,7 +95,7 @@ interface GroupsState {
 
   // Polls
   groupPolls: Record<string, Poll[]>;
-  createPoll: (groupId: string, question: string, options: string[], isMultipleChoice: boolean) => void;
+  createPoll: (groupId: string, question: string, options: string[], isMultipleChoice: boolean) => import('../types').Poll;
   votePoll: (groupId: string, pollId: string, optionId: string) => void;
   closePoll: (groupId: string, pollId: string) => void;
 
@@ -625,7 +625,12 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
     }));
 
     groupsRepository
-      .sendGroupMessage(message.conversationId, message.content, message.senderId, { channelId: message.channelId, isPrivate: message.isPrivate })
+      .sendGroupMessage(message.conversationId, message.content, message.senderId, {
+        type: message.type,
+        metadata: message.metadata as Record<string, unknown> | undefined,
+        channelId: message.channelId,
+        isPrivate: message.isPrivate,
+      })
       .then((savedMessage) => {
         set((state) => ({
           groupMessages: state.groupMessages.map((m) =>
@@ -1046,6 +1051,8 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         }),
       }));
     });
+
+    return newEvent as import('../types').GroupEvent;
   },
 
   // ─── Event Spaces ──────────────────────────────
@@ -1140,6 +1147,8 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         },
       }));
     });
+
+    return newPoll;
   },
 
   votePoll: (groupId, pollId, optionId) => {
