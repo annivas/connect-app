@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Message, Conversation, Note, Reminder, LedgerEntry, SharedObject, SharedObjectType, ScheduledMessage, DisappearingDuration, Channel, ConversationMetadata, ConversationEvent } from '../types';
+import { Message, Conversation, Note, Reminder, LedgerEntry, SharedObject, SharedObjectType, ScheduledMessage, DisappearingDuration, Channel, ConversationMetadata, ConversationEvent, Poll } from '../types';
 import { messagesRepository } from '../services';
 import { CreateNoteInput, UpdateNoteInput, CreateReminderInput, UpdateReminderInput, CreateLedgerEntryInput, UpdateLedgerEntryInput } from '../services/types';
 import { supabase } from '../lib/supabase';
@@ -110,6 +110,10 @@ interface MessagesState {
   createEvent: (conversationId: string, event: Omit<ConversationEvent, 'id'>, channelId?: string | null) => void;
   updateEvent: (conversationId: string, eventId: string, updates: Partial<Pick<ConversationEvent, 'title' | 'description' | 'startDate' | 'endDate' | 'location'>>, channelId?: string | null) => void;
   deleteEvent: (conversationId: string, eventId: string, channelId?: string | null) => void;
+
+  // Polls
+  createPoll: (conversationId: string, question: string, options: string[], isMultipleChoice: boolean, channelId?: string | null) => import('../types').Poll;
+  votePoll: (conversationId: string, pollId: string, optionId: string, channelId?: string | null) => void;
 
   // ─── New: Star, Pin, Forward, Archive, Search ──────
   scheduledMessages: ScheduledMessage[];
@@ -549,7 +553,12 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     }));
 
     messagesRepository
-      .sendMessage(message.conversationId, message.content, message.senderId, { channelId: message.channelId })
+      .sendMessage(message.conversationId, message.content, message.senderId, {
+        type: message.type,
+        metadata: message.metadata as Record<string, unknown> | undefined,
+        channelId: message.channelId,
+        isPrivate: message.isPrivate,
+      })
       .then((savedMessage) => {
         set((state) => ({
           messages: state.messages.map((m) =>
@@ -935,6 +944,70 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
       conversations: updateConvMetadata(state.conversations, conversationId, channelId, (md) => ({
         ...md,
         events: (md.events ?? []).filter((e) => e.id !== eventId),
+      })),
+    }));
+  },
+
+  // ─── Polls ──────────────────────────────────────
+
+  createPoll: (conversationId, question, options, isMultipleChoice, channelId) => {
+    const currentUserId = getCurrentUserId() || 'unknown';
+    const newPoll: Poll = {
+      id: `poll-${Date.now()}`,
+      question,
+      options: options.map((text, i) => ({
+        id: `opt-${Date.now()}-${i}`,
+        text,
+        voterIds: [],
+      })),
+      createdBy: currentUserId,
+      createdAt: new Date(),
+      isMultipleChoice,
+      isClosed: false,
+    };
+
+    set((state) => ({
+      conversations: updateConvMetadata(state.conversations, conversationId, channelId, (md) => ({
+        ...md,
+        polls: [...(md.polls ?? []), newPoll],
+      })),
+    }));
+
+    return newPoll;
+  },
+
+  votePoll: (conversationId, pollId, optionId, channelId) => {
+    const userId = getCurrentUserId();
+    if (!userId) return;
+
+    set((state) => ({
+      conversations: updateConvMetadata(state.conversations, conversationId, channelId, (md) => ({
+        ...md,
+        polls: (md.polls ?? []).map((poll) => {
+          if (poll.id !== pollId || poll.isClosed) return poll;
+          return {
+            ...poll,
+            options: poll.options.map((opt) => {
+              if (opt.id === optionId) {
+                const hasVoted = opt.voterIds.includes(userId);
+                return {
+                  ...opt,
+                  voterIds: hasVoted
+                    ? opt.voterIds.filter((id) => id !== userId)
+                    : [...opt.voterIds, userId],
+                };
+              }
+              // For single-choice, remove user from other options
+              if (!poll.isMultipleChoice) {
+                return {
+                  ...opt,
+                  voterIds: opt.voterIds.filter((id) => id !== userId),
+                };
+              }
+              return opt;
+            }),
+          };
+        }),
       })),
     }));
   },

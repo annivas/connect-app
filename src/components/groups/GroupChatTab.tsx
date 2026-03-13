@@ -550,10 +550,22 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
   }, [eventHint]);
 
   const handleSaveEvent = useCallback((eventData: Omit<GroupEvent, 'id' | 'groupId' | 'createdBy' | 'attendees'>) => {
-    useGroupsStore.getState().createEvent(groupId, eventData);
+    const event = useGroupsStore.getState().createEvent(groupId, eventData);
     const userId = useUserStore.getState().currentUser?.id;
-    if (userId) {
-      sendGroupMessage(groupId, `Created an event: ${eventData.title}`, userId);
+    if (userId && event) {
+      sendGroupMessage(groupId, `Created an event: ${eventData.title}`, userId, {
+        type: 'event',
+        metadata: {
+          eventId: event.id,
+          title: event.title,
+          type: event.type,
+          startDate: event.startDate,
+          endDate: event.endDate,
+          location: event.location,
+          description: event.description,
+          attendees: event.attendees,
+        },
+      });
     }
   }, [groupId, sendGroupMessage]);
 
@@ -651,6 +663,7 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
               isSearchMatch={matchingMessageIds?.has(msg.id)}
               onContextMenu={handleContextMenu}
               imageGroup={imgGroup?.isLeader ? imgGroup.images : undefined}
+              groupId={groupId}
             />
           );
         }}
@@ -806,10 +819,19 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
       visible={showCreatePoll}
       onClose={() => setShowCreatePoll(false)}
       onCreatePoll={(question, options, isMultipleChoice) => {
-        useGroupsStore.getState().createPoll(groupId, question, options, isMultipleChoice);
+        const poll = useGroupsStore.getState().createPoll(groupId, question, options, isMultipleChoice);
         const userId = useUserStore.getState().currentUser?.id;
-        if (userId) {
-          sendGroupMessage(groupId, `Created a poll: ${question}`, userId);
+        if (userId && poll) {
+          sendGroupMessage(groupId, `Created a poll: ${question}`, userId, {
+            type: 'poll',
+            metadata: {
+              pollId: poll.id,
+              question: poll.question,
+              options: poll.options,
+              isMultipleChoice: poll.isMultipleChoice,
+              isClosed: false,
+            },
+          });
         }
         setShowCreatePoll(false);
         useToastStore.getState().show({ message: 'Poll created', type: 'success' });

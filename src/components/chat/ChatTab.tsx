@@ -30,6 +30,7 @@ import { getImageGroup } from '../../utils/imageGrouping';
 import { CreateReminderModal } from './CreateReminderModal';
 import { CreateExpenseModal } from './CreateExpenseModal';
 import { CreateNoteModal } from './CreateNoteModal';
+import { CreatePollModal } from '../groups/CreatePollModal';
 import type { Message, CallEntry, DisappearingDuration, SongMetadata, DetectedAction, User } from '../../types';
 
 /**
@@ -111,6 +112,7 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
   const [showSheetNoteModal, setShowSheetNoteModal] = useState(false);
   const [showSheetExpenseModal, setShowSheetExpenseModal] = useState(false);
   const [showSheetReminderModal, setShowSheetReminderModal] = useState(false);
+  const [showSheetPollModal, setShowSheetPollModal] = useState(false);
 
   // Unread jump button
   const conversationUnreadCount = useMessagesStore(
@@ -645,6 +647,7 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
               onContextMenu={handleContextMenu}
               onActionSuggestion={handleActionSuggestion}
               imageGroup={imgGroup?.isLeader ? imgGroup.images : undefined}
+              conversationId={conversationId}
             />
           );
         }}
@@ -764,6 +767,7 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
       onShareLocation={handleShareLocation}
       onShareContact={handleShareContact}
       onShareSong={handleShareSong}
+      onCreatePoll={() => setShowSheetPollModal(true)}
       onCreateNote={() => setShowSheetNoteModal(true)}
       onCreateExpense={() => setShowSheetExpenseModal(true)}
       onCreateReminder={() => setShowSheetReminderModal(true)}
@@ -872,6 +876,28 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
         }
         setShowSheetExpenseModal(false);
         useToastStore.getState().show({ message: 'Expense added', type: 'success' });
+      }}
+    />
+    <CreatePollModal
+      visible={showSheetPollModal}
+      onClose={() => setShowSheetPollModal(false)}
+      onCreatePoll={(question, options, isMultipleChoice) => {
+        const poll = useMessagesStore.getState().createPoll(conversationId, question, options, isMultipleChoice);
+        const userId = useUserStore.getState().currentUser?.id;
+        if (userId && poll) {
+          sendMessage(conversationId, `Created a poll: ${question}`, userId, {
+            type: 'poll',
+            metadata: {
+              pollId: poll.id,
+              question: poll.question,
+              options: poll.options,
+              isMultipleChoice: poll.isMultipleChoice,
+              isClosed: false,
+            },
+          });
+        }
+        setShowSheetPollModal(false);
+        useToastStore.getState().show({ message: 'Poll created', type: 'success' });
       }}
     />
     <CreateReminderModal

@@ -26,12 +26,14 @@ import { SongMessageBubble } from './SongMessageBubble';
 import { NoteMessageBubble } from './NoteMessageBubble';
 import { ReminderMessageBubble } from './ReminderMessageBubble';
 import { ExpenseMessageBubble } from './ExpenseMessageBubble';
+import { PollMessageBubble } from './PollMessageBubble';
+import { EventMessageBubble } from './EventMessageBubble';
 import { ImageViewerModal } from './ImageViewerModal';
 import { renderHighlightedText } from '../../utils/highlightText';
 import { extractUrls } from '../../utils/urlDetection';
 import { detectActions } from '../../utils/actionDetector';
 import { ActionSuggestionChip } from './ActionSuggestionChip';
-import { Message, Reaction, DetectedAction, VoiceMessageMetadata, LocationMessageMetadata, DocumentMessageMetadata, ContactMessageMetadata, SongMetadata, NoteMessageMetadata, ReminderMessageMetadata, ExpenseMessageMetadata } from '../../types';
+import { Message, Reaction, DetectedAction, VoiceMessageMetadata, LocationMessageMetadata, DocumentMessageMetadata, ContactMessageMetadata, SongMetadata, NoteMessageMetadata, ReminderMessageMetadata, ExpenseMessageMetadata, PollMessageMetadata, EventMessageMetadata } from '../../types';
 import { useUserStore } from '../../stores/useUserStore';
 
 interface Props {
@@ -53,6 +55,9 @@ interface Props {
   imageGroup?: Message[];
   /** Called when a smart action suggestion chip is pressed */
   onActionSuggestion?: (action: DetectedAction) => void;
+  /** Context IDs for interactive bubbles (polls, events) */
+  groupId?: string;
+  conversationId?: string;
 }
 
 // ─── Date Divider ────────────────────────────
@@ -221,6 +226,8 @@ export function MessageBubble({
   onContextMenu,
   imageGroup,
   onActionSuggestion,
+  groupId,
+  conversationId,
 }: Props) {
   const currentUserId = useUserStore((s) => s.currentUser?.id);
   const getUserById = useUserStore((s) => s.getUserById);
@@ -526,6 +533,33 @@ export function MessageBubble({
                     <ExpenseMessageBubble
                       metadata={message.metadata as unknown as ExpenseMessageMetadata}
                       isMine={isMine}
+                    />
+                  </View>
+                ) : message.type === 'poll' ? (
+                  <View
+                    style={getBubbleRadius()}
+                    className={`px-3 py-2 ${
+                      isMine ? 'bg-accent-primary' : 'bg-surface-elevated'
+                    }`}
+                  >
+                    <PollMessageBubble
+                      metadata={message.metadata as unknown as PollMessageMetadata}
+                      isMine={isMine}
+                      groupId={groupId}
+                      conversationId={conversationId}
+                    />
+                  </View>
+                ) : message.type === 'event' ? (
+                  <View
+                    style={getBubbleRadius()}
+                    className={`px-3 py-2 ${
+                      isMine ? 'bg-accent-primary' : 'bg-surface-elevated'
+                    }`}
+                  >
+                    <EventMessageBubble
+                      metadata={message.metadata as unknown as EventMessageMetadata}
+                      isMine={isMine}
+                      groupId={groupId}
                     />
                   </View>
                 ) : message.type === 'image' ? (
