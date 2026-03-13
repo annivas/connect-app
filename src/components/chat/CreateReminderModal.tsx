@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Modal, Pressable, ScrollView, ActivityIndicator } from 'react-native';
-import { parse, isValid, format } from 'date-fns';
+import { View, Text, TextInput, Modal, Pressable, ScrollView, ActivityIndicator, Platform } from 'react-native';
+import { format } from 'date-fns';
 import * as Haptics from 'expo-haptics';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Ionicons } from '@expo/vector-icons';
 import { MemberAssignmentPicker } from '../groups/MemberAssignmentPicker';
 import type { Reminder, User } from '../../types';
 
@@ -26,10 +28,11 @@ const PRIORITIES: { value: Priority; label: string; color: string }[] = [
 export function CreateReminderModal({ visible, onClose, onSave, onUpdate, editingReminder, members }: Props) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [dateText, setDateText] = useState('');
+  const [dueDate, setDueDate] = useState(new Date(Date.now() + 60 * 60 * 1000));
   const [priority, setPriority] = useState<Priority>('medium');
   const [isSaving, setIsSaving] = useState(false);
-  const [dateError, setDateError] = useState('');
+  const [showAndroidPicker, setShowAndroidPicker] = useState(false);
+  const [pickerMode, setPickerMode] = useState<'date' | 'time'>('date');
   const [assignedTo, setAssignedTo] = useState<string[]>([]);
 
   const isEditing = !!editingReminder;
@@ -39,23 +42,22 @@ export function CreateReminderModal({ visible, onClose, onSave, onUpdate, editin
     if (editingReminder && visible) {
       setTitle(editingReminder.title);
       setDescription(editingReminder.description ?? '');
-      setDateText(format(editingReminder.dueDate, 'yyyy-MM-dd HH:mm'));
+      setDueDate(editingReminder.dueDate instanceof Date ? editingReminder.dueDate : new Date(editingReminder.dueDate));
       setPriority(editingReminder.priority);
       setAssignedTo(editingReminder.assignedTo ?? []);
     }
   }, [editingReminder, visible]);
 
-  const parsedDate = parse(dateText, 'yyyy-MM-dd HH:mm', new Date());
-  const isDateValid = dateText.length > 0 && isValid(parsedDate);
-  const canSave = title.trim().length > 0 && isDateValid && !isSaving;
+  const canSave = title.trim().length > 0 && !isSaving;
 
   const reset = () => {
     setTitle('');
     setDescription('');
-    setDateText('');
+    setDueDate(new Date(Date.now() + 60 * 60 * 1000));
     setPriority('medium');
     setIsSaving(false);
-    setDateError('');
+    setShowAndroidPicker(false);
+    setPickerMode('date');
     setAssignedTo([]);
   };
 
@@ -64,12 +66,23 @@ export function CreateReminderModal({ visible, onClose, onSave, onUpdate, editin
     onClose();
   };
 
-  const handleDateBlur = () => {
-    if (dateText.length > 0 && !isDateValid) {
-      setDateError('Use format: YYYY-MM-DD HH:mm');
-    } else {
-      setDateError('');
+  const handleDateChange = (_event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowAndroidPicker(false);
     }
+    if (selectedDate) {
+      setDueDate(selectedDate);
+      if (Platform.OS === 'android' && pickerMode === 'date') {
+        setPickerMode('time');
+        setShowAndroidPicker(true);
+      }
+    }
+  };
+
+  const handleOpenAndroidPicker = () => {
+    Haptics.selectionAsync();
+    setPickerMode('date');
+    setShowAndroidPicker(true);
   };
 
   const handleSave = async () => {
@@ -82,14 +95,14 @@ export function CreateReminderModal({ visible, onClose, onSave, onUpdate, editin
         onUpdate(editingReminder!.id, {
           title: title.trim(),
           description: description.trim() || undefined,
-          dueDate: parsedDate.toISOString(),
+          dueDate: dueDate.toISOString(),
           priority,
         });
       } else {
         await onSave?.({
           title: title.trim(),
           description: description.trim() || undefined,
-          dueDate: parsedDate,
+          dueDate,
           priority,
           isCompleted: false,
           createdBy: '',
@@ -164,23 +177,39 @@ export function CreateReminderModal({ visible, onClose, onSave, onUpdate, editin
           <Text className="text-text-secondary text-xs font-semibold uppercase tracking-wider mb-2">
             Due Date
           </Text>
-          <TextInput
-            value={dateText}
-            onChangeText={(text) => {
-              setDateText(text);
-              setDateError('');
-            }}
-            onBlur={handleDateBlur}
-            placeholder="YYYY-MM-DD HH:mm"
-            placeholderTextColor="#A8937F"
-            className={`bg-surface rounded-xl px-4 py-3 text-text-primary text-[15px] mb-1 ${
-              dateError ? 'border border-status-error' : ''
-            }`}
-          />
-          {dateError ? (
-            <Text className="text-status-error text-xs mb-4">{dateError}</Text>
+          {Platform.OS === 'ios' ? (
+            <View className="bg-surface rounded-xl mb-4 overflow-hidden">
+              <DateTimePicker
+                value={dueDate}
+                mode="datetime"
+                display="spinner"
+                minimumDate={new Date()}
+                onChange={handleDateChange}
+                themeVariant="light"
+              />
+            </View>
           ) : (
-            <View className="mb-4" />
+            <>
+              <Pressable
+                onPress={handleOpenAndroidPicker}
+                className="bg-surface rounded-xl px-4 py-3 mb-4 flex-row items-center justify-between"
+              >
+                <Text className="text-text-primary text-[15px]">
+                  {format(dueDate, 'MMM d, yyyy · h:mm a')}
+                </Text>
+                <Ionicons name="calendar-outline" size={18} color="#D4764E" />
+              </Pressable>
+              {showAndroidPicker && (
+                <DateTimePicker
+                  value={dueDate}
+                  mode={pickerMode}
+                  display="default"
+                  minimumDate={new Date()}
+                  onChange={handleDateChange}
+                  themeVariant="light"
+                />
+              )}
+            </>
           )}
 
           {/* Priority */}
