@@ -267,6 +267,27 @@ const conv1Channels: Channel[] = [
       callHistory: [],
     },
   },
+  {
+    id: 'ch-conv1-claude',
+    name: 'AI Brainstorm',
+    emoji: '🧠',
+    color: '#D4764E',
+    createdBy: CURRENT_USER_ID,
+    createdAt: new Date('2026-02-18T14:00:00'),
+    aiAgentId: 'agent-claude',
+    aiVisibility: 'ai-restricted',
+    metadata: {
+      sharedObjects: [],
+      notes: [],
+      reminders: [],
+      ledgerBalance: 0,
+      ledgerEntries: [],
+      pinnedMessages: [],
+      starredMessages: [],
+      polls: [],
+      callHistory: [],
+    },
+  },
 ];
 
 const conv5Channels: Channel[] = [

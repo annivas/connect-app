@@ -13,10 +13,11 @@ import { ChannelStrip } from '../../../src/components/chat/ChannelStrip';
 import { CreateChannelModal } from '../../../src/components/chat/CreateChannelModal';
 import { EditChannelModal } from '../../../src/components/chat/EditChannelModal';
 import { useMessageSearch } from '../../../src/hooks/useMessageSearch';
+import { AIVisibilityToggle } from '../../../src/components/ai/AIVisibilityToggle';
 import { useMessagesStore } from '../../../src/stores/useMessagesStore';
 import { useUserStore } from '../../../src/stores/useUserStore';
 import { useCallStore } from '../../../src/stores/useCallStore';
-import type { Channel, DisappearingDuration } from '../../../src/types';
+import type { AIVisibility, Channel, DisappearingDuration } from '../../../src/types';
 
 export default function ConversationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -61,6 +62,12 @@ export default function ConversationDetailScreen() {
   ));
 
   const getUserById = useUserStore((s) => s.getUserById);
+
+  // Check if the active channel has an AI agent
+  const activeChannel = activeChannelId
+    ? channels.find((c) => c.id === activeChannelId)
+    : null;
+  const activeChannelAI = activeChannel?.aiAgentId ? activeChannel : null;
 
   const {
     searchQuery: chatSearchQuery,
@@ -190,6 +197,15 @@ export default function ConversationDetailScreen() {
         />
       )}
 
+      {/* AI visibility toggle — shown when active channel has an AI agent */}
+      {activeChannelAI && (
+        <AIVisibilityToggle
+          visibility={activeChannelAI.aiVisibility ?? 'ai-restricted'}
+          onToggle={(visibility: AIVisibility) => {
+            useMessagesStore.getState().updateChannel(id!, activeChannelAI.id, { aiVisibility: visibility });
+          }}
+        />
+      )}
 
       {/* In-chat search bar */}
       <InChatSearchBar
@@ -219,8 +235,8 @@ export default function ConversationDetailScreen() {
       <CreateChannelModal
         visible={showCreateChannel}
         onClose={() => setShowCreateChannel(false)}
-        onCreate={(name, emoji, color) => {
-          useMessagesStore.getState().createChannel(id!, name, emoji, color);
+        onCreate={(name, emoji, color, aiAgentId) => {
+          useMessagesStore.getState().createChannel(id!, name, emoji, color, aiAgentId);
         }}
       />
 

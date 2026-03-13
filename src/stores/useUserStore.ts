@@ -4,6 +4,18 @@ import { userRepository } from '../services';
 import { useAuthStore } from './useAuthStore';
 import { config } from '../config/env';
 import { CURRENT_USER_ID } from '../mocks/users';
+import { MOCK_AI_AGENTS } from '../mocks/aiAgents';
+
+// Map AI agents to pseudo-users so they render naturally in MessageBubble, typing indicators, etc.
+const AI_PSEUDO_USERS: User[] = MOCK_AI_AGENTS.map((agent) => ({
+  id: agent.id,
+  name: agent.name,
+  username: agent.provider,
+  avatar: agent.avatar,
+  status: 'online' as const,
+  statusMessage: agent.description,
+  isAI: true,
+}));
 
 interface UserState {
   currentUser: User | null;
@@ -47,7 +59,9 @@ export const useUserStore = create<UserState>((set, get) => ({
     }
   },
 
-  getUserById: (id: string) => get().users.find((u) => u.id === id),
+  getUserById: (id: string) =>
+    get().users.find((u) => u.id === id) ??
+    AI_PSEUDO_USERS.find((u) => u.id === id),
 
   updateCurrentUser: (updates) => {
     const current = get().currentUser;

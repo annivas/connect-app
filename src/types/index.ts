@@ -11,6 +11,7 @@ export interface User {
   richStatus?: RichStatus;
   lastSeenAt?: Date;
   birthday?: Date;
+  isAI?: boolean;
 }
 
 // ─── Message ─────────────────────────────────
@@ -324,6 +325,8 @@ export interface Channel {
   createdBy: string;
   createdAt: Date;
   metadata: ConversationMetadata;
+  aiAgentId?: string;
+  aiVisibility?: AIVisibility;
 }
 
 export type DisappearingDuration = '30s' | '5m' | '1h' | '24h' | '7d' | 'off';
