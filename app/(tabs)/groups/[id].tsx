@@ -358,6 +358,12 @@ export default function GroupDetailScreen() {
         onClose={() => setShowCreateChannel(false)}
         onCreate={(name, emoji, color, aiAgentId) => {
           useGroupsStore.getState().createChannel(id!, name, emoji, color, aiAgentId);
+          // Auto-select the newly created channel so messages route through it
+          const group = useGroupsStore.getState().getGroupById(id!);
+          const newest = group?.channels?.[group.channels.length - 1];
+          if (newest) {
+            useGroupsStore.getState().setActiveChannel(id!, newest.id);
+          }
         }}
       />
 

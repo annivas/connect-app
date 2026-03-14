@@ -237,6 +237,12 @@ export default function ConversationDetailScreen() {
         onClose={() => setShowCreateChannel(false)}
         onCreate={(name, emoji, color, aiAgentId) => {
           useMessagesStore.getState().createChannel(id!, name, emoji, color, aiAgentId);
+          // Auto-select the newly created channel so messages route through it
+          const conv = useMessagesStore.getState().getConversationById(id!);
+          const newest = conv?.channels?.[conv.channels.length - 1];
+          if (newest) {
+            useMessagesStore.getState().setActiveChannel(id!, newest.id);
+          }
         }}
       />
 
