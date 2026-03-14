@@ -12,6 +12,7 @@ import { DisappearingMessagesSheet } from '../../../src/components/chat/Disappea
 import { ChannelStrip } from '../../../src/components/chat/ChannelStrip';
 import { CreateChannelModal } from '../../../src/components/chat/CreateChannelModal';
 import { EditChannelModal } from '../../../src/components/chat/EditChannelModal';
+import { SummarySheet } from '../../../src/components/chat/SummarySheet';
 import { useMessageSearch } from '../../../src/hooks/useMessageSearch';
 import { AIVisibilityToggle } from '../../../src/components/ai/AIVisibilityToggle';
 import { useMessagesStore } from '../../../src/stores/useMessagesStore';
@@ -27,6 +28,7 @@ export default function ConversationDetailScreen() {
   const [showCreateChannel, setShowCreateChannel] = React.useState(false);
   const [showEditChannel, setShowEditChannel] = React.useState(false);
   const [editingChannel, setEditingChannel] = React.useState<Channel | null>(null);
+  const [showSummary, setShowSummary] = React.useState(false);
 
 
   // Mark conversation as read when screen opens
@@ -90,17 +92,19 @@ export default function ConversationDetailScreen() {
       isMuted ? 'Unmute' : 'Mute',
       'Disappearing Messages',
       'Create Channel',
+      'Summarize with AI',
       'Cancel',
     ];
 
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
-        { options, cancelButtonIndex: 4 },
+        { options, cancelButtonIndex: 5 },
         (idx) => {
           if (idx === 0) togglePin(id!);
           if (idx === 1) toggleMute(id!);
           if (idx === 2) setShowDisappearingSheet(true);
           if (idx === 3) setShowCreateChannel(true);
+          if (idx === 4) setShowSummary(true);
         }
       );
     } else {
@@ -109,6 +113,7 @@ export default function ConversationDetailScreen() {
         { text: options[1], onPress: () => toggleMute(id!) },
         { text: options[2], onPress: () => setShowDisappearingSheet(true) },
         { text: options[3], onPress: () => setShowCreateChannel(true) },
+        { text: 'Summarize with AI', onPress: () => setShowSummary(true) },
         { text: 'Cancel', style: 'cancel' },
       ]);
     }
@@ -259,6 +264,14 @@ export default function ConversationDetailScreen() {
         onDelete={(channelId) => {
           useMessagesStore.getState().deleteChannel(id!, channelId);
         }}
+      />
+
+      <SummarySheet
+        visible={showSummary}
+        onClose={() => setShowSummary(false)}
+        conversationId={id!}
+        channelId={activeChannelId}
+        isGroup={false}
       />
     </SafeAreaView>
   );

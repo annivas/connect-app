@@ -15,6 +15,7 @@ import { DisappearingMessagesSheet } from '../../../src/components/chat/Disappea
 import { ChannelStrip } from '../../../src/components/chat/ChannelStrip';
 import { CreateChannelModal } from '../../../src/components/chat/CreateChannelModal';
 import { EditChannelModal } from '../../../src/components/chat/EditChannelModal';
+import { SummarySheet } from '../../../src/components/chat/SummarySheet';
 import { CreatePollModal } from '../../../src/components/groups/CreatePollModal';
 import { useMessageSearch } from '../../../src/hooks/useMessageSearch';
 import { AIVisibilityToggle } from '../../../src/components/ai/AIVisibilityToggle';
@@ -33,6 +34,7 @@ export default function GroupDetailScreen() {
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [showEditChannel, setShowEditChannel] = useState(false);
   const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
+  const [showSummary, setShowSummary] = useState(false);
   const [householdActiveTab, setHouseholdActiveTab] = useState<'chat' | 'household'>('chat');
   const [tripActiveTab, setTripActiveTab] = useState<'chat' | 'trip'>('chat');
 
@@ -101,18 +103,20 @@ export default function GroupDetailScreen() {
       'Disappearing Messages',
       isPinned ? 'Unpin' : 'Pin',
       isMuted ? 'Unmute' : 'Mute',
+      'Summarize with AI',
       'Cancel',
     ];
 
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
-        { options, cancelButtonIndex: 5 },
+        { options, cancelButtonIndex: 6 },
         (idx) => {
           if (idx === 0) setShowCreatePoll(true);
           if (idx === 1) setShowCreateChannel(true);
           if (idx === 2) setShowDisappearingSheet(true);
           if (idx === 3) togglePin(id!);
           if (idx === 4) toggleMute(id!);
+          if (idx === 5) setShowSummary(true);
         }
       );
     } else {
@@ -122,6 +126,7 @@ export default function GroupDetailScreen() {
         { text: 'Disappearing Messages', onPress: () => setShowDisappearingSheet(true) },
         { text: options[3], onPress: () => togglePin(id!) },
         { text: options[4], onPress: () => toggleMute(id!) },
+        { text: 'Summarize with AI', onPress: () => setShowSummary(true) },
         { text: 'Cancel', style: 'cancel' },
       ]);
     }
@@ -380,6 +385,14 @@ export default function GroupDetailScreen() {
         onDelete={(channelId) => {
           useGroupsStore.getState().deleteChannel(id!, channelId);
         }}
+      />
+
+      <SummarySheet
+        visible={showSummary}
+        onClose={() => setShowSummary(false)}
+        conversationId={id!}
+        channelId={activeChannelId}
+        isGroup={true}
       />
     </SafeAreaView>
   );
