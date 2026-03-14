@@ -4,9 +4,11 @@ import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useShallow } from 'zustand/react/shallow';
+import { Ionicons } from '@expo/vector-icons';
 import { IconButton } from '../../../src/components/ui/IconButton';
 import { Avatar } from '../../../src/components/ui/Avatar';
 import { ChatTab } from '../../../src/components/chat/ChatTab';
+import { InsightsTab } from '../../../src/components/chat/InsightsTab';
 import { InChatSearchBar } from '../../../src/components/chat/InChatSearchBar';
 import { DisappearingMessagesSheet } from '../../../src/components/chat/DisappearingMessagesSheet';
 import { ChannelStrip } from '../../../src/components/chat/ChannelStrip';
@@ -29,6 +31,7 @@ export default function ConversationDetailScreen() {
   const [showEditChannel, setShowEditChannel] = React.useState(false);
   const [editingChannel, setEditingChannel] = React.useState<Channel | null>(null);
   const [showSummary, setShowSummary] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState<'chat' | 'insights'>('chat');
 
 
   // Mark conversation as read when screen opens
@@ -221,14 +224,54 @@ export default function ConversationDetailScreen() {
         onClose={clearSearch}
       />
 
-      {/* Full-screen chat */}
-      <ChatTab
-        conversationId={id!}
-        channelId={activeChannelId}
+      {/* Chat / Insights tab toggle */}
+      <View className="flex-row px-4 pt-2 pb-1 gap-2">
+        {(['chat', 'insights'] as const).map((tab) => (
+          <Pressable
+            key={tab}
+            onPress={() => {
+              Haptics.selectionAsync();
+              setActiveTab(tab);
+            }}
+            className="flex-1"
+          >
+            <View
+              className={`flex-row items-center justify-center rounded-xl py-2 ${
+                activeTab === tab ? 'bg-accent-primary' : 'bg-surface'
+              }`}
+            >
+              <Ionicons
+                name={tab === 'chat' ? 'chatbubbles-outline' : 'sparkles'}
+                size={15}
+                color={activeTab === tab ? '#FFFFFF' : '#7A6355'}
+              />
+              <Text
+                className={`text-xs font-medium ml-1.5 ${
+                  activeTab === tab ? 'text-white' : 'text-text-secondary'
+                }`}
+              >
+                {tab === 'chat' ? 'Chat' : 'Insights'}
+              </Text>
+            </View>
+          </Pressable>
+        ))}
+      </View>
 
-        highlightText={isSearching ? chatSearchQuery : undefined}
-        matchingMessageIds={isSearching ? matchingMessageIds : undefined}
-      />
+      {/* Main content */}
+      {activeTab === 'insights' ? (
+        <InsightsTab
+          conversationId={id!}
+          channelId={activeChannelId}
+          isGroup={false}
+        />
+      ) : (
+        <ChatTab
+          conversationId={id!}
+          channelId={activeChannelId}
+          highlightText={isSearching ? chatSearchQuery : undefined}
+          matchingMessageIds={isSearching ? matchingMessageIds : undefined}
+        />
+      )}
 
       <DisappearingMessagesSheet
         visible={showDisappearingSheet}

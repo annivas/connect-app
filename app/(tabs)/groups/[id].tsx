@@ -10,6 +10,7 @@ import { Avatar } from '../../../src/components/ui/Avatar';
 import { GroupChatTab } from '../../../src/components/groups/GroupChatTab';
 import { HouseholdTab } from '../../../src/components/groups/HouseholdTab';
 import { TripTab } from '../../../src/components/groups/TripTab';
+import { InsightsTab } from '../../../src/components/chat/InsightsTab';
 import { InChatSearchBar } from '../../../src/components/chat/InChatSearchBar';
 import { DisappearingMessagesSheet } from '../../../src/components/chat/DisappearingMessagesSheet';
 import { ChannelStrip } from '../../../src/components/chat/ChannelStrip';
@@ -35,8 +36,9 @@ export default function GroupDetailScreen() {
   const [showEditChannel, setShowEditChannel] = useState(false);
   const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
   const [showSummary, setShowSummary] = useState(false);
-  const [householdActiveTab, setHouseholdActiveTab] = useState<'chat' | 'household'>('chat');
-  const [tripActiveTab, setTripActiveTab] = useState<'chat' | 'trip'>('chat');
+  const [householdActiveTab, setHouseholdActiveTab] = useState<'chat' | 'household' | 'insights'>('chat');
+  const [tripActiveTab, setTripActiveTab] = useState<'chat' | 'trip' | 'insights'>('chat');
+  const [regularActiveTab, setRegularActiveTab] = useState<'chat' | 'insights'>('chat');
 
   // Mark group as read when screen opens
   useEffect(() => {
@@ -214,7 +216,7 @@ export default function GroupDetailScreen() {
       {/* Household tab toggle */}
       {group.type === 'household' && group.household && (
         <View className="flex-row px-4 pt-2 pb-1 gap-2">
-          {(['chat', 'household'] as const).map((tab) => (
+          {(['chat', 'household', 'insights'] as const).map((tab) => (
             <Pressable
               key={tab}
               onPress={() => {
@@ -229,7 +231,7 @@ export default function GroupDetailScreen() {
                 }`}
               >
                 <Ionicons
-                  name={tab === 'chat' ? 'chatbubbles-outline' : 'home-outline'}
+                  name={tab === 'chat' ? 'chatbubbles-outline' : tab === 'household' ? 'home-outline' : 'sparkles'}
                   size={15}
                   color={householdActiveTab === tab ? '#FFFFFF' : '#7A6355'}
                 />
@@ -238,7 +240,7 @@ export default function GroupDetailScreen() {
                     householdActiveTab === tab ? 'text-white' : 'text-text-secondary'
                   }`}
                 >
-                  {tab === 'chat' ? 'Chat' : 'Home'}
+                  {tab === 'chat' ? 'Chat' : tab === 'household' ? 'Home' : 'Insights'}
                 </Text>
               </View>
             </Pressable>
@@ -249,7 +251,7 @@ export default function GroupDetailScreen() {
       {/* Trip tab toggle */}
       {group.type === 'trip' && (
         <View className="flex-row px-4 pt-2 pb-1 gap-2">
-          {(['chat', 'trip'] as const).map((tab) => (
+          {(['chat', 'trip', 'insights'] as const).map((tab) => (
             <Pressable
               key={tab}
               onPress={() => {
@@ -264,7 +266,7 @@ export default function GroupDetailScreen() {
                 }`}
               >
                 <Ionicons
-                  name={tab === 'chat' ? 'chatbubbles-outline' : 'airplane-outline'}
+                  name={tab === 'chat' ? 'chatbubbles-outline' : tab === 'trip' ? 'airplane-outline' : 'sparkles'}
                   size={15}
                   color={tripActiveTab === tab ? '#FFFFFF' : '#7A6355'}
                 />
@@ -273,7 +275,42 @@ export default function GroupDetailScreen() {
                     tripActiveTab === tab ? 'text-white' : 'text-text-secondary'
                   }`}
                 >
-                  {tab === 'chat' ? 'Chat' : 'Trip'}
+                  {tab === 'chat' ? 'Chat' : tab === 'trip' ? 'Trip' : 'Insights'}
+                </Text>
+              </View>
+            </Pressable>
+          ))}
+        </View>
+      )}
+
+      {/* Regular group tab toggle */}
+      {group.type !== 'household' && group.type !== 'trip' && (
+        <View className="flex-row px-4 pt-2 pb-1 gap-2">
+          {(['chat', 'insights'] as const).map((tab) => (
+            <Pressable
+              key={tab}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setRegularActiveTab(tab);
+              }}
+              className="flex-1"
+            >
+              <View
+                className={`flex-row items-center justify-center rounded-xl py-2 ${
+                  regularActiveTab === tab ? 'bg-accent-primary' : 'bg-surface'
+                }`}
+              >
+                <Ionicons
+                  name={tab === 'chat' ? 'chatbubbles-outline' : 'sparkles'}
+                  size={15}
+                  color={regularActiveTab === tab ? '#FFFFFF' : '#7A6355'}
+                />
+                <Text
+                  className={`text-xs font-medium ml-1.5 ${
+                    regularActiveTab === tab ? 'text-white' : 'text-text-secondary'
+                  }`}
+                >
+                  {tab === 'chat' ? 'Chat' : 'Insights'}
                 </Text>
               </View>
             </Pressable>
@@ -282,7 +319,11 @@ export default function GroupDetailScreen() {
       )}
 
       {/* Main content area */}
-      {group.type === 'household' && group.household && householdActiveTab === 'household' ? (
+      {(group.type === 'household' && householdActiveTab === 'insights') ||
+       (group.type === 'trip' && tripActiveTab === 'insights') ||
+       (group.type !== 'household' && group.type !== 'trip' && regularActiveTab === 'insights') ? (
+        <InsightsTab conversationId={id!} channelId={activeChannelId} isGroup={true} />
+      ) : group.type === 'household' && group.household && householdActiveTab === 'household' ? (
         <HouseholdTab
           data={group.household}
           getUserName={(uid) => useUserStore.getState().getUserById(uid)?.name ?? 'Unknown'}

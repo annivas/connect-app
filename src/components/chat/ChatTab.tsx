@@ -16,6 +16,7 @@ import { MessageInput } from './MessageInput';
 import { MessageContextMenu } from './MessageContextMenu';
 import { ForwardModal } from './ForwardModal';
 import { PinnedMessageBanner } from './PinnedMessageBanner';
+import { AIInsightsBanner } from './AIInsightsBanner';
 import { DisappearingMessagesBanner } from './DisappearingMessagesBanner';
 import { ScheduleMessageSheet } from './ScheduleMessageSheet';
 import { AttachmentSheet } from './AttachmentSheet';
@@ -28,6 +29,7 @@ import { useMessagesStore } from '../../stores/useMessagesStore';
 import { useUserStore } from '../../stores/useUserStore';
 import { useCallStore } from '../../stores/useCallStore';
 import { getImageGroup } from '../../utils/imageGrouping';
+import { detectInsights } from '../../utils/insightDetector';
 import { CreateReminderModal } from './CreateReminderModal';
 import { CreateExpenseModal } from './CreateExpenseModal';
 import { CreateNoteModal } from './CreateNoteModal';
@@ -133,6 +135,15 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
     () => messages.filter((m) => m.isPinned),
     [messages],
   );
+
+  // AI Insights
+  const [insightsDismissed, setInsightsDismissed] = useState(false);
+  const insights = useMemo(() => {
+    if (insightsDismissed) return [];
+    const getUserName = (id: string) => useUserStore.getState().getUserById(id)?.name ?? 'Unknown';
+    const currentUserId = useUserStore.getState().currentUser?.id ?? '';
+    return detectInsights(messages, currentUserId, getUserName, new Set());
+  }, [messages, insightsDismissed]);
 
   // Call history for this conversation
   const callHistory = useCallStore(
@@ -636,6 +647,22 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
           }
         }}
       />
+
+      {/* AI Insights banner */}
+      {insights.length > 0 && (
+        <AIInsightsBanner
+          insights={insights}
+          onJumpToMessage={(messageId) => {
+            const index = invertedTimeline.findIndex(
+              (item) => item.kind === 'message' && item.data.id === messageId,
+            );
+            if (index >= 0) {
+              listRef.current?.scrollToIndex({ index, animated: true });
+            }
+          }}
+          onDismiss={() => setInsightsDismissed(true)}
+        />
+      )}
 
       <FlatList<TimelineItem>
         ref={listRef as React.RefObject<FlatList<TimelineItem>>}
