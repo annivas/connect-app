@@ -317,7 +317,7 @@ export const mockMessagesRepository: IMessagesRepository = {
     };
   },
 
-  async createChannel(conversationId: string, name: string, emoji?: string, color = '#D4764E'): Promise<Channel> {
+  async createChannel(conversationId: string, name: string, emoji?: string, color = '#D4764E', aiAgentId?: string): Promise<Channel> {
     const newChannel: Channel = {
       id: `ch-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       name,
@@ -326,6 +326,7 @@ export const mockMessagesRepository: IMessagesRepository = {
       createdBy: 'current-user',
       createdAt: new Date(),
       metadata: { sharedObjects: [], notes: [], reminders: [], ledgerBalance: 0, ledgerEntries: [], pinnedMessages: [], starredMessages: [], polls: [], callHistory: [] },
+      ...(aiAgentId ? { aiAgentId, aiVisibility: 'ai-restricted' as const } : {}),
     };
     conversations = conversations.map((c) =>
       c.id === conversationId ? { ...c, channels: [...(c.channels || []), newChannel] } : c,

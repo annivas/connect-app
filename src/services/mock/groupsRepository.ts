@@ -262,7 +262,7 @@ export const mockGroupsRepository: IGroupsRepository = {
   async toggleStarGroupMessage(_messageId: string, _isStarred: boolean): Promise<void> {},
   async togglePinGroupMessage(_messageId: string, _isPinned: boolean): Promise<void> {},
 
-  async createChannel(groupId: string, name: string, emoji?: string, color = '#D4764E'): Promise<Channel> {
+  async createChannel(groupId: string, name: string, emoji?: string, color = '#D4764E', aiAgentId?: string): Promise<Channel> {
     const newChannel: Channel = {
       id: `ch-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       name,
@@ -271,6 +271,7 @@ export const mockGroupsRepository: IGroupsRepository = {
       createdBy: 'current-user',
       createdAt: new Date(),
       metadata: { sharedObjects: [], notes: [], reminders: [], ledgerBalance: 0, ledgerEntries: [], pinnedMessages: [], starredMessages: [], polls: [], callHistory: [] },
+      ...(aiAgentId ? { aiAgentId, aiVisibility: 'ai-restricted' as const } : {}),
     };
     groups = groups.map((g) =>
       g.id === groupId ? { ...g, channels: [...(g.channels || []), newChannel] } : g,

@@ -1059,7 +1059,7 @@ export const supabaseGroupsRepository: IGroupsRepository = {
     if (error) throw new Error(`Failed to toggle pin: ${error.message}`);
   },
 
-  async createChannel(groupId: string, name: string, emoji?: string, color = '#D4764E'): Promise<Channel> {
+  async createChannel(groupId: string, name: string, emoji?: string, color = '#D4764E', aiAgentId?: string): Promise<Channel> {
     const userId = getCurrentUserId();
     const { data, error } = await supabase
       .from('channels')
@@ -1069,6 +1069,7 @@ export const supabaseGroupsRepository: IGroupsRepository = {
         emoji: emoji ?? null,
         color,
         created_by: userId,
+        ...(aiAgentId ? { ai_agent_id: aiAgentId, ai_visibility: 'ai-restricted' } : {}),
       })
       .select()
       .single();

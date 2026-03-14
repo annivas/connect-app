@@ -435,7 +435,7 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
       ),
     }));
     // Persist to database
-    groupsRepository.createChannel(groupId, name, emoji, color).then((saved) => {
+    groupsRepository.createChannel(groupId, name, emoji, color, aiAgentId).then((saved) => {
       set((state) => ({
         groups: state.groups.map((g) =>
           g.id === groupId

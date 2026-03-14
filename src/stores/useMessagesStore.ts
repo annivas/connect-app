@@ -374,7 +374,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
       ),
     }));
     // Persist to database
-    messagesRepository.createChannel(conversationId, name, emoji, color).then((saved) => {
+    messagesRepository.createChannel(conversationId, name, emoji, color, aiAgentId).then((saved) => {
       set((state) => ({
         conversations: state.conversations.map((c) =>
           c.id === conversationId

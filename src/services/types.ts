@@ -113,7 +113,7 @@ export interface IMessagesRepository {
   addSharedObject(conversationId: string, data: { type: SharedObjectType; title: string; description?: string; url?: string }): Promise<SharedObject>;
 
   // Channels
-  createChannel(conversationId: string, name: string, emoji?: string, color?: string): Promise<Channel>;
+  createChannel(conversationId: string, name: string, emoji?: string, color?: string, aiAgentId?: string): Promise<Channel>;
   updateChannel(channelId: string, updates: Partial<Pick<Channel, 'name' | 'emoji' | 'color'>>): Promise<Channel>;
   deleteChannel(channelId: string): Promise<void>;
 }
@@ -183,7 +183,7 @@ export interface IGroupsRepository {
   togglePinGroupMessage(messageId: string, isPinned: boolean): Promise<void>;
 
   // Channels
-  createChannel(groupId: string, name: string, emoji?: string, color?: string): Promise<Channel>;
+  createChannel(groupId: string, name: string, emoji?: string, color?: string, aiAgentId?: string): Promise<Channel>;
   updateChannel(channelId: string, updates: Partial<Pick<Channel, 'name' | 'emoji' | 'color'>>): Promise<Channel>;
   deleteChannel(channelId: string): Promise<void>;
 }
