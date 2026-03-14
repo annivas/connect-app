@@ -1069,13 +1069,13 @@ export const supabaseGroupsRepository: IGroupsRepository = {
         emoji: emoji ?? null,
         color,
         created_by: userId,
-        ...(aiAgentId ? { ai_agent_id: aiAgentId, ai_visibility: 'ai-restricted' } : {}),
       })
       .select()
       .single();
 
     if (error) throw new Error(`Failed to create channel: ${error.message}`);
-    return adaptChannel(data);
+    const channel = adaptChannel(data);
+    return aiAgentId ? { ...channel, aiAgentId, aiVisibility: 'ai-restricted' as const } : channel;
   },
 
   async updateChannel(channelId: string, updates: Partial<Pick<Channel, 'name' | 'emoji' | 'color'>>): Promise<Channel> {
