@@ -37,7 +37,8 @@ import { useCallStore } from '../../stores/useCallStore';
 import { getImageGroup } from '../../utils/imageGrouping';
 import { detectEventHint } from '../../utils/eventDetection';
 import { detectInsights } from '../../utils/insightDetector';
-import type { Message, GroupEvent, CallEntry, DisappearingDuration, SongMetadata, Reminder, LedgerEntry, NoteMessageMetadata, ReminderMessageMetadata, ExpenseMessageMetadata, EventMessageMetadata } from '../../types';
+import { detectActions } from '../../utils/actionDetector';
+import type { Message, GroupEvent, CallEntry, DisappearingDuration, SongMetadata, Reminder, LedgerEntry, DetectedAction, NoteMessageMetadata, ReminderMessageMetadata, ExpenseMessageMetadata, EventMessageMetadata } from '../../types';
 
 /**
  * Dynamically measure the Y position of the GroupChatTab container to get an
@@ -91,6 +92,10 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
   const [dismissedHintIds, setDismissedHintIds] = useState<Set<string>>(new Set());
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [suggestedEventTitle, setSuggestedEventTitle] = useState<string | undefined>();
+
+  // Action suggestion state (inline per-message chips)
+  const [showActionReminderModal, setShowActionReminderModal] = useState(false);
+  const [showActionExpenseModal, setShowActionExpenseModal] = useState(false);
 
   // Forward modal
   const [forwardMessage, setForwardMessage] = useState<Message | null>(null);
@@ -588,6 +593,25 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
     }
   }, [groupId, sendGroupMessage]);
 
+  // ─── Action suggestion handler ──────────────
+  const handleActionSuggestion = useCallback((action: DetectedAction) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    switch (action.type) {
+      case 'reminder':
+        setShowActionReminderModal(true);
+        break;
+      case 'expense':
+        setShowActionExpenseModal(true);
+        break;
+      case 'event':
+        useToastStore.getState().show({ message: `Event detected: "${action.extractedValue}"`, type: 'info' });
+        break;
+      case 'link_save':
+        useToastStore.getState().show({ message: 'Link saved to collection', type: 'success' });
+        break;
+    }
+  }, []);
+
   // ─── Rich bubble tap handler ──────────────
   const handleItemPress = useCallback((type: string, metadata: Record<string, unknown>) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -738,6 +762,7 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
               imageGroup={imgGroup?.isLeader ? imgGroup.images : undefined}
               groupId={groupId}
               onItemPress={handleItemPress}
+              onActionSuggestion={handleActionSuggestion}
             />
           );
         }}
@@ -1017,6 +1042,70 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
         setShowEditExpenseModal(false);
         setEditingExpense(null);
         useToastStore.getState().show({ message: 'Expense updated', type: 'success' });
+      }}
+    />
+
+    {/* Action suggestion modals (triggered by inline chips on messages) */}
+    <CreateReminderModal
+      visible={showActionReminderModal}
+      onClose={() => setShowActionReminderModal(false)}
+      onSave={(reminder) => {
+        const userId = useUserStore.getState().currentUser?.id ?? '';
+        const created = useGroupsStore.getState().createGroupReminder(groupId, {
+          title: reminder.title,
+          description: reminder.description,
+          dueDate: reminder.dueDate instanceof Date ? reminder.dueDate : new Date(reminder.dueDate),
+          priority: reminder.priority,
+          isCompleted: false,
+          createdBy: userId,
+        });
+        if (userId) {
+          sendGroupMessage(groupId, `Set a reminder: ${reminder.title}`, userId, {
+            type: 'reminder',
+            metadata: {
+              reminderId: created.id,
+              title: reminder.title,
+              description: reminder.description,
+              dueDate: reminder.dueDate instanceof Date ? reminder.dueDate.toISOString() : String(reminder.dueDate),
+              priority: reminder.priority,
+              isCompleted: false,
+            },
+          });
+        }
+        setShowActionReminderModal(false);
+        useToastStore.getState().show({ message: 'Reminder created', type: 'success' });
+      }}
+    />
+    <CreateExpenseModal
+      visible={showActionExpenseModal}
+      onClose={() => setShowActionExpenseModal(false)}
+      onSave={(entry) => {
+        const created = useGroupsStore.getState().createGroupLedgerEntry(groupId, {
+          description: entry.description,
+          amount: entry.amount,
+          paidBy: entry.paidBy,
+          splitBetween: entry.splitBetween,
+          category: entry.category,
+          date: new Date(),
+          isSettled: false,
+        });
+        const userId = useUserStore.getState().currentUser?.id;
+        if (userId) {
+          sendGroupMessage(groupId, `Added an expense: ${entry.description} — $${entry.amount.toFixed(2)}`, userId, {
+            type: 'expense',
+            metadata: {
+              entryId: created.id,
+              description: created.description,
+              amount: created.amount,
+              paidBy: created.paidBy,
+              splitBetween: created.splitBetween,
+              category: created.category,
+              isSettled: created.isSettled,
+            },
+          });
+        }
+        setShowActionExpenseModal(false);
+        useToastStore.getState().show({ message: 'Expense added', type: 'success' });
       }}
     />
     </View>
