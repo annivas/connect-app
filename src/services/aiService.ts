@@ -12,17 +12,46 @@ export interface AIAnalysisResult {
   actions: DetectedAction[];
 }
 
+// ─── Analysis cache (persists until manual refresh) ──────────────────
+
+const analysisCache = new Map<string, AIAnalysisResult>();
+
+function getCacheKey(conversationId: string, channelId?: string | null): string {
+  return `${conversationId}:${channelId ?? 'main'}`;
+}
+
 /**
  * Analyze a conversation using either the Claude-powered Supabase Edge Function
  * or the local mock/regex implementations (when config.useMocks is true).
+ *
+ * Results are cached per conversation+channel and reused until `forceRefresh` is true.
  */
 export async function analyzeConversation(
   messages: Message[],
   currentUserId: string,
   getUserName: (id: string) => string,
+  conversationId: string,
+  channelId?: string | null,
+  forceRefresh = false,
 ): Promise<AIAnalysisResult> {
-  console.log('[AI] config.useMocks:', config.useMocks, '| supabaseUrl:', config.supabaseUrl ? 'set' : 'EMPTY');
+  const cacheKey = getCacheKey(conversationId, channelId);
 
+  // Return cached result unless refresh is requested
+  if (!forceRefresh) {
+    const cached = analysisCache.get(cacheKey);
+    if (cached) return cached;
+  }
+
+  const result = await runAnalysis(messages, currentUserId, getUserName);
+  analysisCache.set(cacheKey, result);
+  return result;
+}
+
+async function runAnalysis(
+  messages: Message[],
+  currentUserId: string,
+  getUserName: (id: string) => string,
+): Promise<AIAnalysisResult> {
   if (config.useMocks) {
     return analyzeWithMocks(messages, currentUserId, getUserName);
   }

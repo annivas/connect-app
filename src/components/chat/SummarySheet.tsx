@@ -69,7 +69,7 @@ export function SummarySheet({ visible, onClose, conversationId, channelId, isGr
     };
     const currentUserId = useUserStore.getState().currentUser?.id ?? '';
 
-    analyzeConversation(messages, currentUserId, getUserName).then((result) => {
+    analyzeConversation(messages, currentUserId, getUserName, conversationId, channelId).then((result) => {
       setSummary(result.summary);
       setIsLoading(false);
       pulseOpacity.value = 1;
