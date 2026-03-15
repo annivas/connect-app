@@ -57,34 +57,7 @@ function formatTranscript(messages: IncomingMessage[]): string {
     .join("\n");
 }
 
-const SYSTEM_PROMPT = `You analyze messaging conversations and extract structured insights. You MUST return ONLY valid JSON matching the exact schema below — no markdown, no explanation, no wrapping.
-
-Schema:
-{
-  "summary": {
-    "overview": "2-3 sentence natural summary of the conversation",
-    "keyTopics": ["topic1", "topic2", ...],  // up to 5 short topic labels
-    "decisions": ["Person: what was decided", ...],  // up to 5, include who said it
-    "actionItems": [{"id": "action-1", "text": "what needs to be done", "assignee": "Person"}, ...]  // up to 6
-  },
-  "insights": [
-    {
-      "type": "unanswered_question | pending_decision | follow_up",
-      "messageId": "id of the relevant message",
-      "content": "the message text (max 80 chars)",
-      "senderId": "sender's user ID",
-      "senderName": "sender's display name"
-    }
-  ],
-  "actions": [
-    {
-      "type": "reminder | event | expense | link_save",
-      "label": "short action label like 'Create reminder' or 'Log expense · $50'",
-      "extractedValue": "the key value (date, amount, URL, or phrase)",
-      "messageId": "id of the source message"
-    }
-  ]
-}
+const SYSTEM_PROMPT = `You analyze messaging conversations and extract structured insights. Use the submit_analysis tool to return your results.
 
 Rules:
 - "unanswered_question": questions from others that the current user hasn't responded to
@@ -96,7 +69,71 @@ Rules:
 - "link_save": messages containing URLs worth saving
 - Only include insights/actions that are genuinely useful — don't force items
 - Truncate content fields to 80 characters max
-- For actionItems, use sequential IDs: "action-1", "action-2", etc.`;
+- For actionItems, use sequential IDs: "action-1", "action-2", etc.
+- overview should be 2-3 sentences
+- keyTopics: up to 5 short topic labels
+- decisions: up to 5, include who said it (e.g. "Person: what was decided")
+- actionItems: up to 6`;
+
+// Tool definition for structured output — guarantees valid JSON
+const ANALYSIS_TOOL: Anthropic.Tool = {
+  name: "submit_analysis",
+  description: "Submit the structured conversation analysis results",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      summary: {
+        type: "object",
+        properties: {
+          overview: { type: "string", description: "2-3 sentence natural summary" },
+          keyTopics: { type: "array", items: { type: "string" }, description: "Up to 5 short topic labels" },
+          decisions: { type: "array", items: { type: "string" }, description: "Decisions made, with who said it" },
+          actionItems: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                id: { type: "string" },
+                text: { type: "string" },
+                assignee: { type: "string" },
+              },
+              required: ["id", "text"],
+            },
+          },
+        },
+        required: ["overview", "keyTopics", "decisions", "actionItems"],
+      },
+      insights: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            type: { type: "string", enum: ["unanswered_question", "pending_decision", "follow_up"] },
+            messageId: { type: "string" },
+            content: { type: "string" },
+            senderId: { type: "string" },
+            senderName: { type: "string" },
+          },
+          required: ["type", "messageId", "content", "senderId", "senderName"],
+        },
+      },
+      actions: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            type: { type: "string", enum: ["reminder", "event", "expense", "link_save"] },
+            label: { type: "string" },
+            extractedValue: { type: "string" },
+            messageId: { type: "string" },
+          },
+          required: ["type", "label", "extractedValue", "messageId"],
+        },
+      },
+    },
+    required: ["summary", "insights", "actions"],
+  },
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -131,7 +168,7 @@ Deno.serve(async (req) => {
 Conversation transcript:
 ${transcript}
 
-Return the JSON analysis now.`;
+Use the submit_analysis tool to return the structured analysis.`;
 
     const client = new Anthropic({ apiKey });
 
@@ -139,17 +176,18 @@ Return the JSON analysis now.`;
       model: "claude-haiku-4-5-20251001",
       max_tokens: 2048,
       system: SYSTEM_PROMPT,
+      tools: [ANALYSIS_TOOL],
+      tool_choice: { type: "tool", name: "submit_analysis" },
       messages: [{ role: "user", content: userPrompt }],
     });
 
-    // Extract text from response
-    const textBlock = response.content.find((b) => b.type === "text");
-    if (!textBlock || textBlock.type !== "text") {
-      throw new Error("No text response from Claude");
+    // Extract tool_use block — guaranteed valid JSON by the API
+    const toolBlock = response.content.find((b) => b.type === "tool_use");
+    if (!toolBlock || toolBlock.type !== "tool_use") {
+      throw new Error("No tool_use response from Claude");
     }
 
-    // Parse and validate the JSON response
-    const result: AnalysisResult = JSON.parse(textBlock.text);
+    const result = toolBlock.input as AnalysisResult;
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
