@@ -12,7 +12,8 @@ import Animated, {
 import { useMessagesStore } from '../../stores/useMessagesStore';
 import { useGroupsStore } from '../../stores/useGroupsStore';
 import { useUserStore } from '../../stores/useUserStore';
-import { generateMockSummary, ConversationSummary } from '../../utils/mockSummarizer';
+import { analyzeConversation } from '../../services/aiService';
+import type { ConversationSummary } from '../../utils/mockSummarizer';
 import { NoteBlock } from '../../types';
 
 interface Props {
@@ -66,9 +67,10 @@ export function SummarySheet({ visible, onClose, conversationId, channelId, isGr
       const user = useUserStore.getState().getUserById(id);
       return user?.name ?? 'Unknown';
     };
+    const currentUserId = useUserStore.getState().currentUser?.id ?? '';
 
-    generateMockSummary(messages, getUserName).then((result) => {
-      setSummary(result);
+    analyzeConversation(messages, currentUserId, getUserName).then((result) => {
+      setSummary(result.summary);
       setIsLoading(false);
       pulseOpacity.value = 1;
     });

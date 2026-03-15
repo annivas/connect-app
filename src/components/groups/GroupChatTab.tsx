@@ -36,7 +36,9 @@ import { useUserStore } from '../../stores/useUserStore';
 import { useCallStore } from '../../stores/useCallStore';
 import { getImageGroup } from '../../utils/imageGrouping';
 import { detectEventHint } from '../../utils/eventDetection';
-import { detectInsights } from '../../utils/insightDetector';
+import { analyzeConversation } from '../../services/aiService';
+import { config } from '../../config/env';
+import type { ConversationInsight } from '../../utils/insightDetector';
 import { detectActions } from '../../utils/actionDetector';
 import type { Message, GroupEvent, CallEntry, DisappearingDuration, SongMetadata, Reminder, LedgerEntry, DetectedAction, NoteMessageMetadata, ReminderMessageMetadata, ExpenseMessageMetadata, EventMessageMetadata } from '../../types';
 
@@ -180,12 +182,19 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
     [messages, currentUserId, dismissedHintIds],
   );
 
-  // AI Insights
+  // AI Insights (async — uses LLM in real mode, regex in mock mode)
   const [insightsDismissed, setInsightsDismissed] = useState(false);
-  const groupInsights = useMemo(() => {
-    if (insightsDismissed) return [];
+  const [groupInsights, setGroupInsights] = useState<ConversationInsight[]>([]);
+  useEffect(() => {
+    if (insightsDismissed) { setGroupInsights([]); return; }
     const getUserName = (id: string) => useUserStore.getState().getUserById(id)?.name ?? 'Unknown';
-    return detectInsights(messages, currentUserId, getUserName, new Set());
+    // Debounce in real mode to avoid calling LLM on every message update
+    const timer = setTimeout(() => {
+      analyzeConversation(messages, currentUserId, getUserName).then((result) => {
+        setGroupInsights(result.insights);
+      });
+    }, config.useMocks ? 0 : 2000);
+    return () => clearTimeout(timer);
   }, [messages, currentUserId, insightsDismissed]);
 
   // Load messages when entering the group chat
