@@ -21,6 +21,8 @@ export async function analyzeConversation(
   currentUserId: string,
   getUserName: (id: string) => string,
 ): Promise<AIAnalysisResult> {
+  console.log('[AI] config.useMocks:', config.useMocks, '| supabaseUrl:', config.supabaseUrl ? 'set' : 'EMPTY');
+
   if (config.useMocks) {
     return analyzeWithMocks(messages, currentUserId, getUserName);
   }
@@ -28,6 +30,7 @@ export async function analyzeConversation(
   try {
     return await analyzeWithLLM(messages, currentUserId, getUserName);
   } catch (error) {
+    console.error('[AI] analyzeConversation failed:', error);
     // Fallback to mocks on failure
     useToastStore.getState().show({
       message: 'AI unavailable, showing estimated results',
@@ -154,10 +157,10 @@ function transformLLMResponse(
   );
 
   const summary: ConversationSummary = {
-    overview: raw.summary.overview,
-    keyTopics: raw.summary.keyTopics,
-    decisions: raw.summary.decisions,
-    actionItems: raw.summary.actionItems.map((item, i) => ({
+    overview: raw.summary?.overview ?? '',
+    keyTopics: raw.summary?.keyTopics ?? [],
+    decisions: raw.summary?.decisions ?? [],
+    actionItems: (raw.summary?.actionItems ?? []).map((item, i) => ({
       id: item.id || `action-${i + 1}`,
       text: item.text,
       assignee: item.assignee,
