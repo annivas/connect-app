@@ -147,7 +147,7 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
     const currentUserId = useUserStore.getState().currentUser?.id ?? '';
     // Debounce in real mode to avoid calling LLM on every message update
     const timer = setTimeout(() => {
-      analyzeConversation(messages, currentUserId, getUserName).then((result) => {
+      analyzeConversation(messages, currentUserId, getUserName, conversationId, channelId).then((result) => {
         setInsights(result.insights);
       });
     }, config.useMocks ? 0 : 2000);

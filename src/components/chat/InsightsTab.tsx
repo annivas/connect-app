@@ -53,7 +53,7 @@ export function InsightsTab({ conversationId, channelId, isGroup }: Props) {
     return ids.map((uid) => getUserById(uid)).filter(Boolean) as User[];
   }, [conversationId, isGroup]);
 
-  useEffect(() => {
+  const loadAnalysis = (forceRefresh = false) => {
     setSummary(null);
     setInsights([]);
     setAggregatedActions([]);
@@ -80,14 +80,23 @@ export function InsightsTab({ conversationId, channelId, isGroup }: Props) {
     const currentUserId = useUserStore.getState().currentUser?.id ?? '';
 
     // Single unified analysis call (LLM in real mode, mock fallback otherwise)
-    analyzeConversation(messages, currentUserId, getUserName).then((result) => {
+    analyzeConversation(messages, currentUserId, getUserName, conversationId, channelId, forceRefresh).then((result) => {
       setSummary(result.summary);
       setInsights(result.insights);
       setAggregatedActions(result.actions);
       setIsLoading(false);
       pulseOpacity.value = 1;
     });
+  };
+
+  useEffect(() => {
+    loadAnalysis();
   }, [conversationId, channelId, isGroup]);
+
+  const handleRefresh = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    loadAnalysis(true);
+  };
 
   const handleActionPress = (action: DetectedAction) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -136,6 +145,17 @@ export function InsightsTab({ conversationId, channelId, isGroup }: Props) {
         </View>
       ) : summary ? (
         <ScrollView className="flex-1" contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
+          {/* Refresh button */}
+          <View className="flex-row justify-end mb-2">
+            <Pressable
+              onPress={handleRefresh}
+              className="flex-row items-center px-2.5 py-1.5 rounded-full bg-background-tertiary active:opacity-70"
+            >
+              <Ionicons name="refresh" size={14} color="#A8937F" />
+              <Text className="text-text-tertiary text-xs ml-1">Refresh</Text>
+            </Pressable>
+          </View>
+
           {/* Overview */}
           <SectionHeader icon="document-text-outline" color="#D4764E" title="Overview" />
           <View className="bg-surface rounded-2xl p-3.5 mb-4">

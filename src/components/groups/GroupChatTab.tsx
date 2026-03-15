@@ -190,7 +190,7 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
     const getUserName = (id: string) => useUserStore.getState().getUserById(id)?.name ?? 'Unknown';
     // Debounce in real mode to avoid calling LLM on every message update
     const timer = setTimeout(() => {
-      analyzeConversation(messages, currentUserId, getUserName).then((result) => {
+      analyzeConversation(messages, currentUserId, getUserName, groupId, channelId).then((result) => {
         setGroupInsights(result.insights);
       });
     }, config.useMocks ? 0 : 2000);
