@@ -16,9 +16,11 @@ import { useMessagesStore } from '../../stores/useMessagesStore';
 import { useGroupsStore } from '../../stores/useGroupsStore';
 import { useUserStore } from '../../stores/useUserStore';
 import { useToastStore } from '../../stores/useToastStore';
-import { generateMockSummary, ConversationSummary } from '../../utils/mockSummarizer';
-import { detectInsights, getInsightIcon, getInsightColor, getInsightLabel, ConversationInsight } from '../../utils/insightDetector';
-import { detectActions, getActionIcon, getActionColor } from '../../utils/actionDetector';
+import { getInsightIcon, getInsightColor, getInsightLabel } from '../../utils/insightDetector';
+import { getActionIcon, getActionColor } from '../../utils/actionDetector';
+import { analyzeConversation } from '../../services/aiService';
+import type { ConversationSummary } from '../../utils/mockSummarizer';
+import type { ConversationInsight } from '../../utils/insightDetector';
 import type { DetectedAction, User } from '../../types';
 
 interface Props {
@@ -77,31 +79,11 @@ export function InsightsTab({ conversationId, channelId, isGroup }: Props) {
       useUserStore.getState().getUserById(id)?.name ?? 'Unknown';
     const currentUserId = useUserStore.getState().currentUser?.id ?? '';
 
-    // Compute insights synchronously
-    const detectedInsights = detectInsights(messages, currentUserId, getUserName, new Set());
-    setInsights(detectedInsights);
-
-    // Aggregate actions from recent messages
-    const recentMsgs = messages.slice(-30);
-    const allActions: DetectedAction[] = [];
-    for (const msg of recentMsgs) {
-      if (msg.type === 'text' && msg.senderId !== currentUserId) {
-        allActions.push(...detectActions(msg.id, msg.content));
-      }
-    }
-    // Deduplicate by type + extractedValue
-    const seen = new Set<string>();
-    const unique = allActions.filter((a) => {
-      const key = `${a.type}:${a.extractedValue}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-    setAggregatedActions(unique);
-
-    // Generate summary asynchronously
-    generateMockSummary(messages, getUserName).then((result) => {
-      setSummary(result);
+    // Single unified analysis call (LLM in real mode, mock fallback otherwise)
+    analyzeConversation(messages, currentUserId, getUserName).then((result) => {
+      setSummary(result.summary);
+      setInsights(result.insights);
+      setAggregatedActions(result.actions);
       setIsLoading(false);
       pulseOpacity.value = 1;
     });

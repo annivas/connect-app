@@ -29,7 +29,9 @@ import { useMessagesStore } from '../../stores/useMessagesStore';
 import { useUserStore } from '../../stores/useUserStore';
 import { useCallStore } from '../../stores/useCallStore';
 import { getImageGroup } from '../../utils/imageGrouping';
-import { detectInsights } from '../../utils/insightDetector';
+import { analyzeConversation } from '../../services/aiService';
+import { config } from '../../config/env';
+import type { ConversationInsight } from '../../utils/insightDetector';
 import { CreateReminderModal } from './CreateReminderModal';
 import { CreateExpenseModal } from './CreateExpenseModal';
 import { CreateNoteModal } from './CreateNoteModal';
@@ -136,13 +138,20 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
     [messages],
   );
 
-  // AI Insights
+  // AI Insights (async — uses LLM in real mode, regex in mock mode)
   const [insightsDismissed, setInsightsDismissed] = useState(false);
-  const insights = useMemo(() => {
-    if (insightsDismissed) return [];
+  const [insights, setInsights] = useState<ConversationInsight[]>([]);
+  useEffect(() => {
+    if (insightsDismissed) { setInsights([]); return; }
     const getUserName = (id: string) => useUserStore.getState().getUserById(id)?.name ?? 'Unknown';
     const currentUserId = useUserStore.getState().currentUser?.id ?? '';
-    return detectInsights(messages, currentUserId, getUserName, new Set());
+    // Debounce in real mode to avoid calling LLM on every message update
+    const timer = setTimeout(() => {
+      analyzeConversation(messages, currentUserId, getUserName).then((result) => {
+        setInsights(result.insights);
+      });
+    }, config.useMocks ? 0 : 2000);
+    return () => clearTimeout(timer);
   }, [messages, insightsDismissed]);
 
   // Call history for this conversation
