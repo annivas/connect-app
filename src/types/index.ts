@@ -3,7 +3,7 @@ export interface User {
   id: string;
   name: string;
   username: string;
-  avatar: string;
+  avatar?: string;
   status: 'online' | 'offline' | 'away';
   statusMessage?: string;
   email?: string;
@@ -577,7 +577,7 @@ export interface Group {
   id: string;
   name: string;
   description?: string;
-  avatar: string;
+  avatar?: string;
   members: string[];
   admins: string[];
   createdBy: string;
