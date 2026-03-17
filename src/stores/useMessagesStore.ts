@@ -102,6 +102,7 @@ interface MessagesState {
   updateNote: (conversationId: string, noteId: string, input: UpdateNoteInput, channelId?: string | null) => void;
   deleteNote: (conversationId: string, noteId: string, channelId?: string | null) => void;
   toggleNotePin: (conversationId: string, noteId: string, channelId?: string | null) => void;
+  toggleNoteArchive: (conversationId: string, noteId: string, channelId?: string | null) => void;
   createReminder: (conversationId: string, input: CreateReminderInput, channelId?: string | null) => Promise<Reminder>;
   updateReminder: (conversationId: string, reminderId: string, input: UpdateReminderInput, channelId?: string | null) => void;
   toggleReminderComplete: (conversationId: string, reminderId: string, channelId?: string | null) => void;
@@ -813,6 +814,17 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
       })),
     }));
     messagesRepository.toggleNotePin(conversationId, noteId).catch(() => {});
+  },
+
+  toggleNoteArchive: (conversationId, noteId, channelId) => {
+    set((state) => ({
+      conversations: updateConvMetadata(state.conversations, conversationId, channelId, (md) => ({
+        ...md,
+        notes: md.notes.map((n) =>
+          n.id === noteId ? { ...n, isArchived: !n.isArchived } : n,
+        ),
+      })),
+    }));
   },
 
   createReminder: async (conversationId, input, channelId) => {
