@@ -127,8 +127,8 @@ export function QuickComposeFAB({ onNewMessage, onNewGroup, onNewNote, onNewRemi
           animatedFabStyle,
           {
             position: 'absolute',
-            bottom: 100,
-            right: 16,
+            bottom: 120,
+            right: 24,
             width: 56,
             height: 56,
             borderRadius: 28,
