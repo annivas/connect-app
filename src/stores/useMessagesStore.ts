@@ -905,6 +905,17 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
         const newBalance = updatedEntries.reduce((sum, e) => (e.isSettled ? sum : sum + e.amount), 0);
         return { ...md, ledgerEntries: updatedEntries, ledgerBalance: newBalance };
       }),
+      // Sync the expense message bubble so it shows "SETTLED"
+      messages: state.messages.map((m) => {
+        if (
+          m.conversationId === conversationId &&
+          m.type === 'expense' &&
+          (m.metadata as Record<string, unknown>)?.entryId === entryId
+        ) {
+          return { ...m, metadata: { ...m.metadata, isSettled: true } };
+        }
+        return m;
+      }),
     }));
 
     messagesRepository.settleLedgerEntry(entryId).catch(() => {
@@ -915,6 +926,16 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
           );
           const newBalance = revertedEntries.reduce((sum, e) => (e.isSettled ? sum : sum + e.amount), 0);
           return { ...md, ledgerEntries: revertedEntries, ledgerBalance: newBalance };
+        }),
+        messages: state.messages.map((m) => {
+          if (
+            m.conversationId === conversationId &&
+            m.type === 'expense' &&
+            (m.metadata as Record<string, unknown>)?.entryId === entryId
+          ) {
+            return { ...m, metadata: { ...m.metadata, isSettled: false } };
+          }
+          return m;
         }),
       }));
     });

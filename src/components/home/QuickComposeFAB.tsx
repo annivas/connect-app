@@ -22,9 +22,10 @@ interface Props {
   onNewGroup: () => void;
   onNewNote: () => void;
   onNewReminder: () => void;
+  onNewExpense: () => void;
 }
 
-export function QuickComposeFAB({ onNewMessage, onNewGroup, onNewNote, onNewReminder }: Props) {
+export function QuickComposeFAB({ onNewMessage, onNewGroup, onNewNote, onNewReminder, onNewExpense }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const scale = useSharedValue(1);
   const rotation = useSharedValue(0);
@@ -49,9 +50,15 @@ export function QuickComposeFAB({ onNewMessage, onNewGroup, onNewNote, onNewRemi
       onPress: onNewNote,
     },
     {
+      icon: 'wallet-outline',
+      label: 'New Expense',
+      color: '#2D9F6F',
+      onPress: onNewExpense,
+    },
+    {
       icon: 'alarm-outline',
       label: 'Reminder',
-      color: '#2D9F6F',
+      color: '#D4964E',
       onPress: onNewReminder,
     },
   ];
