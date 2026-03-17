@@ -81,7 +81,7 @@ export function QuickComposeFAB({ onNewMessage, onNewGroup, onNewNote, onNewRemi
       {isOpen && (
         <Modal transparent animationType="fade" onRequestClose={() => setIsOpen(false)}>
           <Pressable
-            className="flex-1 justify-end items-end pb-28 pr-4"
+            className="flex-1 justify-end items-end pb-36 pr-6"
             onPress={() => {
               setIsOpen(false);
               rotation.value = withSpring(0, { damping: 15, stiffness: 300 });
@@ -127,8 +127,8 @@ export function QuickComposeFAB({ onNewMessage, onNewGroup, onNewNote, onNewRemi
           animatedFabStyle,
           {
             position: 'absolute',
-            bottom: 120,
-            right: 24,
+            bottom: 148,
+            right: 32,
             width: 56,
             height: 56,
             borderRadius: 28,
