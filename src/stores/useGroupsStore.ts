@@ -87,6 +87,8 @@ interface GroupsState {
   editItineraryItem: (groupId: string, itemId: string, updates: Partial<import('../types').ItineraryItem>) => void;
   deleteItineraryItem: (groupId: string, itemId: string) => void;
   createEvent: (groupId: string, event: Omit<import('../types').GroupEvent, 'id' | 'groupId' | 'createdBy' | 'attendees'>) => import('../types').GroupEvent;
+  updateGroupEvent: (groupId: string, eventId: string, updates: Partial<Pick<import('../types').GroupEvent, 'title' | 'description' | 'startDate' | 'endDate' | 'location'>>) => void;
+  deleteGroupEvent: (groupId: string, eventId: string) => void;
 
   // Event Spaces
   eventSpaceMessages: Record<string, Message[]>;
@@ -120,6 +122,7 @@ interface GroupsState {
   updateGroupNote: (groupId: string, noteId: string, input: import('../services/types').UpdateNoteInput, channelId?: string | null) => void;
   deleteGroupNote: (groupId: string, noteId: string, channelId?: string | null) => void;
   toggleGroupNotePin: (groupId: string, noteId: string, channelId?: string | null) => void;
+  toggleGroupNoteArchive: (groupId: string, noteId: string, channelId?: string | null) => void;
 
   // Reminders CRUD
   createGroupReminder: (groupId: string, reminder: Omit<Reminder, 'id' | 'createdAt'>, channelId?: string | null) => Reminder;
@@ -1097,6 +1100,32 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
     return newEvent as import('../types').GroupEvent;
   },
 
+  updateGroupEvent: (groupId, eventId, updates) => {
+    set((state) => ({
+      groups: state.groups.map((g) => {
+        if (g.id !== groupId) return g;
+        return {
+          ...g,
+          events: (g.events ?? []).map((e) =>
+            e.id === eventId ? { ...e, ...updates } : e,
+          ),
+        };
+      }),
+    }));
+  },
+
+  deleteGroupEvent: (groupId, eventId) => {
+    set((state) => ({
+      groups: state.groups.map((g) => {
+        if (g.id !== groupId) return g;
+        return {
+          ...g,
+          events: (g.events ?? []).filter((e) => e.id !== eventId),
+        };
+      }),
+    }));
+  },
+
   // ─── Event Spaces ──────────────────────────────
 
   getEventSpaceMessages: (eventId) => {
@@ -1458,6 +1487,17 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
       })),
     }));
     groupsRepository.toggleNotePin(groupId, noteId).catch(() => {});
+  },
+
+  toggleGroupNoteArchive: (groupId, noteId, channelId) => {
+    set((state) => ({
+      groups: updateGroupMetadata(state.groups, groupId, channelId, (metadata) => ({
+        ...metadata,
+        notes: metadata.notes.map((n) =>
+          n.id === noteId ? { ...n, isArchived: !n.isArchived } : n,
+        ),
+      })),
+    }));
   },
 
   // Reminders

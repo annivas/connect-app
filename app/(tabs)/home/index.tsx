@@ -270,10 +270,10 @@ export default function HomeScreen() {
 
         {/* Recent Notes */}
         <View className="px-4 mb-5">
-          <SectionHeader title="Recent Notes" />
-          {allNotes.length > 0 ? (
-            allNotes.slice(0, 3).map((note) => (
-              <Card key={note.id} className="mb-2">
+          <SectionHeader title="Recent Notes" onSeeAll={() => router.push('/(tabs)/home/notes')} />
+          {allNotes.filter((n) => !n.isArchived).length > 0 ? (
+            allNotes.filter((n) => !n.isArchived).slice(0, 3).map((note) => (
+              <Card key={note.id} className="mb-2" onPress={() => router.push('/(tabs)/home/notes')}>
                 <View className="flex-row items-center mb-1">
                   <View
                     className="w-3 h-3 rounded-full mr-2"
@@ -307,10 +307,10 @@ export default function HomeScreen() {
 
         {/* Upcoming Reminders */}
         <View className="px-4 mb-5">
-          <SectionHeader title="Upcoming" />
+          <SectionHeader title="Upcoming" onSeeAll={() => router.push('/(tabs)/home/reminders')} />
           {pendingReminders.length > 0 ? (
             pendingReminders.slice(0, 4).map((rem) => (
-              <Card key={rem.id} className="mb-2">
+              <Card key={rem.id} className="mb-2" onPress={() => router.push('/(tabs)/home/reminders')}>
                 <View className="flex-row items-center">
                   <View
                     className="w-2 h-2 rounded-full mr-3"

@@ -260,6 +260,7 @@ export interface Note {
   updatedAt: Date;
   isPrivate: boolean;
   isPinned: boolean;
+  isArchived?: boolean;
   tags?: string[];
   templateId?: string;
 }
