@@ -351,6 +351,7 @@ export default function HomeScreen() {
         onNewGroup={() => router.push('/(tabs)/groups')}
         onNewNote={() => router.push('/(tabs)/home/notes')}
         onNewReminder={() => router.push('/(tabs)/home/reminders')}
+        onNewExpense={() => router.push('/(tabs)/home/expenses')}
       />
     </SafeAreaView>
   );

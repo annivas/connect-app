@@ -1592,6 +1592,16 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
           e.id === entryId ? { ...e, isSettled: true } : e,
         ),
       })),
+      // Sync the expense message bubble so it shows "SETTLED"
+      groupMessages: state.groupMessages.map((m) => {
+        if (
+          m.type === 'expense' &&
+          (m.metadata as Record<string, unknown>)?.entryId === entryId
+        ) {
+          return { ...m, metadata: { ...m.metadata, isSettled: true } };
+        }
+        return m;
+      }),
     }));
 
     groupsRepository.settleLedgerEntry(entryId).catch(() => {
@@ -1602,6 +1612,15 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
             e.id === entryId ? { ...e, isSettled: false } : e,
           ),
         })),
+        groupMessages: state.groupMessages.map((m) => {
+          if (
+            m.type === 'expense' &&
+            (m.metadata as Record<string, unknown>)?.entryId === entryId
+          ) {
+            return { ...m, metadata: { ...m.metadata, isSettled: false } };
+          }
+          return m;
+        }),
       }));
     });
   },

@@ -148,6 +148,19 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
     useShallow((s) => s.callHistory.filter((c) => c.groupId === groupId)),
   );
 
+  // Group members for expense modals (ensures group mode + correct "Paid by" list)
+  const expenseMembers = useMemo(() => {
+    const group = useGroupsStore.getState().groups.find((g) => g.id === groupId);
+    if (!group) return [];
+    const currentUser = useUserStore.getState().currentUser;
+    const getUser = useUserStore.getState().getUserById;
+    const others = group.members
+      .filter((uid) => uid !== currentUser?.id)
+      .map((uid) => getUser(uid))
+      .filter((u): u is import('../../types').User => u != null);
+    return currentUser ? [currentUser, ...others] : others;
+  }, [groupId]);
+
   // Merge messages and call history into a unified timeline
   type TimelineItem =
     | { kind: 'message'; data: Message }
@@ -970,6 +983,7 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
     <CreateExpenseModal
       visible={showSheetExpenseModal}
       onClose={() => setShowSheetExpenseModal(false)}
+      members={expenseMembers}
       onSave={(entry) => {
         const created = useGroupsStore.getState().createGroupLedgerEntry(groupId, {
           description: entry.description,
@@ -1046,6 +1060,7 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
       visible={showEditExpenseModal}
       onClose={() => { setShowEditExpenseModal(false); setEditingExpense(null); }}
       editingEntry={editingExpense}
+      members={expenseMembers}
       onUpdate={(id, updates) => {
         useGroupsStore.getState().updateGroupLedgerEntry(groupId, id, updates);
         setShowEditExpenseModal(false);
@@ -1088,6 +1103,7 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
     <CreateExpenseModal
       visible={showActionExpenseModal}
       onClose={() => setShowActionExpenseModal(false)}
+      members={expenseMembers}
       onSave={(entry) => {
         const created = useGroupsStore.getState().createGroupLedgerEntry(groupId, {
           description: entry.description,
