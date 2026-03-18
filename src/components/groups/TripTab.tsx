@@ -110,7 +110,7 @@ export function TripTab({ groupId }: Props) {
           setModalVisible(true);
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         }}
-        className="absolute bottom-4 right-4 w-14 h-14 rounded-full bg-accent-primary items-center justify-center"
+        className="absolute bottom-8 right-6 w-14 h-14 rounded-full bg-accent-primary items-center justify-center"
         style={{ shadowColor: '#D4764E', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 }}
       >
         <Ionicons name="add" size={28} color="#FFFFFF" />
