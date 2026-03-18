@@ -454,7 +454,7 @@ export function InsightsTab({ conversationId, channelId, isGroup }: Props) {
               useMessagesStore.getState().sendMessage(conversationId, `Created an event: ${event.title}`, userId, {
                 type: 'event',
                 metadata: {
-                  eventId: (created as { id: string }).id,
+                  eventId: created.id,
                   title: event.title,
                   description: event.description,
                   startDate: event.startDate.toISOString(),

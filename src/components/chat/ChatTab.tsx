@@ -1124,7 +1124,7 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
         useMessagesStore.getState().sendMessage(conversationId, `Created an event: ${event.title}`, userId, {
           type: 'event',
           metadata: {
-            eventId: (created as ConversationEvent).id,
+            eventId: created.id,
             title: event.title,
             description: event.description,
             startDate: event.startDate.toISOString(),
@@ -1155,7 +1155,7 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
         useMessagesStore.getState().sendMessage(conversationId, `Created an event: ${event.title}`, userId, {
           type: 'event',
           metadata: {
-            eventId: (created as ConversationEvent).id,
+            eventId: created.id,
             title: event.title,
             description: event.description,
             startDate: event.startDate.toISOString(),

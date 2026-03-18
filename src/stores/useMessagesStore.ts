@@ -119,7 +119,7 @@ interface MessagesState {
   deleteSharedObject: (conversationId: string, objectId: string, channelId?: string | null) => void;
 
   // Events
-  createEvent: (conversationId: string, event: Omit<ConversationEvent, 'id'>, channelId?: string | null) => void;
+  createEvent: (conversationId: string, event: Omit<ConversationEvent, 'id'>, channelId?: string | null) => ConversationEvent;
   updateEvent: (conversationId: string, eventId: string, updates: Partial<Pick<ConversationEvent, 'title' | 'description' | 'startDate' | 'endDate' | 'location'>>, channelId?: string | null) => void;
   deleteEvent: (conversationId: string, eventId: string, channelId?: string | null) => void;
 
@@ -1015,6 +1015,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
         events: [...(md.events ?? []), newEvent],
       })),
     }));
+    return newEvent;
   },
 
   updateEvent: (conversationId, eventId, updates, channelId) => {
