@@ -5,8 +5,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { isPast, format } from 'date-fns';
 import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
 import { useShallow } from 'zustand/react/shallow';
 import { Avatar } from '../../../src/components/ui/Avatar';
+import { AvatarViewer } from '../../../src/components/ui/AvatarViewer';
 import { IconButton } from '../../../src/components/ui/IconButton';
 import { ConversationInfoSection } from '../../../src/components/chat/ConversationInfoSection';
 import { QuickActions } from '../../../src/components/chat/QuickActions';
@@ -32,6 +34,7 @@ export default function GroupInfoScreen() {
   const router = useRouter();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddMembers, setShowAddMembers] = useState(false);
+  const [showAvatarViewer, setShowAvatarViewer] = useState(false);
 
   const group = useGroupsStore(useShallow((s) => s.getGroupById(id!)));
   const polls = useGroupsStore(useShallow((s) => s.groupPolls[id!] ?? []));
@@ -142,6 +145,69 @@ export default function GroupInfoScreen() {
     }
   };
 
+  const handleGroupAvatarPress = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    if (!isAdmin) {
+      // Non-admins can only view the avatar
+      setShowAvatarViewer(true);
+      return;
+    }
+
+    const hasPhoto = !!group.avatar;
+
+    const pickPhoto = async () => {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        useToastStore.getState().show({ message: 'Please allow photo library access in Settings.', type: 'warning' });
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 0.8,
+        allowsEditing: true,
+        aspect: [1, 1],
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      useGroupsStore.getState().updateGroup(id!, { avatar: result.assets[0].uri });
+      useToastStore.getState().show({ message: 'Group photo updated.', type: 'success' });
+    };
+
+    const removePhoto = () => {
+      useGroupsStore.getState().updateGroup(id!, { avatar: undefined });
+      useToastStore.getState().show({ message: 'Group photo removed.', type: 'success' });
+    };
+
+    if (Platform.OS === 'ios') {
+      const options = hasPhoto
+        ? ['View Photo', 'Choose from Library', 'Remove Photo', 'Cancel']
+        : ['Choose from Library', 'Cancel'];
+      const destructiveIdx = hasPhoto ? 2 : undefined;
+      const cancelIdx = hasPhoto ? 3 : 1;
+
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options, cancelButtonIndex: cancelIdx, destructiveButtonIndex: destructiveIdx },
+        (idx) => {
+          if (hasPhoto) {
+            if (idx === 0) setShowAvatarViewer(true);
+            else if (idx === 1) pickPhoto();
+            else if (idx === 2) removePhoto();
+          } else {
+            if (idx === 0) pickPhoto();
+          }
+        }
+      );
+    } else {
+      const buttons: any[] = [
+        ...(hasPhoto ? [{ text: 'View Photo', onPress: () => setShowAvatarViewer(true) }] : []),
+        { text: 'Choose from Library', onPress: pickPhoto },
+        ...(hasPhoto ? [{ text: 'Remove Photo', style: 'destructive' as const, onPress: removePhoto }] : []),
+        { text: 'Cancel', style: 'cancel' as const },
+      ];
+      Alert.alert('Group Photo', undefined, buttons);
+    }
+  };
+
   const navigateToSection = (section: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push({
@@ -197,7 +263,31 @@ export default function GroupInfoScreen() {
       >
         {/* Group profile */}
         <View className="items-center pt-8 pb-4">
-          <Avatar uri={group.avatar} size="xl" />
+          <Pressable onPress={handleGroupAvatarPress} className="active:opacity-80">
+            <View>
+              <Avatar uri={group.avatar} name={group.name} size="xl" />
+              {/* Camera badge — only for admins */}
+              {isAdmin && (
+                <View
+                  style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    right: 0,
+                    width: 26,
+                    height: 26,
+                    borderRadius: 13,
+                    backgroundColor: '#D4764E',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderWidth: 2,
+                    borderColor: '#FFF8F0',
+                  }}
+                >
+                  <Ionicons name="camera" size={13} color="#FFFFFF" />
+                </View>
+              )}
+            </View>
+          </Pressable>
           <Text className="text-text-primary text-2xl font-bold mt-4">
             {group.name}
           </Text>
@@ -404,6 +494,14 @@ export default function GroupInfoScreen() {
           setShowAddMembers(false);
           useToastStore.getState().show({ message: 'Members added successfully', type: 'success' });
         }}
+      />
+
+      {/* Avatar fullscreen viewer */}
+      <AvatarViewer
+        visible={showAvatarViewer}
+        uri={group.avatar}
+        name={group.name}
+        onClose={() => setShowAvatarViewer(false)}
       />
     </SafeAreaView>
   );

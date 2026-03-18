@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -10,6 +10,7 @@ interface AvatarProps {
   status?: 'online' | 'offline' | 'away';
   showStatus?: boolean;
   statusEmoji?: string;
+  onPress?: () => void;
 }
 
 const sizeMap = { sm: 32, md: 40, lg: 52, xl: 80 };
@@ -27,6 +28,7 @@ export function Avatar({
   status = 'offline',
   showStatus = false,
   statusEmoji,
+  onPress,
 }: AvatarProps) {
   const px = sizeMap[size];
   const dot = size === 'sm' ? 10 : size === 'md' ? 12 : 16;
@@ -65,7 +67,7 @@ export function Avatar({
     />
   ) : null;
 
-  return (
+  const inner = (
     <View style={{ width: px, height: px }}>
       {uri ? (
         <Image
@@ -103,4 +105,14 @@ export function Avatar({
       {statusIndicator}
     </View>
   );
+
+  if (onPress) {
+    return (
+      <Pressable onPress={onPress} hitSlop={4} style={{ opacity: 1 }}>
+        {inner}
+      </Pressable>
+    );
+  }
+
+  return inner;
 }
