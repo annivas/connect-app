@@ -505,12 +505,21 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
       metadata = { ...metadata, replyTo };
     }
 
+    // Ensure new messages always sort after existing ones in the conversation
+    // (mock data may have future timestamps that would otherwise push new messages up)
+    const convMessages = state.messages.filter((m) => m.conversationId === conversationId);
+    const latestExisting = convMessages.reduce(
+      (max, m) => Math.max(max, new Date(m.timestamp).getTime()),
+      0,
+    );
+    const timestamp = new Date(Math.max(Date.now(), latestExisting + 1));
+
     const newMessage: Message = {
       id: messageId,
       conversationId,
       senderId,
       content,
-      timestamp: new Date(),
+      timestamp,
       type: options?.type ?? 'text',
       metadata,
       replyTo,
