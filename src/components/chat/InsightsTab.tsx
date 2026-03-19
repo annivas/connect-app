@@ -12,6 +12,7 @@ import Animated, {
 import { EmptyState } from '../ui/EmptyState';
 import { CreateReminderModal } from './CreateReminderModal';
 import { CreateExpenseModal } from './CreateExpenseModal';
+import { CreateEventModal } from './CreateEventModal';
 import { useMessagesStore } from '../../stores/useMessagesStore';
 import { useGroupsStore } from '../../stores/useGroupsStore';
 import { useUserStore } from '../../stores/useUserStore';
@@ -39,6 +40,8 @@ export function InsightsTab({ conversationId, channelId, isGroup }: Props) {
   // Action modal state
   const [showReminderModal, setShowReminderModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [suggestedEventTitle, setSuggestedEventTitle] = useState('');
 
   // Pulsing sparkles animation
   const pulseOpacity = useSharedValue(1);
@@ -108,7 +111,8 @@ export function InsightsTab({ conversationId, channelId, isGroup }: Props) {
         setShowExpenseModal(true);
         break;
       case 'event':
-        useToastStore.getState().show({ message: `Event detected: "${action.extractedValue}"`, type: 'info' });
+        setSuggestedEventTitle(action.extractedValue);
+        setShowEventModal(true);
         break;
       case 'link_save':
         useToastStore.getState().show({ message: 'Link saved to collection', type: 'success' });
@@ -405,6 +409,64 @@ export function InsightsTab({ conversationId, channelId, isGroup }: Props) {
           }
           setShowExpenseModal(false);
           useToastStore.getState().show({ message: 'Expense logged', type: 'success' });
+        }}
+      />
+
+      <CreateEventModal
+        visible={showEventModal}
+        suggestedTitle={suggestedEventTitle}
+        onClose={() => { setShowEventModal(false); setSuggestedEventTitle(''); }}
+        onSave={async (event) => {
+          const userId = useUserStore.getState().currentUser?.id ?? '';
+          if (isGroup) {
+            const created = useGroupsStore.getState().createEvent(conversationId, {
+              title: event.title,
+              description: event.description,
+              startDate: event.startDate,
+              endDate: event.endDate,
+              location: event.location,
+              type: 'hangout',
+              attendees: [],
+            });
+            if (userId && created) {
+              useGroupsStore.getState().sendGroupMessage(conversationId, `Created an event: ${event.title}`, userId, {
+                type: 'event',
+                metadata: {
+                  eventId: created.id,
+                  title: event.title,
+                  description: event.description,
+                  startDate: event.startDate.toISOString(),
+                  endDate: event.endDate?.toISOString(),
+                  location: event.location,
+                },
+              });
+            }
+          } else {
+            const created = useMessagesStore.getState().createEvent(conversationId, {
+              title: event.title,
+              description: event.description,
+              startDate: event.startDate,
+              endDate: event.endDate,
+              location: event.location,
+              createdBy: userId,
+            });
+            if (userId && created) {
+              useMessagesStore.getState().sendMessage(conversationId, `Created an event: ${event.title}`, userId, {
+                type: 'event',
+                metadata: {
+                  eventId: created.id,
+                  title: event.title,
+                  description: event.description,
+                  startDate: event.startDate.toISOString(),
+                  endDate: event.endDate?.toISOString(),
+                  location: event.location,
+                },
+              });
+            }
+          }
+          setShowEventModal(false);
+          setSuggestedEventTitle('');
+          useToastStore.getState().show({ message: 'Event created', type: 'success' });
         }}
       />
     </View>

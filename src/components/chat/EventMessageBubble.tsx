@@ -44,7 +44,7 @@ export function EventMessageBubble({ metadata, isMine, groupId, onPress }: Props
       })
     : null;
 
-  const attendees = liveEvent?.attendees ?? metadata.attendees;
+  const attendees = liveEvent?.attendees ?? metadata.attendees ?? [];
   const currentUserRsvp = attendees.find((a: any) => a.userId === currentUserId)?.status;
 
   const handleRsvp = useCallback((status: string) => {
