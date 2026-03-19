@@ -65,6 +65,7 @@ export type UpdateGroupInput = {
   name?: string;
   description?: string;
   type?: GroupType;
+  avatar?: string;
 };
 
 // ─── Messages Repository ────────────────────

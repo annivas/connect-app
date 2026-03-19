@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, Modal, Pressable, ScrollView, FlatList, Alert } from 'react-native';
+import { View, Text, Modal, Pressable, ScrollView, Alert, ActionSheetIOS, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
 import { Avatar } from '../ui/Avatar';
 import { MemberListItem } from './MemberListItem';
 import { EditGroupModal } from './EditGroupModal';
 import { AddMembersModal } from './AddMembersModal';
 import { useGroupsStore } from '../../stores/useGroupsStore';
 import { useUserStore } from '../../stores/useUserStore';
+import { useToastStore } from '../../stores/useToastStore';
 import type { Group, GroupType } from '../../types';
 
 interface Props {
@@ -98,6 +100,65 @@ export function GroupInfoSheet({ group, visible, onClose, onLeave }: Props) {
     );
   };
 
+  const handleGroupAvatarPress = async () => {
+    if (!isAdmin) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    const hasPhoto = !!group.avatar;
+
+    const pickPhoto = async () => {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        useToastStore.getState().show({ message: 'Please allow photo library access in Settings.', type: 'warning' });
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 0.8,
+        allowsEditing: true,
+        aspect: [1, 1],
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      try {
+        await useGroupsStore.getState().updateGroup(group.id, { avatar: result.assets[0].uri });
+        useToastStore.getState().show({ message: 'Group photo updated.', type: 'success' });
+      } catch {
+        useToastStore.getState().show({ message: 'Failed to update group photo.', type: 'error' });
+      }
+    };
+
+    const removePhoto = async () => {
+      try {
+        await useGroupsStore.getState().updateGroup(group.id, { avatar: undefined });
+        useToastStore.getState().show({ message: 'Group photo removed.', type: 'success' });
+      } catch {
+        useToastStore.getState().show({ message: 'Failed to remove group photo.', type: 'error' });
+      }
+    };
+
+    if (Platform.OS === 'ios') {
+      const options = hasPhoto
+        ? ['Choose from Library', 'Remove Photo', 'Cancel']
+        : ['Choose from Library', 'Cancel'];
+      const destructiveIdx = hasPhoto ? 1 : undefined;
+      const cancelIdx = hasPhoto ? 2 : 1;
+
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options, cancelButtonIndex: cancelIdx, destructiveButtonIndex: destructiveIdx },
+        (idx) => {
+          if (idx === 0) pickPhoto();
+          else if (hasPhoto && idx === 1) removePhoto();
+        }
+      );
+    } else {
+      Alert.alert('Group Photo', undefined, [
+        { text: 'Choose from Library', onPress: pickPhoto },
+        ...(hasPhoto ? [{ text: 'Remove Photo', style: 'destructive' as const, onPress: removePhoto }] : []),
+        { text: 'Cancel', style: 'cancel' as const },
+      ]);
+    }
+  };
+
   return (
     <>
       <Modal
@@ -124,7 +185,34 @@ export function GroupInfoSheet({ group, visible, onClose, onLeave }: Props) {
 
           {/* Group profile */}
           <View className="items-center pt-8 pb-4">
-            <Avatar uri={group.avatar} size="xl" />
+            <Pressable
+              onPress={handleGroupAvatarPress}
+              disabled={!isAdmin}
+              className={isAdmin ? 'active:opacity-80' : ''}
+            >
+              <View>
+                <Avatar uri={group.avatar} name={group.name} size="xl" />
+                {isAdmin && (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      right: 0,
+                      width: 26,
+                      height: 26,
+                      borderRadius: 13,
+                      backgroundColor: '#D4764E',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderWidth: 2,
+                      borderColor: '#FFF8F0',
+                    }}
+                  >
+                    <Ionicons name="camera" size={13} color="#FFFFFF" />
+                  </View>
+                )}
+              </View>
+            </Pressable>
             <Text className="text-text-primary text-2xl font-bold mt-4">
               {group.name}
             </Text>

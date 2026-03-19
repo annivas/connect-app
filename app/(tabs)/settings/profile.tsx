@@ -4,11 +4,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
 import { Avatar } from '../../../src/components/ui/Avatar';
 import { IconButton } from '../../../src/components/ui/IconButton';
 import { StatusPicker } from '../../../src/components/ui/StatusPicker';
 import { RichStatusBadge } from '../../../src/components/ui/RichStatusBadge';
 import { useUserStore } from '../../../src/stores/useUserStore';
+import { useToastStore } from '../../../src/stores/useToastStore';
 import type { User, RichStatus } from '../../../src/types';
 
 function InfoRow({
@@ -126,6 +128,57 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleAvatarPress = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    const hasPhoto = !!currentUser.avatar;
+
+    const pickPhoto = async () => {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        useToastStore.getState().show({ message: 'Please allow photo library access in Settings.', type: 'warning' });
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 0.8,
+        allowsEditing: true,
+        aspect: [1, 1],
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      useUserStore.getState().updateCurrentUser({ avatar: result.assets[0].uri });
+      useToastStore.getState().show({ message: 'Profile photo updated.', type: 'success' });
+    };
+
+    const removePhoto = () => {
+      useUserStore.getState().updateCurrentUser({ avatar: undefined });
+      useToastStore.getState().show({ message: 'Profile photo removed.', type: 'success' });
+    };
+
+    if (Platform.OS === 'ios') {
+      const options = hasPhoto
+        ? ['Choose from Library', 'Remove Photo', 'Cancel']
+        : ['Choose from Library', 'Cancel'];
+      const destructiveIdx = hasPhoto ? 1 : undefined;
+      const cancelIdx = hasPhoto ? 2 : 1;
+
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options, cancelButtonIndex: cancelIdx, destructiveButtonIndex: destructiveIdx },
+        (idx) => {
+          if (idx === 0) pickPhoto();
+          else if (hasPhoto && idx === 1) removePhoto();
+        }
+      );
+    } else {
+      const buttons: Alert['alert'] extends (...args: infer A) => void ? never : any[] = [
+        { text: 'Choose from Library', onPress: pickPhoto },
+        ...(hasPhoto ? [{ text: 'Remove Photo', style: 'destructive' as const, onPress: removePhoto }] : []),
+        { text: 'Cancel', style: 'cancel' as const },
+      ];
+      Alert.alert('Profile Photo', undefined, buttons);
+    }
+  };
+
   const statusLabel = (s: User['status']) =>
     s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -166,13 +219,36 @@ export default function ProfileScreen() {
       >
         {/* Avatar & Name */}
         <View className="items-center pt-8 pb-6">
-          <Avatar
-            uri={currentUser.avatar}
-            size="xl"
-            status={isEditing ? editStatus : currentUser.status}
-            showStatus
-            statusEmoji={!isEditing ? currentUser.richStatus?.emoji : undefined}
-          />
+          <Pressable onPress={handleAvatarPress} className="active:opacity-80">
+            <View>
+              <Avatar
+                uri={currentUser.avatar}
+                name={currentUser.name}
+                size="xl"
+                status={isEditing ? editStatus : currentUser.status}
+                showStatus
+                statusEmoji={!isEditing ? currentUser.richStatus?.emoji : undefined}
+              />
+              {/* Camera badge */}
+              <View
+                style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  right: 0,
+                  width: 26,
+                  height: 26,
+                  borderRadius: 13,
+                  backgroundColor: '#D4764E',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: 2,
+                  borderColor: '#FFF8F0',
+                }}
+              >
+                <Ionicons name="camera" size={13} color="#FFFFFF" />
+              </View>
+            </View>
+          </Pressable>
           {isEditing ? (
             <TextInput
               value={editName}

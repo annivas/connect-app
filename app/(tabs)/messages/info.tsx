@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, ScrollView, Pressable, Platform, ActionSheetIOS, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import * as Haptics from 'expo-haptics';
 import { useShallow } from 'zustand/react/shallow';
 import { Avatar } from '../../../src/components/ui/Avatar';
+import { AvatarViewer } from '../../../src/components/ui/AvatarViewer';
 import { IconButton } from '../../../src/components/ui/IconButton';
 import { ConversationInfoSection } from '../../../src/components/chat/ConversationInfoSection';
 import { QuickActions } from '../../../src/components/chat/QuickActions';
@@ -19,6 +20,7 @@ import type { DisappearingDuration } from '../../../src/types';
 export default function ConversationInfoScreen() {
   const { id, channelId } = useLocalSearchParams<{ id: string; channelId?: string }>();
   const router = useRouter();
+  const [showAvatarViewer, setShowAvatarViewer] = useState(false);
 
   const conversation = useMessagesStore(useShallow((s) => s.getConversationById(id!)));
   const messages = useMessagesStore(useShallow((s) => s.getMessagesByConversationId(id!)));
@@ -150,7 +152,15 @@ export default function ConversationInfoScreen() {
       >
         {/* Profile card */}
         <View className="items-center pt-8 pb-4">
-          <Avatar uri={otherUser.avatar} size="xl" status={otherUser.status} showStatus statusEmoji={otherUser.richStatus?.emoji} />
+          <Avatar
+            uri={otherUser.avatar}
+            name={otherUser.name}
+            size="xl"
+            status={otherUser.status}
+            showStatus
+            statusEmoji={otherUser.richStatus?.emoji}
+            onPress={() => setShowAvatarViewer(true)}
+          />
           <Text className="text-text-primary text-2xl font-bold mt-4">
             {otherUser.name}
           </Text>
@@ -367,6 +377,14 @@ export default function ConversationInfoScreen() {
           </Pressable>
         </View>
       </ScrollView>
+
+      {/* Avatar fullscreen viewer */}
+      <AvatarViewer
+        visible={showAvatarViewer}
+        uri={otherUser.avatar}
+        name={otherUser.name}
+        onClose={() => setShowAvatarViewer(false)}
+      />
     </SafeAreaView>
   );
 }

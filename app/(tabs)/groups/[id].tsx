@@ -7,6 +7,7 @@ import * as Haptics from 'expo-haptics';
 import { useShallow } from 'zustand/react/shallow';
 import { IconButton } from '../../../src/components/ui/IconButton';
 import { Avatar } from '../../../src/components/ui/Avatar';
+import { AvatarViewer } from '../../../src/components/ui/AvatarViewer';
 import { GroupChatTab } from '../../../src/components/groups/GroupChatTab';
 import { HouseholdTab } from '../../../src/components/groups/HouseholdTab';
 import { TripTab } from '../../../src/components/groups/TripTab';
@@ -36,6 +37,7 @@ export default function GroupDetailScreen() {
   const [showEditChannel, setShowEditChannel] = useState(false);
   const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
   const [showSummary, setShowSummary] = useState(false);
+  const [showAvatarViewer, setShowAvatarViewer] = useState(false);
   const [householdActiveTab, setHouseholdActiveTab] = useState<'chat' | 'household' | 'insights'>('chat');
   const [tripActiveTab, setTripActiveTab] = useState<'chat' | 'trip' | 'insights'>('chat');
   const [regularActiveTab, setRegularActiveTab] = useState<'chat' | 'insights'>('chat');
@@ -161,7 +163,12 @@ export default function GroupDetailScreen() {
         <IconButton icon="chevron-back" onPress={() => router.back()} />
 
         <Pressable onPress={handleOpenInfo} className="flex-1 flex-row items-center ml-1">
-          <Avatar uri={group.avatar} size="md" />
+          <Avatar
+            uri={group.avatar}
+            name={group.name}
+            size="md"
+            onPress={() => setShowAvatarViewer(true)}
+          />
           <View className="ml-3 flex-1">
             <Text className="text-text-primary text-[17px] font-semibold">
               {group.name}
@@ -434,6 +441,14 @@ export default function GroupDetailScreen() {
         conversationId={id!}
         channelId={activeChannelId}
         isGroup={true}
+      />
+
+      {/* Avatar fullscreen viewer */}
+      <AvatarViewer
+        visible={showAvatarViewer}
+        uri={group.avatar}
+        name={group.name}
+        onClose={() => setShowAvatarViewer(false)}
       />
     </SafeAreaView>
   );
