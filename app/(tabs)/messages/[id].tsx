@@ -7,6 +7,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { Ionicons } from '@expo/vector-icons';
 import { IconButton } from '../../../src/components/ui/IconButton';
 import { Avatar } from '../../../src/components/ui/Avatar';
+import { AvatarViewer } from '../../../src/components/ui/AvatarViewer';
 import { ChatTab } from '../../../src/components/chat/ChatTab';
 import { InsightsTab } from '../../../src/components/chat/InsightsTab';
 import { InChatSearchBar } from '../../../src/components/chat/InChatSearchBar';
@@ -32,6 +33,7 @@ export default function ConversationDetailScreen() {
   const [editingChannel, setEditingChannel] = React.useState<Channel | null>(null);
   const [showSummary, setShowSummary] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<'chat' | 'insights'>('chat');
+  const [showAvatarViewer, setShowAvatarViewer] = React.useState(false);
 
 
   // Mark conversation as read when screen opens
@@ -156,9 +158,11 @@ export default function ConversationDetailScreen() {
         <Pressable onPress={handleOpenInfo} className="flex-1 flex-row items-center ml-1">
           <Avatar
             uri={otherUser.avatar}
+            name={otherUser.name}
             size="md"
             status={otherUser.status}
             showStatus
+            onPress={() => setShowAvatarViewer(true)}
           />
           <View className="ml-3 flex-1">
             <Text className="text-text-primary text-[17px] font-semibold">
@@ -315,6 +319,14 @@ export default function ConversationDetailScreen() {
         conversationId={id!}
         channelId={activeChannelId}
         isGroup={false}
+      />
+
+      {/* Avatar fullscreen viewer */}
+      <AvatarViewer
+        visible={showAvatarViewer}
+        uri={otherUser.avatar}
+        name={otherUser.name}
+        onClose={() => setShowAvatarViewer(false)}
       />
     </SafeAreaView>
   );

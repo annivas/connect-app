@@ -19,9 +19,10 @@ interface Props {
   onSave?: (event: EventData) => void;
   onUpdate?: (eventId: string, updates: Partial<EventData>) => void;
   editingEvent?: (EventData & { id: string }) | null;
+  suggestedTitle?: string;
 }
 
-export function CreateEventModal({ visible, onClose, onSave, onUpdate, editingEvent }: Props) {
+export function CreateEventModal({ visible, onClose, onSave, onUpdate, editingEvent, suggestedTitle }: Props) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
@@ -46,8 +47,10 @@ export function CreateEventModal({ visible, onClose, onSave, onUpdate, editingEv
         setEndDate(editingEvent.endDate instanceof Date ? editingEvent.endDate : new Date(editingEvent.endDate));
         setShowEndDate(true);
       }
+    } else if (!editingEvent && visible && suggestedTitle) {
+      setTitle(suggestedTitle);
     }
-  }, [editingEvent, visible]);
+  }, [editingEvent, visible, suggestedTitle]);
 
   const canSave = title.trim().length > 0 && !isSaving;
 

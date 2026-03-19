@@ -246,7 +246,7 @@ export function SharedTab({ conversationId, sharedObjects: directObjects }: Shar
       {conversationId && (
         <Pressable
           onPress={handleFABPress}
-          className="absolute bottom-8 right-6 w-14 h-14 bg-accent-primary rounded-full items-center justify-center shadow-lg active:scale-95"
+          className="absolute bottom-14 right-6 w-14 h-14 bg-accent-primary rounded-full items-center justify-center shadow-lg active:scale-95"
         >
           <Ionicons name="add" size={28} color="#FFFFFF" />
         </Pressable>

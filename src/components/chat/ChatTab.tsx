@@ -35,8 +35,9 @@ import type { ConversationInsight } from '../../utils/insightDetector';
 import { CreateReminderModal } from './CreateReminderModal';
 import { CreateExpenseModal } from './CreateExpenseModal';
 import { CreateNoteModal } from './CreateNoteModal';
+import { CreateEventModal } from './CreateEventModal';
 import { CreatePollModal } from '../groups/CreatePollModal';
-import type { Message, CallEntry, DisappearingDuration, SongMetadata, DetectedAction, User, Reminder, LedgerEntry, NoteMessageMetadata, ReminderMessageMetadata, ExpenseMessageMetadata } from '../../types';
+import type { Message, CallEntry, DisappearingDuration, SongMetadata, DetectedAction, User, Reminder, LedgerEntry, ConversationEvent, NoteMessageMetadata, ReminderMessageMetadata, ExpenseMessageMetadata, EventMessageMetadata } from '../../types';
 
 /**
  * Dynamically measure the Y position of the ChatTab container to get an accurate
@@ -112,12 +113,14 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
   // Action suggestion modals (triggered by smart action chips)
   const [showActionReminderModal, setShowActionReminderModal] = useState(false);
   const [showActionExpenseModal, setShowActionExpenseModal] = useState(false);
+  const [showActionEventModal, setShowActionEventModal] = useState(false);
   const [actionSuggestionValue, setActionSuggestionValue] = useState('');
 
   // Sheet-triggered creation modals
   const [showSheetNoteModal, setShowSheetNoteModal] = useState(false);
   const [showSheetExpenseModal, setShowSheetExpenseModal] = useState(false);
   const [showSheetReminderModal, setShowSheetReminderModal] = useState(false);
+  const [showSheetEventModal, setShowSheetEventModal] = useState(false);
   const [showSheetPollModal, setShowSheetPollModal] = useState(false);
 
   // Edit modals triggered by tapping rich bubbles in chat
@@ -125,6 +128,8 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
   const [showEditReminderModal, setShowEditReminderModal] = useState(false);
   const [editingExpense, setEditingExpense] = useState<LedgerEntry | null>(null);
   const [showEditExpenseModal, setShowEditExpenseModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<(ConversationEvent & { id: string }) | null>(null);
+  const [showEditEventModal, setShowEditEventModal] = useState(false);
 
   // Unread jump button
   const conversationUnreadCount = useMessagesStore(
@@ -318,7 +323,7 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
         setShowActionExpenseModal(true);
         break;
       case 'event':
-        useToastStore.getState().show({ message: `Event detected: "${action.extractedValue}"`, type: 'info' });
+        setShowActionEventModal(true);
         break;
       case 'link_save':
         useToastStore.getState().show({ message: 'Link saved to collection', type: 'success' });
@@ -357,6 +362,18 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
           if (entry) {
             setEditingExpense(entry);
             setShowEditExpenseModal(true);
+          }
+        }
+        break;
+      }
+      case 'event': {
+        const eventId = (metadata as unknown as EventMessageMetadata).eventId;
+        if (eventId) {
+          const conversation = useMessagesStore.getState().getConversationById(conversationId);
+          const event = conversation?.metadata?.events?.find((e: ConversationEvent) => e.id === eventId);
+          if (event) {
+            setEditingEvent(event);
+            setShowEditEventModal(true);
           }
         }
         break;
@@ -867,6 +884,7 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
       onCreateNote={() => setShowSheetNoteModal(true)}
       onCreateExpense={() => setShowSheetExpenseModal(true)}
       onCreateReminder={() => setShowSheetReminderModal(true)}
+      onCreateEvent={() => setShowSheetEventModal(true)}
       isGroup={false}
     />
     <SpotifyPickerModal
@@ -1085,6 +1103,94 @@ export function ChatTab({ conversationId, isPrivate, channelId, highlightText, m
         setShowEditExpenseModal(false);
         setEditingExpense(null);
         useToastStore.getState().show({ message: 'Expense updated', type: 'success' });
+      }}
+    />
+
+    {/* Event modal — triggered by action suggestion chip */}
+    <CreateEventModal
+      visible={showActionEventModal}
+      suggestedTitle={actionSuggestionValue}
+      onClose={() => { setShowActionEventModal(false); setActionSuggestionValue(''); }}
+      onSave={async (event) => {
+        const userId = useUserStore.getState().currentUser?.id ?? '';
+        const created = useMessagesStore.getState().createEvent(conversationId, {
+          title: event.title,
+          description: event.description,
+          startDate: event.startDate,
+          endDate: event.endDate,
+          location: event.location,
+          createdBy: userId,
+        });
+        useMessagesStore.getState().sendMessage(conversationId, `Created an event: ${event.title}`, userId, {
+          type: 'event',
+          metadata: {
+            eventId: created.id,
+            title: event.title,
+            description: event.description,
+            startDate: event.startDate.toISOString(),
+            endDate: event.endDate?.toISOString(),
+            location: event.location,
+          },
+        });
+        setShowActionEventModal(false);
+        setActionSuggestionValue('');
+        useToastStore.getState().show({ message: 'Event created', type: 'success' });
+      }}
+    />
+
+    {/* Event modal — triggered from attachment sheet */}
+    <CreateEventModal
+      visible={showSheetEventModal}
+      onClose={() => setShowSheetEventModal(false)}
+      onSave={async (event) => {
+        const userId = useUserStore.getState().currentUser?.id ?? '';
+        const created = useMessagesStore.getState().createEvent(conversationId, {
+          title: event.title,
+          description: event.description,
+          startDate: event.startDate,
+          endDate: event.endDate,
+          location: event.location,
+          createdBy: userId,
+        });
+        useMessagesStore.getState().sendMessage(conversationId, `Created an event: ${event.title}`, userId, {
+          type: 'event',
+          metadata: {
+            eventId: created.id,
+            title: event.title,
+            description: event.description,
+            startDate: event.startDate.toISOString(),
+            endDate: event.endDate?.toISOString(),
+            location: event.location,
+          },
+        });
+        setShowSheetEventModal(false);
+        useToastStore.getState().show({ message: 'Event created', type: 'success' });
+      }}
+    />
+
+    {/* Event modal — triggered by tapping an event bubble */}
+    <CreateEventModal
+      visible={showEditEventModal}
+      editingEvent={editingEvent ? {
+        id: editingEvent.id,
+        title: editingEvent.title,
+        description: editingEvent.description,
+        startDate: editingEvent.startDate instanceof Date ? editingEvent.startDate : new Date(editingEvent.startDate),
+        endDate: editingEvent.endDate ? (editingEvent.endDate instanceof Date ? editingEvent.endDate : new Date(editingEvent.endDate)) : undefined,
+        location: editingEvent.location,
+      } : null}
+      onClose={() => { setShowEditEventModal(false); setEditingEvent(null); }}
+      onUpdate={(id, updates) => {
+        useMessagesStore.getState().updateEvent(conversationId, id, {
+          title: updates.title,
+          description: updates.description,
+          startDate: updates.startDate,
+          endDate: updates.endDate,
+          location: updates.location,
+        });
+        setShowEditEventModal(false);
+        setEditingEvent(null);
+        useToastStore.getState().show({ message: 'Event updated', type: 'success' });
       }}
     />
     </View>

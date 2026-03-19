@@ -626,7 +626,8 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
         setShowActionExpenseModal(true);
         break;
       case 'event':
-        useToastStore.getState().show({ message: `Event detected: "${action.extractedValue}"`, type: 'info' });
+        setSuggestedEventTitle(action.extractedValue);
+        setShowCreateEvent(true);
         break;
       case 'link_save':
         useToastStore.getState().show({ message: 'Link saved to collection', type: 'success' });

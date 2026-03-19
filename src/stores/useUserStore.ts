@@ -67,8 +67,10 @@ export const useUserStore = create<UserState>((set, get) => ({
     const current = get().currentUser;
     if (!current) return;
 
+    const updated = { ...current, ...updates };
     set((state) => ({
-      currentUser: { ...current, ...updates },
+      currentUser: updated,
+      users: state.users.map((u) => (u.id === current.id ? updated : u)),
     }));
 
     userRepository.updateUser(current.id, updates).catch(() => {});
