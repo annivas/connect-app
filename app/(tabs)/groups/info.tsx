@@ -376,11 +376,6 @@ export default function GroupInfoScreen() {
             title="Notes & Saved"
             badge={notesSavedCount > 0 ? notesSavedCount : undefined}
             onPress={() => navigateToSection('notes')}
-            preview={notes.length > 0 ? (
-              <Text className="text-text-tertiary text-xs ml-11" numberOfLines={1}>
-                {notes[0].title}
-              </Text>
-            ) : undefined}
           />
 
           {/* Reminders */}
