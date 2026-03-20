@@ -3,7 +3,6 @@ import { View, Text, ScrollView, Pressable, Platform, ActionSheetIOS, Alert } fr
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { format } from 'date-fns';
 import * as Haptics from 'expo-haptics';
 import { useShallow } from 'zustand/react/shallow';
 import { Avatar } from '../../../src/components/ui/Avatar';
@@ -250,11 +249,6 @@ export default function ConversationInfoScreen() {
             title="Shared Media"
             badge={sharedCount > 0 ? sharedCount : undefined}
             onPress={() => navigateToSection('media')}
-            preview={sharedCount > 0 ? (
-              <Text className="text-text-tertiary text-xs ml-11">
-                {sharedCount} item{sharedCount !== 1 ? 's' : ''} shared
-              </Text>
-            ) : undefined}
           />
 
           {/* Pinned Messages */}
@@ -263,11 +257,6 @@ export default function ConversationInfoScreen() {
             title="Pinned Messages"
             badge={pinnedCount > 0 ? pinnedCount : undefined}
             onPress={() => navigateToSection('pins')}
-            preview={pinnedCount > 0 ? (
-              <Text className="text-text-tertiary text-xs ml-11" numberOfLines={1}>
-                {pinnedCount} pinned message{pinnedCount !== 1 ? 's' : ''}
-              </Text>
-            ) : undefined}
           />
 
           {/* Notes & Saved */}
@@ -276,12 +265,6 @@ export default function ConversationInfoScreen() {
             title="Notes & Saved"
             badge={notesSavedCount > 0 ? notesSavedCount : undefined}
             onPress={() => navigateToSection('notes')}
-            preview={notes.length > 0 ? (
-              <Text className="text-text-tertiary text-xs ml-11" numberOfLines={1}>
-                {notes[0].title}
-                {notes.length > 1 ? ` +${notes.length - 1} more` : ''}
-              </Text>
-            ) : undefined}
           />
 
           {/* Reminders */}
@@ -291,14 +274,6 @@ export default function ConversationInfoScreen() {
             badge={activeReminders.length > 0 ? activeReminders.length : undefined}
             badgeColor={activeReminders.some((r) => new Date(r.dueDate) < new Date()) ? '#C94F4F' : '#D4764E'}
             onPress={() => navigateToSection('reminders')}
-            preview={activeReminders.length > 0 ? (
-              <Text className="text-text-tertiary text-xs ml-11" numberOfLines={1}>
-                {activeReminders[0].title}
-                {activeReminders[0].dueDate
-                  ? ` · ${format(new Date(activeReminders[0].dueDate), 'MMM d')}`
-                  : ''}
-              </Text>
-            ) : undefined}
           />
 
           {/* Expenses */}
