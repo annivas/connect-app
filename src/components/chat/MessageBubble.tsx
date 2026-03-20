@@ -310,10 +310,11 @@ export function MessageBubble({
     onContextMenu?.(message);
   }, [message, onContextMenu]);
 
-  // Pan gesture for swipe-to-reply — activates on deliberate horizontal movement
+  // Pan gesture for swipe-to-reply — activates on deliberate horizontal movement.
+  // failOffsetY ±3px: any vertical movement immediately hands control to FlatList.
   const panGesture = Gesture.Pan()
     .activeOffsetX([15, 15])
-    .failOffsetY([-15, 15])
+    .failOffsetY([-3, 3])
     .onUpdate((e) => {
       // Only allow right swipe (positive translateX)
       const clamped = Math.min(Math.max(e.translationX, 0), MAX_SWIPE);
@@ -334,9 +335,11 @@ export function MessageBubble({
       hasTriggered.value = false;
     });
 
-  // Long-press gesture — now opens full context menu instead of reaction picker
+  // Long-press gesture — opens context menu on hold.
+  // maxDistance(3): fails immediately on any movement so it doesn't delay scroll.
   const longPressGesture = Gesture.LongPress()
     .minDuration(300)
+    .maxDistance(3)
     .onStart(() => {
       runOnJS(openContextMenu)();
     });

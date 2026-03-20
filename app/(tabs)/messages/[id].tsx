@@ -1,7 +1,11 @@
-import React, { useLayoutEffect, useEffect } from 'react';
+import React, { useLayoutEffect, useEffect, useCallback } from 'react';
 import { View, Text, Pressable, Platform, ActionSheetIOS, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { GestureDetector } from 'react-native-gesture-handler';
+import Animated from 'react-native-reanimated';
+import { useSwipeToInfo } from '../../../src/hooks/useSwipeToInfo';
+import { useThemeColors } from '../../../src/hooks/useThemeColors';
 import * as Haptics from 'expo-haptics';
 import { useShallow } from 'zustand/react/shallow';
 import { Ionicons } from '@expo/vector-icons';
@@ -61,6 +65,7 @@ export default function ConversationDetailScreen() {
     };
   }, [parentNavigation]);
 
+  const themeColors = useThemeColors();
   const conversation = useMessagesStore(useShallow((s) => s.getConversationById(id!)));
   const activeChannelId = useMessagesStore((s) => s.getActiveChannel(id!));
   const channels = conversation?.channels ?? [];
@@ -69,6 +74,19 @@ export default function ConversationDetailScreen() {
   ));
 
   const getUserById = useUserStore((s) => s.getUserById);
+
+  // Stable callback — reads activeChannelId at call-time to avoid stale closures
+  const handleOpenInfo = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const channelId = useMessagesStore.getState().getActiveChannel(id!);
+    router.push({
+      pathname: '/(tabs)/messages/info',
+      params: { id: id!, ...(channelId ? { channelId } : {}) },
+    });
+  }, [id, router]);
+
+  // Left-swipe gestures — must be called before any early returns (Rules of Hooks)
+  const { headerGesture, bodyGesture, edgeIndicatorStyle } = useSwipeToInfo(handleOpenInfo);
 
   // Check if the active channel has an AI agent
   const activeChannel = activeChannelId
@@ -141,17 +159,25 @@ export default function ConversationDetailScreen() {
     );
   }
 
-  const handleOpenInfo = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push({
-      pathname: '/(tabs)/messages/info',
-      params: { id: id!, ...(activeChannelId ? { channelId: activeChannelId } : {}) },
-    });
-  };
-
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-background-primary">
-      {/* Header */}
+      {/* Left-swipe edge indicator — appears on the RIGHT edge as the user drags left */}
+      <Animated.View
+        pointerEvents="none"
+        style={[{
+          position: 'absolute',
+          right: 0,
+          top: 60,
+          bottom: 60,
+          width: 4,
+          borderRadius: 2,
+          backgroundColor: themeColors.accent.primary,
+          zIndex: 999,
+        }, edgeIndicatorStyle]}
+      />
+
+      {/* Header — swipeable left to open info (plain View, no scroll conflict) */}
+      <GestureDetector gesture={headerGesture}>
       <View className="flex-row items-center px-2 pb-2 border-b border-border-subtle">
         <IconButton icon="chevron-back" onPress={() => router.back()} />
 
@@ -192,6 +218,7 @@ export default function ConversationDetailScreen() {
           onPress={showMenu}
         />
       </View>
+      </GestureDetector>
 
       {/* Channel strip — shown when channels exist */}
       {channels.length > 0 && (
@@ -261,21 +288,29 @@ export default function ConversationDetailScreen() {
         ))}
       </View>
 
-      {/* Main content */}
-      {activeTab === 'insights' ? (
-        <InsightsTab
-          conversationId={id!}
-          channelId={activeChannelId}
-          isGroup={false}
-        />
-      ) : (
-        <ChatTab
-          conversationId={id!}
-          channelId={activeChannelId}
-          highlightText={isSearching ? chatSearchQuery : undefined}
-          matchingMessageIds={isSearching ? matchingMessageIds : undefined}
-        />
-      )}
+      {/* Main content — bodyGesture enables left-swipe-to-info from the full chat area.
+          Automatically disabled when the keyboard is visible so interactive keyboard
+          dismiss gets uncontested first-pixel FlatList control.
+          Child GestureDetectors (MessageBubble swipe-to-reply) take RNGH priority
+          in bubble areas, so reply still works normally on messages. */}
+      <GestureDetector gesture={bodyGesture}>
+        <View style={{ flex: 1 }}>
+          {activeTab === 'insights' ? (
+            <InsightsTab
+              conversationId={id!}
+              channelId={activeChannelId}
+              isGroup={false}
+            />
+          ) : (
+            <ChatTab
+              conversationId={id!}
+              channelId={activeChannelId}
+              highlightText={isSearching ? chatSearchQuery : undefined}
+              matchingMessageIds={isSearching ? matchingMessageIds : undefined}
+            />
+          )}
+        </View>
+      </GestureDetector>
 
       <DisappearingMessagesSheet
         visible={showDisappearingSheet}
