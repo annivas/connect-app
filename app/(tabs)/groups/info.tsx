@@ -3,7 +3,7 @@ import { View, Text, ScrollView, Pressable, Platform, ActionSheetIOS, Alert } fr
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { isPast, format } from 'date-fns';
+import { isPast } from 'date-fns';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useShallow } from 'zustand/react/shallow';
@@ -315,11 +315,6 @@ export default function GroupInfoScreen() {
             badge={upcomingEvents.length > 0 ? upcomingEvents.length : undefined}
             badgeColor="#D4764E"
             onPress={() => navigateToSection('events')}
-            preview={upcomingEvents.length > 0 ? (
-              <Text className="text-text-tertiary text-xs ml-11" numberOfLines={1}>
-                {upcomingEvents[0].title} · {format(upcomingEvents[0].startDate, 'MMM d')}
-              </Text>
-            ) : undefined}
           />
 
           {/* Polls */}
@@ -329,11 +324,6 @@ export default function GroupInfoScreen() {
             badge={activePolls.length > 0 ? activePolls.length : undefined}
             badgeColor="#5B8EC9"
             onPress={() => navigateToSection('polls')}
-            preview={activePolls.length > 0 ? (
-              <Text className="text-text-tertiary text-xs ml-11" numberOfLines={1}>
-                {activePolls[0].question}
-              </Text>
-            ) : undefined}
           />
 
           {/* Trip (if applicable) */}
@@ -344,11 +334,6 @@ export default function GroupInfoScreen() {
               badge={group.trip.itinerary.length > 0 ? group.trip.itinerary.length : undefined}
               badgeColor="#D4764E"
               onPress={() => navigateToSection('trip')}
-              preview={(
-                <Text className="text-text-tertiary text-xs ml-11" numberOfLines={1}>
-                  {group.trip.destination} · {format(group.trip.startDate, 'MMM d')} - {format(group.trip.endDate, 'MMM d')}
-                </Text>
-              )}
             />
           )}
 
