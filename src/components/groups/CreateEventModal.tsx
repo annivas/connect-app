@@ -4,6 +4,7 @@ import { useToastStore } from '../../stores/useToastStore';
 import { Ionicons } from '@expo/vector-icons';
 import { format, addDays } from 'date-fns';
 import * as Haptics from 'expo-haptics';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import type { GroupEvent } from '../../types';
 
 const EVENT_TYPES: { value: GroupEvent['type']; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
@@ -27,12 +28,20 @@ function getDayOptions() {
   ];
 }
 
+// Preset quick-pick slots. Index 4 = custom (user picks exact time).
 const TIME_SLOTS = [
-  { label: 'Morning', hour: 10 },
-  { label: 'Afternoon', hour: 14 },
-  { label: 'Evening', hour: 18 },
-  { label: 'Night', hour: 21 },
+  { label: 'Morning', hour: 10, minute: 0 },
+  { label: 'Afternoon', hour: 14, minute: 0 },
+  { label: 'Evening', hour: 18, minute: 0 },
+  { label: 'Night', hour: 21, minute: 0 },
 ];
+const CUSTOM_INDEX = 4;
+
+function defaultCustomTime(): Date {
+  const d = new Date();
+  d.setHours(19, 0, 0, 0);
+  return d;
+}
 
 interface Props {
   visible: boolean;
@@ -47,6 +56,8 @@ export function CreateEventModal({ visible, onClose, onSave, suggestedTitle }: P
   const [eventType, setEventType] = useState<GroupEvent['type']>('hangout');
   const [selectedDayIndex, setSelectedDayIndex] = useState(1); // tomorrow
   const [selectedTimeIndex, setSelectedTimeIndex] = useState(2); // evening
+  const [customTime, setCustomTime] = useState<Date>(defaultCustomTime);
+  const [showAndroidPicker, setShowAndroidPicker] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -55,10 +66,28 @@ export function CreateEventModal({ visible, onClose, onSave, suggestedTitle }: P
       setEventType('hangout');
       setSelectedDayIndex(1);
       setSelectedTimeIndex(2);
+      setCustomTime(defaultCustomTime());
     }
   }, [visible, suggestedTitle]);
 
   const dayOptions = getDayOptions();
+  const isCustom = selectedTimeIndex === CUSTOM_INDEX;
+
+  /** Build the final startDate from selected day + time */
+  const buildStartDate = (): Date => {
+    const day = dayOptions[selectedDayIndex].date;
+    const d = new Date(day);
+    if (isCustom) {
+      d.setHours(customTime.getHours(), customTime.getMinutes(), 0, 0);
+    } else {
+      const slot = TIME_SLOTS[selectedTimeIndex];
+      d.setHours(slot.hour, slot.minute, 0, 0);
+    }
+    return d;
+  };
+
+  /** Human-readable time label for the custom button */
+  const customLabel = format(customTime, 'h:mm a');
 
   const handleSave = () => {
     if (!title.trim()) {
@@ -66,16 +95,10 @@ export function CreateEventModal({ visible, onClose, onSave, suggestedTitle }: P
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-    const day = dayOptions[selectedDayIndex].date;
-    const hour = TIME_SLOTS[selectedTimeIndex].hour;
-    const startDate = new Date(day);
-    startDate.setHours(hour, 0, 0, 0);
-
     onSave({
       title: title.trim(),
       description: description.trim() || undefined,
-      startDate,
+      startDate: buildStartDate(),
       type: eventType,
     });
     onClose();
@@ -179,9 +202,11 @@ export function CreateEventModal({ visible, onClose, onSave, suggestedTitle }: P
             ))}
           </ScrollView>
 
-          {/* Time Picker */}
+          {/* Time Picker — presets + custom */}
           <Text className="text-text-secondary text-xs uppercase tracking-wide mb-1.5">Time</Text>
-          <View className="flex-row gap-2 mb-4">
+
+          {/* Preset chips row */}
+          <View className="flex-row gap-2 mb-2">
             {TIME_SLOTS.map((slot, i) => (
               <Pressable
                 key={slot.label}
@@ -210,6 +235,58 @@ export function CreateEventModal({ visible, onClose, onSave, suggestedTitle }: P
               </Pressable>
             ))}
           </View>
+
+          {/* Custom time row */}
+          <Pressable
+            onPress={() => {
+              Haptics.selectionAsync();
+              setSelectedTimeIndex(CUSTOM_INDEX);
+              if (Platform.OS === 'android') setShowAndroidPicker(true);
+            }}
+            className={`rounded-xl px-4 py-3 mb-4 flex-row items-center justify-between ${
+              isCustom ? 'bg-accent-primary' : 'bg-surface'
+            }`}
+          >
+            <View className="flex-row items-center gap-2">
+              <Ionicons
+                name="time-outline"
+                size={16}
+                color={isCustom ? '#FFFFFF' : '#A8937F'}
+              />
+              <Text className={`text-sm font-medium ${isCustom ? 'text-white' : 'text-text-secondary'}`}>
+                Custom time
+              </Text>
+            </View>
+            <Text className={`text-sm font-semibold ${isCustom ? 'text-white' : 'text-accent-primary'}`}>
+              {customLabel}
+            </Text>
+          </Pressable>
+
+          {/* iOS inline time spinner — shown when Custom is selected */}
+          {isCustom && Platform.OS === 'ios' && (
+            <View className="bg-surface rounded-xl mb-4 overflow-hidden">
+              <DateTimePicker
+                value={customTime}
+                mode="time"
+                display="spinner"
+                onChange={(_e, date) => { if (date) setCustomTime(date); }}
+                themeVariant="light"
+              />
+            </View>
+          )}
+
+          {/* Android picker — launched as dialog */}
+          {showAndroidPicker && Platform.OS === 'android' && (
+            <DateTimePicker
+              value={customTime}
+              mode="time"
+              display="default"
+              onChange={(_e, date) => {
+                setShowAndroidPicker(false);
+                if (date) setCustomTime(date);
+              }}
+            />
+          )}
 
           {/* Description */}
           <Text className="text-text-secondary text-xs uppercase tracking-wide mb-1.5">

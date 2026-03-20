@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, Pressable, Alert, Modal, TextInput, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, Pressable, Alert, Modal, TextInput, ScrollView, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { format, parse, isValid } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import * as Haptics from 'expo-haptics';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Card } from '../ui/Card';
 import { EmptyState } from '../ui/EmptyState';
 import { useToastStore } from '../../stores/useToastStore';
@@ -167,69 +168,62 @@ interface ModalProps {
 function CreateEventModal({ visible, onClose, onSave, onUpdate, editingEvent }: ModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [dateText, setDateText] = useState('');
-  const [endDateText, setEndDateText] = useState('');
   const [location, setLocation] = useState('');
+  const [startDate, setStartDate] = useState(() => addDays(new Date(), 1));
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [showEndDate, setShowEndDate] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [dateError, setDateError] = useState('');
+  const [showAndroidStartPicker, setShowAndroidStartPicker] = useState(false);
+  const [androidStartMode, setAndroidStartMode] = useState<'date' | 'time'>('date');
+  const [showAndroidEndPicker, setShowAndroidEndPicker] = useState(false);
+  const [androidEndMode, setAndroidEndMode] = useState<'date' | 'time'>('date');
 
   const isEditing = !!editingEvent;
+  const canSave = title.trim().length > 0 && !isSaving;
 
   React.useEffect(() => {
-    if (editingEvent && visible) {
-      setTitle(editingEvent.title);
-      setDescription(editingEvent.description ?? '');
-      setDateText(format(editingEvent.startDate, 'yyyy-MM-dd HH:mm'));
-      setEndDateText(editingEvent.endDate ? format(editingEvent.endDate, 'yyyy-MM-dd HH:mm') : '');
-      setLocation(editingEvent.location ?? '');
+    if (visible) {
+      if (editingEvent) {
+        setTitle(editingEvent.title);
+        setDescription(editingEvent.description ?? '');
+        setLocation(editingEvent.location ?? '');
+        setStartDate(editingEvent.startDate instanceof Date ? editingEvent.startDate : new Date(editingEvent.startDate));
+        if (editingEvent.endDate) {
+          setEndDate(editingEvent.endDate instanceof Date ? editingEvent.endDate : new Date(editingEvent.endDate));
+          setShowEndDate(true);
+        } else {
+          setEndDate(null);
+          setShowEndDate(false);
+        }
+      } else {
+        setTitle('');
+        setDescription('');
+        setLocation('');
+        setStartDate(addDays(new Date(), 1));
+        setEndDate(null);
+        setShowEndDate(false);
+      }
+      setIsSaving(false);
     }
   }, [editingEvent, visible]);
-
-  const parsedDate = parse(dateText, 'yyyy-MM-dd HH:mm', new Date());
-  const isDateValid = dateText.length > 0 && isValid(parsedDate);
-  const parsedEndDate = endDateText.length > 0 ? parse(endDateText, 'yyyy-MM-dd HH:mm', new Date()) : null;
-  const canSave = title.trim().length > 0 && isDateValid && !isSaving;
-
-  const reset = () => {
-    setTitle('');
-    setDescription('');
-    setDateText('');
-    setEndDateText('');
-    setLocation('');
-    setIsSaving(false);
-    setDateError('');
-  };
-
-  const handleCancel = () => {
-    reset();
-    onClose();
-  };
 
   const handleSave = async () => {
     if (!canSave) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsSaving(true);
-
     try {
+      const payload = {
+        title: title.trim(),
+        description: description.trim() || undefined,
+        startDate,
+        endDate: showEndDate && endDate ? endDate : undefined,
+        location: location.trim() || undefined,
+      };
       if (isEditing && onUpdate) {
-        onUpdate(editingEvent!.id, {
-          title: title.trim(),
-          description: description.trim() || undefined,
-          startDate: parsedDate,
-          endDate: parsedEndDate ?? undefined,
-          location: location.trim() || undefined,
-        });
+        onUpdate(editingEvent!.id, payload);
       } else {
-        onSave({
-          title: title.trim(),
-          description: description.trim() || undefined,
-          startDate: parsedDate,
-          endDate: parsedEndDate ?? undefined,
-          location: location.trim() || undefined,
-          createdBy: '',
-        });
+        onSave({ ...payload, createdBy: '' });
       }
-      reset();
       onClose();
     } catch {
       setIsSaving(false);
@@ -241,11 +235,11 @@ function CreateEventModal({ visible, onClose, onSave, onUpdate, editingEvent }: 
       visible={visible}
       animationType="slide"
       presentationStyle="pageSheet"
-      onRequestClose={handleCancel}
+      onRequestClose={onClose}
     >
       <View className="flex-1 bg-background-primary">
         <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
-          <Pressable onPress={handleCancel} hitSlop={8}>
+          <Pressable onPress={onClose} hitSlop={8}>
             <Text className="text-accent-primary text-[16px]">Cancel</Text>
           </Pressable>
           <Text className="text-text-primary text-[17px] font-semibold">
@@ -256,13 +250,14 @@ function CreateEventModal({ visible, onClose, onSave, onUpdate, editingEvent }: 
               <ActivityIndicator size="small" color="#D4764E" />
             ) : (
               <Text className={`text-[16px] font-semibold ${canSave ? 'text-accent-primary' : 'text-text-tertiary'}`}>
-                Save
+                {isEditing ? 'Save' : 'Create'}
               </Text>
             )}
           </Pressable>
         </View>
 
         <ScrollView className="flex-1 px-4 pt-4" keyboardDismissMode="interactive">
+          {/* Title */}
           <Text className="text-text-secondary text-xs font-semibold uppercase tracking-wider mb-2">Title</Text>
           <TextInput
             value={title}
@@ -270,8 +265,10 @@ function CreateEventModal({ visible, onClose, onSave, onUpdate, editingEvent }: 
             placeholder="Event title"
             placeholderTextColor="#A8937F"
             className="bg-surface rounded-xl px-4 py-3 text-text-primary text-[15px] mb-5"
+            autoFocus={!isEditing}
           />
 
+          {/* Description */}
           <Text className="text-text-secondary text-xs font-semibold uppercase tracking-wider mb-2">Description (optional)</Text>
           <TextInput
             value={description}
@@ -284,33 +281,7 @@ function CreateEventModal({ visible, onClose, onSave, onUpdate, editingEvent }: 
             textAlignVertical="top"
           />
 
-          <Text className="text-text-secondary text-xs font-semibold uppercase tracking-wider mb-2">Start Date</Text>
-          <TextInput
-            value={dateText}
-            onChangeText={(text) => { setDateText(text); setDateError(''); }}
-            onBlur={() => {
-              if (dateText.length > 0 && !isDateValid) setDateError('Use format: YYYY-MM-DD HH:mm');
-              else setDateError('');
-            }}
-            placeholder="YYYY-MM-DD HH:mm"
-            placeholderTextColor="#A8937F"
-            className={`bg-surface rounded-xl px-4 py-3 text-text-primary text-[15px] mb-1 ${dateError ? 'border border-status-error' : ''}`}
-          />
-          {dateError ? (
-            <Text className="text-status-error text-xs mb-4">{dateError}</Text>
-          ) : (
-            <View className="mb-4" />
-          )}
-
-          <Text className="text-text-secondary text-xs font-semibold uppercase tracking-wider mb-2">End Date (optional)</Text>
-          <TextInput
-            value={endDateText}
-            onChangeText={setEndDateText}
-            placeholder="YYYY-MM-DD HH:mm"
-            placeholderTextColor="#A8937F"
-            className="bg-surface rounded-xl px-4 py-3 text-text-primary text-[15px] mb-5"
-          />
-
+          {/* Location */}
           <Text className="text-text-secondary text-xs font-semibold uppercase tracking-wider mb-2">Location (optional)</Text>
           <TextInput
             value={location}
@@ -319,6 +290,113 @@ function CreateEventModal({ visible, onClose, onSave, onUpdate, editingEvent }: 
             placeholderTextColor="#A8937F"
             className="bg-surface rounded-xl px-4 py-3 text-text-primary text-[15px] mb-5"
           />
+
+          {/* Start Date/Time */}
+          <Text className="text-text-secondary text-xs font-semibold uppercase tracking-wider mb-2">Start</Text>
+          {Platform.OS === 'ios' ? (
+            <View className="bg-surface rounded-xl mb-4 overflow-hidden">
+              <DateTimePicker
+                value={startDate}
+                mode="datetime"
+                display="spinner"
+                onChange={(_e, date) => { if (date) setStartDate(date); }}
+                themeVariant="light"
+              />
+            </View>
+          ) : (
+            <>
+              <Pressable
+                onPress={() => { setAndroidStartMode('date'); setShowAndroidStartPicker(true); }}
+                className="bg-surface rounded-xl px-4 py-3 mb-4 flex-row items-center justify-between"
+              >
+                <Text className="text-text-primary text-[15px]">{format(startDate, 'MMM d, yyyy · h:mm a')}</Text>
+                <Ionicons name="calendar-outline" size={18} color="#D4764E" />
+              </Pressable>
+              {showAndroidStartPicker && (
+                <DateTimePicker
+                  value={startDate}
+                  mode={androidStartMode}
+                  display="default"
+                  onChange={(_e, date) => {
+                    setShowAndroidStartPicker(false);
+                    if (date) {
+                      setStartDate(date);
+                      if (androidStartMode === 'date') {
+                        setAndroidStartMode('time');
+                        setShowAndroidStartPicker(true);
+                      }
+                    }
+                  }}
+                />
+              )}
+            </>
+          )}
+
+          {/* End Date toggle */}
+          {!showEndDate ? (
+            <Pressable
+              onPress={() => {
+                Haptics.selectionAsync();
+                setShowEndDate(true);
+                setEndDate(new Date(startDate.getTime() + 2 * 60 * 60 * 1000));
+              }}
+              className="flex-row items-center mb-5"
+            >
+              <Ionicons name="add-circle-outline" size={18} color="#D4764E" />
+              <Text className="text-accent-primary text-sm font-medium ml-2">Add end time</Text>
+            </Pressable>
+          ) : (
+            <>
+              <View className="flex-row items-center justify-between mb-2">
+                <Text className="text-text-secondary text-xs font-semibold uppercase tracking-wider">End</Text>
+                <Pressable onPress={() => { setShowEndDate(false); setEndDate(null); }} hitSlop={8}>
+                  <Text className="text-status-error text-xs font-medium">Remove</Text>
+                </Pressable>
+              </View>
+              {Platform.OS === 'ios' ? (
+                <View className="bg-surface rounded-xl mb-5 overflow-hidden">
+                  <DateTimePicker
+                    value={endDate ?? new Date(startDate.getTime() + 2 * 60 * 60 * 1000)}
+                    mode="datetime"
+                    display="spinner"
+                    minimumDate={startDate}
+                    onChange={(_e, date) => { if (date) setEndDate(date); }}
+                    themeVariant="light"
+                  />
+                </View>
+              ) : (
+                <>
+                  <Pressable
+                    onPress={() => { setAndroidEndMode('date'); setShowAndroidEndPicker(true); }}
+                    className="bg-surface rounded-xl px-4 py-3 mb-5 flex-row items-center justify-between"
+                  >
+                    <Text className="text-text-primary text-[15px]">
+                      {format(endDate ?? new Date(startDate.getTime() + 2 * 60 * 60 * 1000), 'MMM d, yyyy · h:mm a')}
+                    </Text>
+                    <Ionicons name="calendar-outline" size={18} color="#D4764E" />
+                  </Pressable>
+                  {showAndroidEndPicker && (
+                    <DateTimePicker
+                      value={endDate ?? new Date(startDate.getTime() + 2 * 60 * 60 * 1000)}
+                      mode={androidEndMode}
+                      display="default"
+                      minimumDate={startDate}
+                      onChange={(_e, date) => {
+                        setShowAndroidEndPicker(false);
+                        if (date) {
+                          setEndDate(date);
+                          if (androidEndMode === 'date') {
+                            setAndroidEndMode('time');
+                            setShowAndroidEndPicker(true);
+                          }
+                        }
+                      }}
+                    />
+                  )}
+                </>
+              )}
+            </>
+          )}
         </ScrollView>
       </View>
     </Modal>
