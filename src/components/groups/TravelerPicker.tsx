@@ -36,8 +36,9 @@ export function TravelerPicker({ groupId, selected, onChange }: Props) {
   const isSelected = (userId: string) => selected.some((t) => t.userId === userId);
 
   const toggle = (traveler: Traveler) => {
+    if (!traveler.userId) return;
     Haptics.selectionAsync();
-    if (isSelected(traveler.userId!)) {
+    if (isSelected(traveler.userId)) {
       onChange(selected.filter((t) => t.userId !== traveler.userId));
     } else {
       onChange([...selected, traveler]);
@@ -54,6 +55,7 @@ export function TravelerPicker({ groupId, selected, onChange }: Props) {
   const addCustom = () => {
     const name = customInput.trim();
     if (!name) return;
+    if (selected.some((t) => t.name.toLowerCase() === name.toLowerCase())) return;
     Haptics.selectionAsync();
     onChange([...selected, { name }]);
     setCustomInput('');
@@ -70,7 +72,7 @@ export function TravelerPicker({ groupId, selected, onChange }: Props) {
         <View className="flex-row flex-wrap gap-2 px-4 pt-3 pb-1">
           {selected.map((t, i) => (
             <Pressable
-              key={t.userId ?? t.name + i}
+              key={t.userId ?? t.name}
               onPress={() => removePill(t)}
               className="flex-row items-center gap-1 bg-background-tertiary border border-accent-primary rounded-full px-2 py-1"
             >
