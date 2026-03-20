@@ -21,16 +21,6 @@ const TYPE_DOT_COLOR: Record<string, string> = {
   other:     '#A8937F',
 };
 
-const TYPE_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
-  arrival:   'airplane-outline',
-  departure: 'airplane-outline',
-  activity:  'flag-outline',
-  stay:      'bed-outline',
-  transport: 'car-outline',
-  meal:      'restaurant-outline',
-  other:     'ellipse-outline',
-};
-
 function getReferenceChip(item: ItineraryItem): string | null {
   const d = item.travelDetails;
   if (!d) return null;
@@ -190,7 +180,7 @@ export function TripTab({ groupId }: Props) {
                     {isArrDep && (
                       <View
                         style={{
-                          backgroundColor: item.type === 'arrival' ? '#FFF1E6' : '#EEF4FB',
+                          backgroundColor: item.type === 'arrival' ? '#FFF1E6' : 'rgba(91, 142, 201, 0.12)',
                           borderRadius: 4,
                           paddingHorizontal: 5,
                           paddingVertical: 1,
