@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, View, Text, ActivityIndicator, Alert } from 'react-native';
+import { FlatList, Keyboard, KeyboardAvoidingView, Platform, View, Text, ActivityIndicator, Alert } from 'react-native';
 import { useToastStore } from '../../stores/useToastStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
@@ -49,6 +49,7 @@ import type { Message, GroupEvent, CallEntry, DisappearingDuration, SongMetadata
 function useKeyboardOffset() {
   const containerRef = useRef<View>(null);
   const [offset, setOffset] = useState(Platform.OS === 'ios' ? 0 : 0);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
   const onLayout = useCallback(() => {
     if (Platform.OS !== 'ios') return;
@@ -57,7 +58,16 @@ function useKeyboardOffset() {
     });
   }, []);
 
-  return { containerRef, offset, onLayout };
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardWillShow', () => setIsKeyboardVisible(true));
+    const hide = Keyboard.addListener('keyboardWillHide', () => setIsKeyboardVisible(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
+  return { containerRef, offset, onLayout, isKeyboardVisible };
 }
 
 interface Props {
@@ -77,7 +87,7 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
   const listRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { containerRef, offset: kbOffset, onLayout } = useKeyboardOffset();
+  const { containerRef, offset: kbOffset, onLayout, isKeyboardVisible } = useKeyboardOffset();
 
   const messages = useGroupsStore(useShallow((s) => s.getGroupMessages(groupId, isPrivate, channelId)));
 
@@ -842,8 +852,11 @@ export function GroupChatTab({ groupId, isPrivate, channelId, highlightText, mat
         onSaveEdit={handleSaveEdit}
         onCancelEdit={handleCancelEdit}
       />
-      {/* Safe area bottom padding so input sits above the home indicator */}
-      <View style={{ height: insets.bottom }} className="bg-background-secondary" />
+      {/* Safe area bottom padding so input sits above the home indicator.
+          Collapsed to 0 when the keyboard is visible — KAV's paddingBottom
+          already covers the home-indicator area as part of the keyboard height,
+          so rendering it again would create a double-counted gap. */}
+      <View style={{ height: isKeyboardVisible ? 0 : insets.bottom }} className="bg-background-secondary" />
     </KeyboardAvoidingView>
 
     {/* Unread jump button */}

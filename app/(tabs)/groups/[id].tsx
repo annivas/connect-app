@@ -1,7 +1,11 @@
-import React, { useLayoutEffect, useEffect, useState } from 'react';
+import React, { useLayoutEffect, useEffect, useState, useCallback } from 'react';
 import { View, Text, Pressable, Platform, ActionSheetIOS, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { GestureDetector } from 'react-native-gesture-handler';
+import Animated from 'react-native-reanimated';
+import { useSwipeToInfo } from '../../../src/hooks/useSwipeToInfo';
+import { useThemeColors } from '../../../src/hooks/useThemeColors';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useShallow } from 'zustand/react/shallow';
@@ -67,6 +71,7 @@ export default function GroupDetailScreen() {
     };
   }, [parentNavigation]);
 
+  const themeColors = useThemeColors();
   const group = useGroupsStore(useShallow((s) => s.getGroupById(id!)));
   const activeChannelId = useGroupsStore((s) => s.getActiveChannel(id!));
   const channels = group?.channels ?? [];
@@ -89,6 +94,19 @@ export default function GroupDetailScreen() {
     matchingMessageIds,
     matchCount,
   } = useMessageSearch(groupMessages);
+
+  // Stable callback — reads activeChannelId at call-time to avoid stale closures
+  const handleOpenInfo = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const channelId = useGroupsStore.getState().getActiveChannel(id!);
+    router.push({
+      pathname: '/(tabs)/groups/info',
+      params: { id: id!, ...(channelId ? { channelId } : {}) },
+    });
+  }, [id, router]);
+
+  // Left-swipe gestures — must be called before any early returns (Rules of Hooks)
+  const { headerGesture, bodyGesture, edgeIndicatorStyle } = useSwipeToInfo(handleOpenInfo);
 
   const handleStartGroupCall = (type: 'voice' | 'video') => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -148,17 +166,25 @@ export default function GroupDetailScreen() {
     );
   }
 
-  const handleOpenInfo = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push({
-      pathname: '/(tabs)/groups/info',
-      params: { id: id!, ...(activeChannelId ? { channelId: activeChannelId } : {}) },
-    });
-  };
-
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-background-primary">
-      {/* Header */}
+      {/* Left-swipe edge indicator — appears on the RIGHT edge as the user drags left */}
+      <Animated.View
+        pointerEvents="none"
+        style={[{
+          position: 'absolute',
+          right: 0,
+          top: 60,
+          bottom: 60,
+          width: 4,
+          borderRadius: 2,
+          backgroundColor: themeColors.accent.primary,
+          zIndex: 999,
+        }, edgeIndicatorStyle]}
+      />
+
+      {/* Header — swipeable left to open info (plain View, no scroll conflict) */}
+      <GestureDetector gesture={headerGesture}>
       <View className="flex-row items-center px-2 pb-2 border-b border-border-subtle">
         <IconButton icon="chevron-back" onPress={() => router.back()} />
 
@@ -184,6 +210,7 @@ export default function GroupDetailScreen() {
         <IconButton icon="search" onPress={openSearch} />
         <IconButton icon="ellipsis-horizontal" onPress={showMenu} />
       </View>
+      </GestureDetector>
 
       {/* Channel strip — shown when channels exist */}
       {channels.length > 0 && (
@@ -325,71 +352,78 @@ export default function GroupDetailScreen() {
         </View>
       )}
 
-      {/* Main content area */}
-      {(group.type === 'household' && householdActiveTab === 'insights') ||
-       (group.type === 'trip' && tripActiveTab === 'insights') ||
-       (group.type !== 'household' && group.type !== 'trip' && regularActiveTab === 'insights') ? (
-        <InsightsTab conversationId={id!} channelId={activeChannelId} isGroup={true} />
-      ) : group.type === 'household' && group.household && householdActiveTab === 'household' ? (
-        <HouseholdTab
-          data={group.household}
-          getUserName={(uid) => useUserStore.getState().getUserById(uid)?.name ?? 'Unknown'}
-          getUserAvatar={(uid) => useUserStore.getState().getUserById(uid)?.avatar ?? ''}
-          currentUserId={CURRENT_USER_ID}
-          onToggleChore={(choreId) => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            const g = useGroupsStore.getState().getGroupById(id!);
-            if (!g?.household) return;
-            const updatedChores = g.household.chores.map((c) =>
-              c.id === choreId ? { ...c, isCompleted: !c.isCompleted, lastCompleted: !c.isCompleted ? new Date() : c.lastCompleted } : c
-            );
-            useGroupsStore.getState().updateGroup(id!, { household: { ...g.household, chores: updatedChores } } as any);
-          }}
-          onToggleShoppingItem={(itemId) => {
-            Haptics.selectionAsync();
-            const g = useGroupsStore.getState().getGroupById(id!);
-            if (!g?.household) return;
-            const updatedItems = g.household.shoppingList.map((item) =>
-              item.id === itemId ? { ...item, isChecked: !item.isChecked, checkedBy: !item.isChecked ? CURRENT_USER_ID : undefined } : item
-            );
-            useGroupsStore.getState().updateGroup(id!, { household: { ...g.household, shoppingList: updatedItems } } as any);
-          }}
-          onAddShoppingItem={(name) => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            const g = useGroupsStore.getState().getGroupById(id!);
-            if (!g?.household) return;
-            const newItem = { id: `shop-${Date.now()}`, name, isChecked: false, addedBy: CURRENT_USER_ID, addedAt: new Date() };
-            useGroupsStore.getState().updateGroup(id!, { household: { ...g.household, shoppingList: [...g.household.shoppingList, newItem] } } as any);
-          }}
-          onDeleteShoppingItem={(itemId) => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            const g = useGroupsStore.getState().getGroupById(id!);
-            if (!g?.household) return;
-            const updatedItems = g.household.shoppingList.filter((item) => item.id !== itemId);
-            useGroupsStore.getState().updateGroup(id!, { household: { ...g.household, shoppingList: updatedItems } } as any);
-          }}
-          onToggleBillPaid={(billId) => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            const g = useGroupsStore.getState().getGroupById(id!);
-            if (!g?.household) return;
-            const updatedBills = g.household.recurringBills.map((b) =>
-              b.id === billId ? { ...b, isPaid: !b.isPaid, paidBy: !b.isPaid ? CURRENT_USER_ID : undefined } : b
-            );
-            useGroupsStore.getState().updateGroup(id!, { household: { ...g.household, recurringBills: updatedBills } } as any);
-          }}
-        />
-      ) : group.type === 'trip' && tripActiveTab === 'trip' ? (
-        <TripTab groupId={id!} />
-      ) : (
-        <GroupChatTab
-          groupId={id!}
-          isPrivate={false}
-          channelId={activeChannelId}
-
-          highlightText={isSearching ? chatSearchQuery : undefined}
-          matchingMessageIds={isSearching ? matchingMessageIds : undefined}
-        />
-      )}
+      {/* Main content area — bodyGesture enables left-swipe-to-info from the full body.
+          Automatically disabled when the keyboard is visible so interactive keyboard
+          dismiss gets uncontested first-pixel FlatList control.
+          Child GestureDetectors (MessageBubble swipe-to-reply) take RNGH priority
+          in bubble areas, so reply still works normally on messages. */}
+      <GestureDetector gesture={bodyGesture}>
+        <View style={{ flex: 1 }}>
+          {(group.type === 'household' && householdActiveTab === 'insights') ||
+           (group.type === 'trip' && tripActiveTab === 'insights') ||
+           (group.type !== 'household' && group.type !== 'trip' && regularActiveTab === 'insights') ? (
+            <InsightsTab conversationId={id!} channelId={activeChannelId} isGroup={true} />
+          ) : group.type === 'household' && group.household && householdActiveTab === 'household' ? (
+            <HouseholdTab
+              data={group.household}
+              getUserName={(uid) => useUserStore.getState().getUserById(uid)?.name ?? 'Unknown'}
+              getUserAvatar={(uid) => useUserStore.getState().getUserById(uid)?.avatar ?? ''}
+              currentUserId={CURRENT_USER_ID}
+              onToggleChore={(choreId) => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                const g = useGroupsStore.getState().getGroupById(id!);
+                if (!g?.household) return;
+                const updatedChores = g.household.chores.map((c) =>
+                  c.id === choreId ? { ...c, isCompleted: !c.isCompleted, lastCompleted: !c.isCompleted ? new Date() : c.lastCompleted } : c
+                );
+                useGroupsStore.getState().updateGroup(id!, { household: { ...g.household, chores: updatedChores } } as any);
+              }}
+              onToggleShoppingItem={(itemId) => {
+                Haptics.selectionAsync();
+                const g = useGroupsStore.getState().getGroupById(id!);
+                if (!g?.household) return;
+                const updatedItems = g.household.shoppingList.map((item) =>
+                  item.id === itemId ? { ...item, isChecked: !item.isChecked, checkedBy: !item.isChecked ? CURRENT_USER_ID : undefined } : item
+                );
+                useGroupsStore.getState().updateGroup(id!, { household: { ...g.household, shoppingList: updatedItems } } as any);
+              }}
+              onAddShoppingItem={(name) => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                const g = useGroupsStore.getState().getGroupById(id!);
+                if (!g?.household) return;
+                const newItem = { id: `shop-${Date.now()}`, name, isChecked: false, addedBy: CURRENT_USER_ID, addedAt: new Date() };
+                useGroupsStore.getState().updateGroup(id!, { household: { ...g.household, shoppingList: [...g.household.shoppingList, newItem] } } as any);
+              }}
+              onDeleteShoppingItem={(itemId) => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                const g = useGroupsStore.getState().getGroupById(id!);
+                if (!g?.household) return;
+                const updatedItems = g.household.shoppingList.filter((item) => item.id !== itemId);
+                useGroupsStore.getState().updateGroup(id!, { household: { ...g.household, shoppingList: updatedItems } } as any);
+              }}
+              onToggleBillPaid={(billId) => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                const g = useGroupsStore.getState().getGroupById(id!);
+                if (!g?.household) return;
+                const updatedBills = g.household.recurringBills.map((b) =>
+                  b.id === billId ? { ...b, isPaid: !b.isPaid, paidBy: !b.isPaid ? CURRENT_USER_ID : undefined } : b
+                );
+                useGroupsStore.getState().updateGroup(id!, { household: { ...g.household, recurringBills: updatedBills } } as any);
+              }}
+            />
+          ) : group.type === 'trip' && tripActiveTab === 'trip' ? (
+            <TripTab groupId={id!} />
+          ) : (
+            <GroupChatTab
+              groupId={id!}
+              isPrivate={false}
+              channelId={activeChannelId}
+              highlightText={isSearching ? chatSearchQuery : undefined}
+              matchingMessageIds={isSearching ? matchingMessageIds : undefined}
+            />
+          )}
+        </View>
+      </GestureDetector>
 
       <CreatePollModal
         visible={showCreatePoll}

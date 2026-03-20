@@ -30,6 +30,9 @@ export function MessageInput({ conversationId, onSend, onPickImage, onScheduleSe
   const selectionRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
   const [controlledSelection, setControlledSelection] = useState<{ start: number; end: number } | undefined>(undefined);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  // True only when the user has an active text selection (start ≠ end).
+  // Drives toolbar visibility — toolbar never occupies space unless text is highlighted.
+  const [hasSelection, setHasSelection] = useState(false);
 
   // Debounced draft saving
   const saveDraft = useCallback((value: string) => {
@@ -110,8 +113,9 @@ export function MessageInput({ conversationId, onSend, onPickImage, onScheduleSe
 
   return (
     <View className="bg-background-secondary border-t border-border-subtle">
-      {/* Inline format toolbar */}
-      {keyboardVisible && (
+      {/* Inline format toolbar — only shown when the user has text selected.
+          No persistent space is reserved; it appears/disappears contextually. */}
+      {keyboardVisible && hasSelection && (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -193,7 +197,10 @@ export function MessageInput({ conversationId, onSend, onPickImage, onScheduleSe
             onChangeText={handleTextChange}
             selection={controlledSelection}
             onSelectionChange={(e) => {
-              selectionRef.current = e.nativeEvent.selection;
+              const sel = e.nativeEvent.selection;
+              selectionRef.current = sel;
+              // Show toolbar only when text is actively highlighted
+              setHasSelection(sel.start !== sel.end);
             }}
             placeholder={isEditing ? 'Edit message...' : 'Message...'}
             placeholderTextColor="#A8937F"
