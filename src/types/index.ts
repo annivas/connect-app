@@ -407,7 +407,48 @@ export interface CallEntry {
 }
 
 // ─── Trip ────────────────────────────────────
-export type ItineraryItemType = 'activity' | 'accommodation' | 'transport' | 'meal' | 'other';
+export type ItineraryItemType =
+  | 'arrival'
+  | 'departure'
+  | 'activity'
+  | 'meal'
+  | 'stay'
+  | 'transport'
+  | 'other';
+
+export type TransportMethod =
+  | 'airplane'
+  | 'car'
+  | 'ferry'
+  | 'train'
+  | 'bus'
+  | 'taxi'
+  | 'other';
+
+export interface TravelDetails {
+  // Airplane
+  flightNumber?: string;
+  airline?: string;
+  terminal?: string;
+  // Ferry
+  ferryCompany?: string;
+  carOnFerry?: boolean;
+  // Train
+  trainNumber?: string;
+  // Shared: airplane / ferry / train
+  portOrStation?: string;
+  // Car, Taxi
+  pickupNote?: string;
+  // Bus
+  busLine?: string;
+  // Other
+  notes?: string;
+}
+
+export interface Traveler {
+  userId?: string;
+  name: string;
+}
 
 export interface ItineraryItem {
   id: string;
@@ -415,9 +456,13 @@ export interface ItineraryItem {
   time?: string;
   title: string;
   description?: string;
-  location?: PlaceMetadata;
+  location?: string;           // plain text; replaces PlaceMetadata
   type: ItineraryItemType;
   cost?: number;
+  // Arrival / Departure only
+  travelers?: Traveler[];
+  transportMethod?: TransportMethod;
+  travelDetails?: TravelDetails;
 }
 
 export interface Trip {
