@@ -17,10 +17,10 @@ interface Props {
 
 const ITEM_TYPES: { key: ItineraryItemType; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { key: 'activity', label: 'Activity', icon: 'flag' },
-  { key: 'accommodation', label: 'Stay', icon: 'bed' },
-  { key: 'transport', label: 'Transport', icon: 'car' },
-  { key: 'meal', label: 'Meal', icon: 'restaurant' },
-  { key: 'other', label: 'Other', icon: 'ellipse' },
+  { key: 'stay',     label: 'Stay',     icon: 'bed' },
+  { key: 'transport',label: 'Transport',icon: 'car' },
+  { key: 'meal',     label: 'Meal',     icon: 'restaurant' },
+  { key: 'other',    label: 'Other',    icon: 'ellipse' },
 ];
 
 export function ItineraryItemModal({ visible, onClose, onSave, onDelete, existingItem, totalDays }: Props) {
@@ -32,6 +32,7 @@ export function ItineraryItemModal({ visible, onClose, onSave, onDelete, existin
   const [time, setTime] = useState('');
   const [type, setType] = useState<ItineraryItemType>('activity');
   const [cost, setCost] = useState('');
+  const [location, setLocation] = useState('');
 
   // Reset form when modal opens
   useEffect(() => {
@@ -43,6 +44,7 @@ export function ItineraryItemModal({ visible, onClose, onSave, onDelete, existin
         setTime(existingItem.time ?? '');
         setType(existingItem.type);
         setCost(existingItem.cost != null ? String(existingItem.cost) : '');
+        setLocation(existingItem.location ?? '');
       } else {
         setTitle('');
         setDescription('');
@@ -50,6 +52,7 @@ export function ItineraryItemModal({ visible, onClose, onSave, onDelete, existin
         setTime('');
         setType('activity');
         setCost('');
+        setLocation('');
       }
     }
   }, [visible, existingItem]);
@@ -66,6 +69,7 @@ export function ItineraryItemModal({ visible, onClose, onSave, onDelete, existin
       time: time.trim() || undefined,
       title: title.trim(),
       description: description.trim() || undefined,
+      location: location.trim() || undefined,
       type,
       cost: cost.trim() ? Number(cost) : undefined,
     };
@@ -172,6 +176,16 @@ export function ItineraryItemModal({ visible, onClose, onSave, onDelete, existin
             value={time}
             onChangeText={setTime}
             placeholder="e.g. 09:00"
+            placeholderTextColor="#A8937F"
+            className="bg-surface rounded-xl px-4 py-3 text-text-primary text-[15px] mb-4"
+          />
+
+          {/* Location */}
+          <Text className="text-text-secondary text-sm font-medium mb-1.5">Location (optional)</Text>
+          <TextInput
+            value={location}
+            onChangeText={setLocation}
+            placeholder="e.g. Senso-ji Temple, Tokyo"
             placeholderTextColor="#A8937F"
             className="bg-surface rounded-xl px-4 py-3 text-text-primary text-[15px] mb-4"
           />
