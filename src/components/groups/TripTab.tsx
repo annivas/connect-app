@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable } from 'react-native';
+import { View, Text, ScrollView, Pressable, Platform, ActionSheetIOS, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import * as Haptics from 'expo-haptics';
@@ -7,16 +7,43 @@ import { useShallow } from 'zustand/react/shallow';
 import { EmptyState } from '../ui/EmptyState';
 import { ItineraryItemModal } from './ItineraryItemModal';
 import { CreateTripModal } from './CreateTripModal';
+import { ArrivalDepartureWizard } from './ArrivalDepartureWizard';
 import { useGroupsStore } from '../../stores/useGroupsStore';
 import type { ItineraryItem } from '../../types';
 
-const typeIcons: Record<string, keyof typeof Ionicons.glyphMap> = {
-  activity: 'flag',
-  accommodation: 'bed',
-  transport: 'car',
-  meal: 'restaurant',
-  other: 'ellipse',
+const TYPE_DOT_COLOR: Record<string, string> = {
+  arrival:   '#D4764E',
+  departure: '#5B8EC9',
+  activity:  '#2D9F6F',
+  meal:      '#D4964E',
+  stay:      '#8B6F5A',
+  transport: '#C2956B',
+  other:     '#A8937F',
 };
+
+const TYPE_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
+  arrival:   'airplane-outline',
+  departure: 'airplane-outline',
+  activity:  'flag-outline',
+  stay:      'bed-outline',
+  transport: 'car-outline',
+  meal:      'restaurant-outline',
+  other:     'ellipse-outline',
+};
+
+function getReferenceChip(item: ItineraryItem): string | null {
+  const d = item.travelDetails;
+  if (!d) return null;
+  switch (item.transportMethod) {
+    case 'airplane': return d.flightNumber ?? null;
+    case 'train':    return d.trainNumber ?? null;
+    case 'ferry':    return d.carOnFerry
+      ? `${d.ferryCompany ?? 'Ferry'}  ·  🚗 Car on board`
+      : (d.ferryCompany ?? null);
+    case 'bus':      return d.busLine ?? null;
+    default:         return null;
+  }
+}
 
 interface Props {
   groupId: string;
@@ -28,6 +55,49 @@ export function TripTab({ groupId }: Props) {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<ItineraryItem | null>(null);
   const [showCreateTrip, setShowCreateTrip] = useState(false);
+  const [wizardVisible, setWizardVisible] = useState(false);
+  const [wizardItem, setWizardItem] = useState<ItineraryItem | null>(null);
+
+  const handleAddPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    const options = [
+      'Arrival / Departure',
+      'Activity',
+      'Meal',
+      'Stay',
+      'Transport',
+      'Other',
+      'Cancel',
+    ];
+
+    const open = (index: number) => {
+      if (index === 0) {
+        setWizardItem(null);
+        setWizardVisible(true);
+      } else if (index < 6) {
+        setEditingItem(null);
+        setModalVisible(true);
+      }
+      // index === 6 is Cancel — do nothing
+    };
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options, cancelButtonIndex: 6, title: 'Add to Itinerary' },
+        open,
+      );
+    } else {
+      const buttons: import('react-native').AlertButton[] = [
+        ...options.slice(0, -1).map((label, i) => ({
+          text: label,
+          onPress: () => open(i),
+        })),
+        { text: 'Cancel', style: 'cancel' as const, onPress: () => {} },
+      ];
+      Alert.alert('Add to Itinerary', undefined, buttons);
+    }
+  };
 
   if (!trip) {
     return (
@@ -68,30 +138,91 @@ export function TripTab({ groupId }: Props) {
         </View>
         {trip.itinerary.map((item, index) => {
           const showDayHeader = index === 0 || trip.itinerary[index - 1].day !== item.day;
+          const isLast = index === trip.itinerary.length - 1;
+          const dotColor = TYPE_DOT_COLOR[item.type] ?? '#A8937F';
+          const isArrDep = item.type === 'arrival' || item.type === 'departure';
+          const refChip = isArrDep ? getReferenceChip(item) : null;
+
+          // Day label from trip start date
+          const dayDate = new Date(trip.startDate);
+          dayDate.setDate(dayDate.getDate() + item.day - 1);
+          const dayLabel = `Day ${item.day}  ·  ${format(dayDate, 'EEEE  ·  MMM d')}`;
+
           return (
             <View key={item.id}>
-              {showDayHeader && <Text className="text-accent-primary text-sm font-bold mt-4 mb-2">Day {item.day}</Text>}
+              {showDayHeader && (
+                <Text className="text-accent-primary text-xs font-bold tracking-wide uppercase mt-4 mb-3">
+                  {dayLabel}
+                </Text>
+              )}
               <Pressable
                 onLongPress={() => {
-                  setEditingItem(item);
-                  setModalVisible(true);
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  if (isArrDep) {
+                    setWizardItem(item);
+                    setWizardVisible(true);
+                  } else {
+                    setEditingItem(item);
+                    setModalVisible(true);
+                  }
                 }}
-                className="flex-row mb-3"
+                className="flex-row mb-1"
               >
-                <View className="items-center mr-3">
-                  <View className="w-8 h-8 rounded-full bg-surface-elevated items-center justify-center">
-                    <Ionicons name={typeIcons[item.type] || 'ellipse'} size={16} color="#7A6355" />
-                  </View>
-                  {index < trip.itinerary.length - 1 && <View className="w-[2px] flex-1 bg-border-subtle mt-1" />}
+                {/* Time column */}
+                <View className="w-12 items-end pr-2 pt-0.5">
+                  {item.time ? (
+                    <Text className="text-text-tertiary text-xs">{item.time}</Text>
+                  ) : null}
                 </View>
-                <View className="flex-1 pb-2">
-                  <View className="flex-row items-center">
-                    {item.time && <Text className="text-text-tertiary text-xs mr-2">{item.time}</Text>}
-                    <Text className="text-text-primary font-medium flex-1">{item.title}</Text>
-                    {item.cost != null && <Text className="text-text-secondary text-xs">${item.cost}</Text>}
+
+                {/* Spine column */}
+                <View className="items-center w-5">
+                  <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: dotColor }} />
+                  {!isLast && (
+                    <View style={{ width: 2, flex: 1, minHeight: 20, backgroundColor: '#F0E2D4', marginTop: 2 }} />
+                  )}
+                </View>
+
+                {/* Content column */}
+                <View className="flex-1 pl-3 pb-4">
+                  <View className="flex-row items-center flex-wrap gap-1">
+                    <Text className="text-text-primary text-[14px] font-semibold">{item.title}</Text>
+                    {isArrDep && (
+                      <View
+                        style={{
+                          backgroundColor: item.type === 'arrival' ? '#FFF1E6' : '#EEF4FB',
+                          borderRadius: 4,
+                          paddingHorizontal: 5,
+                          paddingVertical: 1,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 9,
+                            fontWeight: '700',
+                            letterSpacing: 0.5,
+                            textTransform: 'uppercase',
+                            color: item.type === 'arrival' ? '#D4764E' : '#5B8EC9',
+                          }}
+                        >
+                          {item.type}
+                        </Text>
+                      </View>
+                    )}
                   </View>
-                  {item.description && <Text className="text-text-secondary text-xs mt-0.5">{item.description}</Text>}
+
+                  {/* Detail chips */}
+                  <View className="flex-row flex-wrap gap-x-2 mt-0.5">
+                    {item.location ? (
+                      <Text className="text-text-tertiary text-[11px]">📍 {item.location}</Text>
+                    ) : null}
+                    {refChip ? (
+                      <Text className="text-text-tertiary text-[11px]">🎫 {refChip}</Text>
+                    ) : null}
+                    {(item.type === 'meal' || item.type === 'activity') && item.cost != null ? (
+                      <Text className="text-text-tertiary text-[11px]">💰 ${item.cost}</Text>
+                    ) : null}
+                  </View>
                 </View>
               </Pressable>
             </View>
@@ -105,11 +236,7 @@ export function TripTab({ groupId }: Props) {
         )}
       </ScrollView>
       <Pressable
-        onPress={() => {
-          setEditingItem(null);
-          setModalVisible(true);
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        }}
+        onPress={handleAddPress}
         className="absolute bottom-8 right-6 w-14 h-14 rounded-full bg-accent-primary items-center justify-center"
         style={{ shadowColor: '#D4764E', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 }}
       >
@@ -126,6 +253,12 @@ export function TripTab({ groupId }: Props) {
         onDelete={editingItem ? (id) => useGroupsStore.getState().deleteItineraryItem(groupId, id) : undefined}
         existingItem={editingItem}
         totalDays={totalDays}
+      />
+      <ArrivalDepartureWizard
+        visible={wizardVisible}
+        groupId={groupId}
+        initialItem={wizardItem ?? undefined}
+        onClose={() => { setWizardVisible(false); setWizardItem(null); }}
       />
     </View>
   );
