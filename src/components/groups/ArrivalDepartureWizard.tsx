@@ -92,7 +92,7 @@ export function ArrivalDepartureWizard({ visible, groupId, initialItem, onClose 
   };
 
   const handleClose = () => {
-    const hasData = travelers.length > 0 || transportMethod || location;
+    const hasData = travelers.length > 0 || transportMethod || location || timeStr || notes;
     if (hasData && !isEditing) {
       Alert.alert('Discard changes?', 'You have unsaved changes.', [
         { text: 'Keep editing', style: 'cancel' },
@@ -115,7 +115,12 @@ export function ArrivalDepartureWizard({ visible, groupId, initialItem, onClose 
     description: notes.trim() || undefined,
     travelers,
     transportMethod,
-    travelDetails: Object.keys(travelDetails).length > 0 ? travelDetails : undefined,
+    travelDetails: (() => {
+  const clean = Object.fromEntries(
+    Object.entries(travelDetails).filter(([, v]) => v !== undefined && v !== '' && v !== false)
+  ) as TravelDetails;
+  return Object.keys(clean).length > 0 ? clean : undefined;
+})(),
   });
 
   const handleSave = () => {
@@ -276,6 +281,7 @@ export function ArrivalDepartureWizard({ visible, groupId, initialItem, onClose 
       { label: 'Day', value: `Day ${day}`, goTo: 3 },
       { label: 'Time', value: timeStr || '—', goTo: 3 },
       { label: 'Location', value: location || '—', goTo: 3 },
+      { label: 'Notes', value: notes || '—', goTo: 3 },
     ];
 
     return (
