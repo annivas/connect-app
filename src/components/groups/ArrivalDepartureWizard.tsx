@@ -9,6 +9,16 @@ import { TravelerPicker } from './TravelerPicker';
 import { TransportPicker } from './TransportPicker';
 import type { ItineraryItem, Traveler, TransportMethod, TravelDetails } from '../../types';
 
+const TRANSPORT_LABELS: Record<string, string> = {
+  airplane: 'Airplane',
+  car: 'Car',
+  ferry: 'Ferry',
+  train: 'Train',
+  bus: 'Bus',
+  taxi: 'Taxi',
+  other: 'Other',
+};
+
 interface Props {
   visible: boolean;
   groupId: string;
@@ -277,7 +287,7 @@ export function ArrivalDepartureWizard({ visible, groupId, initialItem, onClose 
   const renderStep4 = () => {
     const rows: { label: string; value: string; goTo: number }[] = [
       { label: 'Travelers', value: travelers.map((t) => t.name).join(', ') || '—', goTo: 1 },
-      { label: 'Transport', value: transportMethod ?? '—', goTo: 2 },
+      { label: 'Transport', value: TRANSPORT_LABELS[transportMethod ?? ''] ?? '—', goTo: 2 },
       { label: 'Day', value: `Day ${day}`, goTo: 3 },
       { label: 'Time', value: timeStr || '—', goTo: 3 },
       { label: 'Location', value: location || '—', goTo: 3 },
