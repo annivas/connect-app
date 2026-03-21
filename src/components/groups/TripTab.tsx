@@ -8,6 +8,7 @@ import { EmptyState } from '../ui/EmptyState';
 import { ItineraryItemModal } from './ItineraryItemModal';
 import { CreateTripModal } from './CreateTripModal';
 import { ArrivalDepartureWizard } from './ArrivalDepartureWizard';
+import { TripInfoCard } from './TripInfoCard';
 import { useGroupsStore } from '../../stores/useGroupsStore';
 import type { ItineraryItem } from '../../types';
 
@@ -126,6 +127,7 @@ export function TripTab({ groupId }: Props) {
             {format(trip.startDate, 'MMM d')} - {format(trip.endDate, 'MMM d, yyyy')}
           </Text>
         </View>
+        <TripInfoCard groupId={groupId} stayInfo={trip.stayInfo} />
         {trip.itinerary.map((item, index) => {
           const showDayHeader = index === 0 || trip.itinerary[index - 1].day !== item.day;
           const isLast = index === trip.itinerary.length - 1;

@@ -465,6 +465,17 @@ export interface ItineraryItem {
   travelDetails?: TravelDetails;
 }
 
+export interface StayInfo {
+  name?: string;          // accommodation name
+  address?: string;
+  checkIn?: string;       // "15:00"
+  checkOut?: string;      // "11:00"
+  wifiName?: string;
+  wifiPassword?: string;
+  doorCode?: string;
+  accessNotes?: string;
+}
+
 export interface Trip {
   id: string;
   groupId: string;
@@ -474,6 +485,7 @@ export interface Trip {
   itinerary: ItineraryItem[];
   budget?: number;
   participants: string[];
+  stayInfo?: StayInfo;
 }
 
 // ─── Household ──────────────────────────────
