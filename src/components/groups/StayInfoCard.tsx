@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, Pressable, TextInput, ScrollView,
+  View, Text, Pressable, TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -14,7 +14,7 @@ interface Props {
   stayInfo?: StayInfo;
 }
 
-const TYPE_ICONS: Record<StayInfoFieldType, string> = {
+const TYPE_ICONS: Record<StayInfoFieldType, React.ComponentProps<typeof Ionicons>['name']> = {
   wifi:         'wifi',
   door_code:    'key',
   parking:      'car',
@@ -82,12 +82,13 @@ export function StayInfoCard({ groupId, stayInfo }: Props) {
   // ── Save ─────────────────────────────────────
   const handleSave = () => {
     if (!draft.name.trim()) return;
+    const saved: StayInfo = { ...draft, name: draft.name.trim() };
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    useGroupsStore.getState().updateStayInfo(groupId, { ...draft, name: draft.name.trim() });
+    useGroupsStore.getState().updateStayInfo(groupId, saved);
     setExpanded(false);
     setMode('view');
     setRevealed(new Set());
-    setDraft(stayInfo ?? EMPTY_STAY);
+    setDraft(saved);
   };
 
   // ── Picker callbacks ─────────────────────────
@@ -304,7 +305,7 @@ export function StayInfoCard({ groupId, stayInfo }: Props) {
                   key={field.id}
                   className="flex-row items-center py-2.5 border-b border-border-subtle"
                 >
-                  <Ionicons name={TYPE_ICONS[field.type] as any} size={13} color="#A8937F" style={{ marginRight: 8 }} />
+                  <Ionicons name={TYPE_ICONS[field.type]} size={13} color="#A8937F" style={{ marginRight: 8 }} />
                   <View className="flex-1">
                     <Text className="text-text-tertiary text-[10px] font-semibold uppercase tracking-wide">
                       {field.label}
