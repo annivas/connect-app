@@ -364,7 +364,7 @@ export interface GroupEvent {
   description?: string;
   startDate: Date;
   endDate?: Date;
-  location?: PlaceMetadata;
+  location?: string;
   createdBy: string;
   attendees: EventAttendee[];
   type: 'hangout' | 'trip' | 'sports' | 'other';
