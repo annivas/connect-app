@@ -53,6 +53,7 @@ export function StayInfoCard({ groupId, stayInfo }: Props) {
 
   // ── Collapse ─────────────────────────────────
   const collapse = useCallback(() => {
+    Haptics.selectionAsync();
     setExpanded(false);
     setMode('view');
     setRevealed(new Set());
@@ -86,6 +87,7 @@ export function StayInfoCard({ groupId, stayInfo }: Props) {
     setExpanded(false);
     setMode('view');
     setRevealed(new Set());
+    setDraft(stayInfo ?? EMPTY_STAY);
   };
 
   // ── Picker callbacks ─────────────────────────
@@ -211,9 +213,6 @@ export function StayInfoCard({ groupId, stayInfo }: Props) {
           ) : (
             <>
               <View className="flex-row items-center gap-2 flex-1">
-                <View className="w-7 h-7 rounded-lg bg-accent-primary/10 items-center justify-center">
-                  <Ionicons name="bed-outline" size={15} color="#D4764E" />
-                </View>
                 <Text className="text-text-primary text-[14px] font-bold flex-1" numberOfLines={1}>
                   {data.name}
                 </Text>
