@@ -46,7 +46,7 @@ export function StayInfoPickerSheet({ visible, initialField, onSave, onClose }: 
   const [label, setLabel] = useState('');
   const [value, setValue] = useState('');
   const [value2, setValue2] = useState('');
-  const [showValue2, setShowValue2] = useState(false);
+  const [showSecret, setShowSecret] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
@@ -55,14 +55,14 @@ export function StayInfoPickerSheet({ visible, initialField, onSave, onClose }: 
       setLabel(initialField.label);
       setValue(initialField.value);
       setValue2(initialField.value2 ?? '');
-      setShowValue2(false); // always start masked on edit re-open
+      setShowSecret(false); // always start masked on edit re-open
       setScreen('editor');
     } else {
       setScreen('picker');
       setLabel('');
       setValue('');
       setValue2('');
-      setShowValue2(false);
+      setShowSecret(false);
     }
   }, [visible, isEditing, initialField]);
 
@@ -72,7 +72,7 @@ export function StayInfoPickerSheet({ visible, initialField, onSave, onClose }: 
     setLabel(DEFAULT_LABELS[type]);
     setValue('');
     setValue2('');
-    setShowValue2(false);
+    setShowSecret(false);
     setScreen('editor');
   };
 
@@ -113,10 +113,7 @@ export function StayInfoPickerSheet({ visible, initialField, onSave, onClose }: 
           </Text>
           {screen === 'editor' ? (
             <Pressable onPress={handleSave} disabled={!canSave}>
-              <Text
-                className="text-[15px] font-semibold"
-                style={{ color: canSave ? '#D4764E' : '#C4B0A2' }}
-              >
+              <Text className={`text-[15px] font-semibold ${canSave ? 'text-accent-primary' : 'text-text-tertiary'}`}>
                 Save
               </Text>
             </Pressable>
@@ -180,8 +177,8 @@ export function StayInfoPickerSheet({ visible, initialField, onSave, onClose }: 
                   <Text className="text-text-tertiary text-[11px] font-semibold uppercase tracking-wide">
                     Password
                   </Text>
-                  <Pressable onPress={() => setShowValue2((v) => !v)}>
-                    <Ionicons name={showValue2 ? 'eye-off-outline' : 'eye-outline'} size={16} color="#A8937F" />
+                  <Pressable onPress={() => setShowSecret((v) => !v)}>
+                    <Ionicons name={showSecret ? 'eye-off-outline' : 'eye-outline'} size={16} color="#A8937F" />
                   </Pressable>
                 </View>
                 <TextInput
@@ -189,7 +186,7 @@ export function StayInfoPickerSheet({ visible, initialField, onSave, onClose }: 
                   onChangeText={setValue2}
                   placeholder="Optional"
                   placeholderTextColor="#A8937F"
-                  secureTextEntry={!showValue2}
+                  secureTextEntry={!showSecret}
                   autoCapitalize="none"
                   className="bg-surface-elevated border border-border rounded-xl px-3 py-3 text-text-primary text-[14px] mb-4"
                 />
@@ -200,8 +197,8 @@ export function StayInfoPickerSheet({ visible, initialField, onSave, onClose }: 
                   <Text className="text-text-tertiary text-[11px] font-semibold uppercase tracking-wide">
                     Code
                   </Text>
-                  <Pressable onPress={() => setShowValue2((v) => !v)}>
-                    <Ionicons name={showValue2 ? 'eye-off-outline' : 'eye-outline'} size={16} color="#A8937F" />
+                  <Pressable onPress={() => setShowSecret((v) => !v)}>
+                    <Ionicons name={showSecret ? 'eye-off-outline' : 'eye-outline'} size={16} color="#A8937F" />
                   </Pressable>
                 </View>
                 <TextInput
@@ -209,7 +206,7 @@ export function StayInfoPickerSheet({ visible, initialField, onSave, onClose }: 
                   onChangeText={setValue}
                   placeholder="e.g. 4821"
                   placeholderTextColor="#A8937F"
-                  secureTextEntry={!showValue2}
+                  secureTextEntry={!showSecret}
                   keyboardType="default"
                   className="bg-surface-elevated border border-border rounded-xl px-3 py-3 text-text-primary text-[14px] mb-4"
                 />
