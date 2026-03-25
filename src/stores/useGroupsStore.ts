@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Group, Message, RSVPStatus, Poll, PollOption, Note, Reminder, LedgerEntry, SharedObject, DisappearingDuration, ScheduledMessage, GroupPairBalance, Channel, ConversationMetadata, GroupMetadata } from '../types';
+import { Group, Message, RSVPStatus, Poll, PollOption, Note, Reminder, LedgerEntry, SharedObject, DisappearingDuration, ScheduledMessage, GroupPairBalance, Channel, ConversationMetadata, GroupMetadata, StayInfo } from '../types';
 import { groupsRepository } from '../services';
 import { supabase } from '../lib/supabase';
 import { config } from '../config/env';
@@ -86,6 +86,7 @@ interface GroupsState {
   addItineraryItem: (groupId: string, item: import('../types').ItineraryItem) => void;
   editItineraryItem: (groupId: string, itemId: string, updates: Partial<import('../types').ItineraryItem>) => void;
   deleteItineraryItem: (groupId: string, itemId: string) => void;
+  updateStayInfo: (groupId: string, stayInfo: StayInfo | undefined) => void;
   createEvent: (groupId: string, event: Omit<import('../types').GroupEvent, 'id' | 'groupId' | 'createdBy' | 'attendees'>) => import('../types').GroupEvent;
   updateGroupEvent: (groupId: string, eventId: string, updates: Partial<Pick<import('../types').GroupEvent, 'title' | 'description' | 'startDate' | 'endDate' | 'location'>>) => void;
   deleteGroupEvent: (groupId: string, eventId: string) => void;
@@ -1059,6 +1060,29 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         groups: state.groups.map((g) => {
           if (g.id !== groupId || !g.trip) return g;
           return { ...g, trip: { ...g.trip, itinerary: [...g.trip.itinerary, originalItem] } };
+        }),
+      }));
+    });
+  },
+
+  updateStayInfo: (groupId, stayInfo) => {
+    const group = get().groups.find((g) => g.id === groupId);
+    if (!group?.trip) return;
+
+    const previousStayInfo = group.trip.stayInfo;
+
+    set((state) => ({
+      groups: state.groups.map((g) => {
+        if (g.id !== groupId || !g.trip) return g;
+        return { ...g, trip: { ...g.trip, stayInfo } };
+      }),
+    }));
+
+    groupsRepository.updateStayInfo(group.trip.id, stayInfo).catch(() => {
+      set((state) => ({
+        groups: state.groups.map((g) => {
+          if (g.id !== groupId || !g.trip) return g;
+          return { ...g, trip: { ...g.trip, stayInfo: previousStayInfo } };
         }),
       }));
     });
