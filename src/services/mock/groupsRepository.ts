@@ -1,4 +1,4 @@
-import { Message, Group, RSVPStatus, Note, Reminder, LedgerEntry, SharedObject, SharedObjectType, Poll, DisappearingDuration, ItineraryItem, GroupEvent, Trip, Channel } from '../../types';
+import { Message, Group, RSVPStatus, Note, Reminder, LedgerEntry, SharedObject, SharedObjectType, Poll, DisappearingDuration, ItineraryItem, GroupEvent, Trip, Channel, StayInfo } from '../../types';
 import { MOCK_GROUPS } from '../../mocks/groups';
 import { MOCK_GROUP_MESSAGES } from '../../mocks/messages';
 import { MOCK_POLLS } from '../../mocks/polls';
@@ -300,5 +300,9 @@ export const mockGroupsRepository: IGroupsRepository = {
       ...g,
       channels: (g.channels || []).filter((ch) => ch.id !== channelId),
     }));
+  },
+
+  async updateStayInfo(_tripId: string, _stayInfo: StayInfo | undefined): Promise<void> {
+    // no-op — mock-only app
   },
 };

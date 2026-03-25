@@ -1,4 +1,4 @@
-import { Conversation, Message, MessageType, Group, GroupType, User, Collection, Note, NoteBlock, Reminder, LedgerEntry, RSVPStatus, SharedObject, SharedObjectType, Poll, DisappearingDuration, ItineraryItem, GroupEvent, Trip, Channel } from '../types';
+import { Conversation, Message, MessageType, Group, GroupType, User, Collection, Note, NoteBlock, Reminder, LedgerEntry, RSVPStatus, SharedObject, SharedObjectType, Poll, DisappearingDuration, ItineraryItem, GroupEvent, Trip, Channel, StayInfo } from '../types';
 
 // ─── Pagination ─────────────────────────────
 export interface PaginationParams {
@@ -148,6 +148,7 @@ export interface IGroupsRepository {
 
   // Trips
   createTrip(groupId: string, trip: Omit<Trip, 'id' | 'groupId' | 'itinerary' | 'participants'>): Promise<Trip>;
+  updateStayInfo(tripId: string, stayInfo: StayInfo | undefined): Promise<void>;
 
   // Itinerary
   addItineraryItem(tripId: string, item: Omit<ItineraryItem, 'id'>): Promise<ItineraryItem>;

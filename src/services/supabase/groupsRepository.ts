@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase';
-import { Group, Message, RSVPStatus, Note, Reminder, LedgerEntry, SharedObject, SharedObjectType, Poll, DisappearingDuration, ItineraryItem, GroupEvent, Trip, Channel } from '../../types';
+import { Group, Message, RSVPStatus, Note, Reminder, LedgerEntry, SharedObject, SharedObjectType, Poll, DisappearingDuration, ItineraryItem, GroupEvent, Trip, Channel, StayInfo } from '../../types';
 import { IGroupsRepository, PaginationParams, CreateGroupInput, UpdateGroupInput, CreateNoteInput, UpdateNoteInput, CreateReminderInput, CreateLedgerEntryInput } from '../types';
 import {
   adaptMessage,
@@ -1101,5 +1101,9 @@ export const supabaseGroupsRepository: IGroupsRepository = {
       .eq('id', channelId);
 
     if (error) throw new Error(`Failed to delete channel: ${error.message}`);
+  },
+
+  async updateStayInfo(_tripId: string, _stayInfo: StayInfo | undefined): Promise<void> {
+    // no-op stub — stay info persistence not yet implemented
   },
 };

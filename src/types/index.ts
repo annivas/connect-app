@@ -465,6 +465,31 @@ export interface ItineraryItem {
   travelDetails?: TravelDetails;
 }
 
+// ─── Stay Info ───────────────────────────────
+export type StayInfoFieldType =
+  | 'wifi'
+  | 'door_code'
+  | 'parking'
+  | 'host_contact'
+  | 'custom';
+
+export interface StayInfoField {
+  id: string;
+  type: StayInfoFieldType;
+  label: string;       // "Wi-Fi", "Door Code", or user-defined for custom
+  value: string;       // network name (wifi), code, note, etc.
+  value2?: string;     // wifi password only (wifi type)
+  masked?: boolean;    // true for wifi (value2) and door_code by default
+}
+
+export interface StayInfo {
+  name: string;        // required; Save is disabled until non-empty
+  address?: string;
+  checkIn?: string;    // ISO date e.g. "2026-04-01"
+  checkOut?: string;
+  fields: StayInfoField[];
+}
+
 export interface Trip {
   id: string;
   groupId: string;
@@ -474,6 +499,7 @@ export interface Trip {
   itinerary: ItineraryItem[];
   budget?: number;
   participants: string[];
+  stayInfo?: StayInfo;
 }
 
 // ─── Household ──────────────────────────────

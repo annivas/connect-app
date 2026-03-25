@@ -1,4 +1,4 @@
-import { Group, SharedObject, Reminder, LedgerEntry, Note, CallEntry, Channel } from '../types';
+import { Group, SharedObject, Reminder, LedgerEntry, Note, CallEntry, Channel, StayInfo } from '../types';
 import { CURRENT_USER_ID } from './users';
 import { MOCK_HOUSEHOLD_DATA } from './household';
 
@@ -500,6 +500,29 @@ export const MOCK_GROUPS: Group[] = [
           travelDetails: { flightNumber: 'JL747', portOrStation: 'Haneda Airport' },
         },
       ],
+      stayInfo: {
+        name: 'Shibuya Excel Hotel Tokyu',
+        address: '1-12-2 Dogenzaka, Shibuya, Tokyo',
+        checkIn: '2026-04-01',
+        checkOut: '2026-04-10',
+        fields: [
+          {
+            id: 'sif-1',
+            type: 'wifi' as const,
+            label: 'Wi-Fi',
+            value: 'SHIBUYA_EXCEL_5G',
+            value2: 'hotel2026',
+            masked: true,
+          },
+          {
+            id: 'sif-2',
+            type: 'door_code' as const,
+            label: 'Door Code',
+            value: '4821',
+            masked: true,
+          },
+        ],
+      } satisfies StayInfo,
     },
     metadata: {
       sharedObjects: group2SharedObjects,
