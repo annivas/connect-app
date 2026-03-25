@@ -122,30 +122,22 @@ export function StayInfoCard({ groupId, stayInfo }: Props) {
   // ──────────────────────────────────────────────
   if (isEmpty && !expanded) {
     return (
-      <>
-        <Pressable
-          onPress={() => expand('edit')}
-          className="flex-row items-center justify-between px-3 py-3 mx-0 mb-3 rounded-xl border bg-surface-elevated"
-          style={{ borderStyle: 'dashed', borderColor: '#E8D5C4' }}
-        >
-          <View className="flex-row items-center gap-2">
-            <View className="w-7 h-7 rounded-lg bg-surface items-center justify-center">
-              <Ionicons name="bed-outline" size={15} color="#A8937F" />
-            </View>
-            <View>
-              <Text className="text-text-tertiary text-[13px] font-semibold">Add accommodation</Text>
-              <Text className="text-text-tertiary text-[11px] mt-0.5" style={{ opacity: 0.7 }}>Hotel, Airbnb, Wi-Fi, door code…</Text>
-            </View>
+      <Pressable
+        onPress={() => expand('edit')}
+        className="flex-row items-center justify-between px-3 py-3 mx-0 mb-3 rounded-xl border bg-surface-elevated"
+        style={{ borderStyle: 'dashed', borderColor: '#E8D5C4' }}
+      >
+        <View className="flex-row items-center gap-2">
+          <View className="w-7 h-7 rounded-lg bg-surface items-center justify-center">
+            <Ionicons name="bed-outline" size={15} color="#A8937F" />
           </View>
-          <Ionicons name="add" size={20} color="#D4764E" />
-        </Pressable>
-        <StayInfoPickerSheet
-          visible={pickerVisible}
-          initialField={editingField ?? undefined}
-          onSave={handlePickerSave}
-          onClose={() => { setPickerVisible(false); setEditingField(null); }}
-        />
-      </>
+          <View>
+            <Text className="text-text-tertiary text-[13px] font-semibold">Add accommodation</Text>
+            <Text className="text-text-tertiary text-[11px] mt-0.5" style={{ opacity: 0.7 }}>Hotel, Airbnb, Wi-Fi, door code…</Text>
+          </View>
+        </View>
+        <Ionicons name="add" size={20} color="#D4764E" />
+      </Pressable>
     );
   }
 
