@@ -83,7 +83,6 @@ interface GroupsState {
   updateGroup: (groupId: string, updates: UpdateGroupInput) => Promise<Group>;
   toggleAdmin: (groupId: string, memberId: string) => void;
   createTrip: (groupId: string, trip: Omit<import('../types').Trip, 'id' | 'groupId' | 'itinerary' | 'participants'>) => void;
-  updateStayInfo: (groupId: string, info: import('../types').StayInfo) => void;
   addItineraryItem: (groupId: string, item: import('../types').ItineraryItem) => void;
   editItineraryItem: (groupId: string, itemId: string, updates: Partial<import('../types').ItineraryItem>) => void;
   deleteItineraryItem: (groupId: string, itemId: string) => void;
@@ -980,16 +979,6 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
         ),
       }));
     });
-  },
-
-  updateStayInfo: (groupId, info) => {
-    set((state) => ({
-      groups: state.groups.map((g) =>
-        g.id === groupId && g.trip
-          ? { ...g, trip: { ...g.trip, stayInfo: info } }
-          : g,
-      ),
-    }));
   },
 
   addItineraryItem: (groupId, item) => {

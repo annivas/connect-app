@@ -428,16 +428,6 @@ export const MOCK_GROUPS: Group[] = [
       endDate: new Date('2026-04-10T00:00:00'),
       participants: [CURRENT_USER_ID, 'user-3', 'user-4'],
       budget: 5000,
-      stayInfo: {
-        name: 'Shibuya Excel Hotel Tokyu',
-        address: '1-12-2 Dogenzaka, Shibuya City, Tokyo 150-0043',
-        checkIn: '15:00',
-        checkOut: '11:00',
-        wifiName: 'ExcelHotel_Guest',
-        wifiPassword: 'shibuya2026',
-        doorCode: '4821',
-        accessNotes: 'Check in at lobby (B2F). Key cards from concierge. Luggage storage available until 20:00.',
-      },
       itinerary: [
         {
           id: 'itin-1',
