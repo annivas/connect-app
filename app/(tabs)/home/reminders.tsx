@@ -194,10 +194,7 @@ export default function AllRemindersScreen() {
         priority: reminder.priority,
       });
     } else {
-      useGroupsStore.getState().createGroupReminder(selectedTarget.id, {
-        ...reminder,
-        createdAt: new Date(),
-      });
+      useGroupsStore.getState().createGroupReminder(selectedTarget.id, reminder);
     }
     setShowCreateModal(false);
     setSelectedTarget(null);

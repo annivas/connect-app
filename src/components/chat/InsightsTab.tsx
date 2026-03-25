@@ -426,7 +426,6 @@ export function InsightsTab({ conversationId, channelId, isGroup }: Props) {
               endDate: event.endDate,
               location: event.location,
               type: 'hangout',
-              attendees: [],
             });
             if (userId && created) {
               useGroupsStore.getState().sendGroupMessage(conversationId, `Created an event: ${event.title}`, userId, {

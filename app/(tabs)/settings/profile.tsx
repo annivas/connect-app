@@ -170,7 +170,7 @@ export default function ProfileScreen() {
         }
       );
     } else {
-      const buttons: Alert['alert'] extends (...args: infer A) => void ? never : any[] = [
+      const buttons: Alert['alert'] extends (...args: infer A) => void ? any[] : never = [
         { text: 'Choose from Library', onPress: pickPhoto },
         ...(hasPhoto ? [{ text: 'Remove Photo', style: 'destructive' as const, onPress: removePhoto }] : []),
         { text: 'Cancel', style: 'cancel' as const },

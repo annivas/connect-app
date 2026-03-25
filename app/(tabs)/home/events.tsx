@@ -75,7 +75,7 @@ export default function AllEventsScreen() {
         description: event.description,
         startDate: event.startDate,
         endDate: event.endDate,
-        location: event.location?.name,
+        location: event.location,
         sourceId: g.id,
         sourceName: g.name,
         sourceType: 'group' as const,
@@ -153,7 +153,6 @@ export default function AllEventsScreen() {
         endDate: eventData.endDate,
         location: eventData.location,
         createdBy: currentUserId ?? '',
-        createdAt: new Date(),
       });
     } else {
       useGroupsStore.getState().createEvent(selectedTarget.id, {
